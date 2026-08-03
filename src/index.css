@@ -1,0 +1,245 @@
+@import "tailwindcss";
+
+/* ─── Theme Variables ──────────────────────────────────── */
+
+:root,
+.light {
+  --color-scheme: light;
+  --page-bg: #f9fafb;
+  --page-text: #111827;
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --card-header-border: #e5e7eb;
+  --card-header-text: #374151;
+  --input-bg: #ffffff;
+  --input-border: #d1d5db;
+  --input-text: #111827;
+  --muted-text: #6b7280;
+  --subtle-text: #9ca3af;
+  --accent-bg: #eff6ff;
+  --hover-bg: #f3f4f6;
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e5e7eb;
+  --sidebar-logo: #1e40af;
+  --sidebar-active-bg: #eff6ff;
+  --sidebar-active-text: #2563eb;
+  --sidebar-text: #6b7280;
+  --sidebar-hover-bg: #f3f4f6;
+  --sidebar-hover-text: #374151;
+  --scrollbar-thumb: #d1d5db;
+  --scrollbar-thumb-hover: #9ca3af;
+  
+  /* Chat component variables */
+  --bg: #ffffff;
+  --bg-panel: #f9fafb;
+  --bg-hover: #f3f4f6;
+  --bg-selected: #eff6ff;
+  --border: #e5e7eb;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --text-dim: #9ca3af;
+  --accent: #2563eb;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.dark {
+  --color-scheme: dark;
+  --page-bg: #030712;
+  --page-text: #f3f4f6;
+  --card-bg: rgba(17, 24, 39, 0.5);
+  --card-border: #1f2937;
+  --card-header-border: #1f2937;
+  --card-header-text: #d1d5db;
+  --input-bg: #1f2937;
+  --input-border: #374151;
+  --input-text: #ffffff;
+  --muted-text: #9ca3af;
+  --subtle-text: #6b7280;
+  --accent-bg: rgba(37, 99, 235, 0.1);
+  --hover-bg: rgba(31, 41, 55, 0.5);
+  --sidebar-bg: #030712;
+  --sidebar-border: #1f2937;
+  --sidebar-logo: #2563eb;
+  --sidebar-active-bg: rgba(37, 99, 235, 0.1);
+  --sidebar-active-text: #60a5fa;
+  --sidebar-text: #9ca3af;
+  --sidebar-hover-bg: #1f2937;
+  --sidebar-hover-text: #e5e7eb;
+  --scrollbar-thumb: #4b5563;
+  --scrollbar-thumb-hover: #6b7280;
+  
+  /* Chat component variables */
+  --bg: #030712;
+  --bg-panel: rgba(17, 24, 39, 0.5);
+  --bg-hover: rgba(31, 41, 55, 0.5);
+  --bg-selected: rgba(37, 99, 235, 0.1);
+  --border: #1f2937;
+  --text: #f3f4f6;
+  --text-muted: #9ca3af;
+  --text-dim: #6b7280;
+  --accent: #2563eb;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+:root {
+  color-scheme: var(--color-scheme, dark);
+}
+
+body {
+  font-family: "Inter", "SF Pro", system-ui, -apple-system, sans-serif;
+  background-color: var(--page-bg);
+  color: var(--page-text);
+}
+
+/* Theme-aware utility classes */
+.theme-card {
+  background-color: var(--card-bg);
+  border-color: var(--card-border);
+}
+
+.theme-input {
+  background-color: var(--input-bg);
+  border-color: var(--input-border);
+  color: var(--input-text);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Smooth transitions for theme toggle */
+* {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* ─── Light Mode Overrides ──────────────────────────────
+   Remap hardcoded Tailwind dark-mode classes to light colors.
+   This is needed because most components use fixed classes
+   like text-white, text-gray-400, bg-gray-950, border-gray-800, etc. */
+
+.light .text-white,
+.light .text-gray-100 {
+  color: #111827;
+}
+.light .text-gray-200,
+.light .text-gray-300 {
+  color: #374151;
+}
+.light .text-gray-400 {
+  color: #6b7280;
+}
+.light .text-gray-500,
+.light .text-gray-600 {
+  color: #9ca3af;
+}
+.light .bg-gray-950,
+.light .bg-gray-900,
+.light .bg-gray-900\/50,
+.light .bg-gray-900\/30,
+.light .bg-gray-900\/70 {
+  background-color: #ffffff;
+}
+.light .bg-gray-800,
+.light .bg-gray-800\/30,
+.light .bg-gray-800\/50,
+.light .bg-gray-800\/20 {
+  background-color: #f3f4f6;
+}
+.light .bg-black\/60 {
+  background-color: rgba(107, 114, 128, 0.5);
+}
+.light .border-gray-800,
+.light .border-gray-800\/50,
+.light .border-gray-700 {
+  border-color: #e5e7eb;
+}
+.light .border-gray-700 {
+  border-color: #d1d5db;
+}
+.light .border-gray-600 {
+  border-color: #d1d5db;
+}
+.light .text-blue-400 {
+  color: #2563eb;
+}
+.light .bg-blue-600 {
+  background-color: #2563eb;
+}
+.light .bg-blue-500\/10,
+.light .bg-blue-600\/10 {
+  background-color: #eff6ff;
+}
+.light .text-emerald-400 {
+  color: #059669;
+}
+.light .text-amber-400 {
+  color: #d97706;
+}
+.light .text-purple-400 {
+  color: #7c3aed;
+}
+.light .text-red-400 {
+  color: #dc2626;
+}
+.light .bg-red-600 {
+  background-color: #dc2626;
+}
+.light .bg-red-950\/20 {
+  background-color: #fef2f2;
+}
+.light .border-red-700,
+.light .border-red-900\/30 {
+  border-color: #fca5a5;
+}
+.light .bg-emerald-500\/10 {
+  background-color: #f0fdf4;
+}
+.light .text-emerald-400 {
+  color: #059669;
+}
+.light .bg-amber-500\/10 {
+  background-color: #fffbeb;
+}
+.light .hover\:bg-gray-800,
+.light .hover\:bg-gray-800\/70,
+.light .hover\:bg-gray-800\/60,
+.light .hover\:bg-gray-800\/40,
+.light .hover\:bg-gray-800\/30 {
+  &:hover {
+    background-color: #e5e7eb;
+  }
+}
+.light .hover\:bg-gray-700 {
+  &:hover {
+    background-color: #d1d5db;
+  }
+}
+.light .hover\:text-gray-200 {
+  &:hover {
+    color: #374151;
+  }
+}
+.light .placeholder-gray-500 {
+  &::placeholder {
+    color: #9ca3af;
+  }
+}
+.light input,
+.light select,
+.light textarea {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #111827;
+}
