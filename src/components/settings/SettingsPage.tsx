@@ -12,6 +12,8 @@ import {
 import type { PiConfig, UpdateCheckResult } from "@/types";
 import { cn } from "@/lib/utils";
 import { piCheckUpdates, piApplyUpdates } from "@/lib/tauri";
+import { ProvidersModelsPage } from "@/components/providers/ProvidersModelsPage";
+import { SubagentsPage } from "@/components/subagents/SubagentsPage";
 import {
   Download,
   Upload,
@@ -471,23 +473,14 @@ export function SettingsPage() {
       {/* ── Providers ─────────────────────────────────────── */}
       {activeTab === "providers" && (
         <div className="space-y-6">
-          <Card icon={Plug} title={t("settings.providers_title")} desc={t("settings.providers_desc")}>
-            <div className="text-sm text-gray-400">
-              {t("settings.providers_instructions")}
-            </div>
-            {/* Provider list rendered here — full ProvidersModelsPage content moved to Settings */}
-          </Card>
+          <ProvidersModelsPage />
         </div>
       )}
 
       {/* ── Subagents ─────────────────────────────────────── */}
       {activeTab === "subagents" && (
         <div className="space-y-6">
-          <Card icon={Users} title={t("settings.subagents_title")} desc={t("settings.subagents_desc")}>
-            <div className="text-sm text-gray-400">
-              {t("settings.subagents_instructions")}
-            </div>
-          </Card>
+          <SubagentsPage />
         </div>
       )}
 

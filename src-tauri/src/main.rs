@@ -7,7 +7,7 @@ use pi_desktop_lib::pi_reader;
 use pi_desktop_lib::pi_api;
 use pi_desktop_lib::chat_agent;
 use pi_desktop_lib::system;
-use tauri::Manager;
+use tauri::{Manager, Emitter};
 
 fn main() {
     tauri::Builder::default()
@@ -60,6 +60,37 @@ fn main() {
             let bridge_state = chat_agent::session::ChatBridgeState::new(app.handle())
                 .map_err(|e| format!("Failed to start chat bridge: {}", e))?;
             app.handle().manage(bridge_state);
+
+            // Start file watcher for ~/.pi/agent/
+            let app_handle = app.handle().clone();
+            std::thread::spawn(move || {
+                use notify::{Watcher, RecursiveMode, Config};
+                use std::sync::mpsc::channel;
+                use std::time::Duration;
+
+                let (tx, rx) = channel();
+                let mut watcher = match notify::recommended_watcher(tx) {
+                    Ok(w) => w,
+                    Err(_) => return,
+                };
+
+                let pi_dir = dirs::home_dir()
+                    .unwrap_or_default()
+                    .join(".pi/agent");
+
+                if watcher.watch(&pi_dir, RecursiveMode::Recursive).is_ok() {
+                    let mut last_notify = std::time::Instant::now();
+                    while let Ok(_event) = rx.recv() {
+                        // Debounce: max 1 notification per second
+                        let now = std::time::Instant::now();
+                        if now.duration_since(last_notify) > Duration::from_secs(1) {
+                            last_notify = now;
+                            app_handle.emit("pi-files-changed", ()).ok();
+                        }
+                    }
+                }
+            });
+
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -1,14 +1,18 @@
-// ChatPage — full chat interface with session sidebar.
-// Combines a session list sidebar with the ChatWindow.
+// ChatPage — redesigned per reference image
+// Layout: session list (left) + chat area (right)
+// Chat area: top bar + stats bar + messages + input
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ChatWindow } from "@/components/chat/ChatWindow";
+import { ChatStatsBar } from "@/components/chat/ChatStatsBar";
+import { ModelSelector } from "@/components/chat/ModelSelector";
 import type { SessionInfo, SessionStatsInfo, ContextUsage, ChatInputHandle } from "@/types/chat";
 import { useTranslation } from "@/lib/i18n";
 import { chatListSessions, chatDeleteSession } from "@/lib/tauri";
+import { ArrowLeft, Plus, ChevronDown, ChevronRight, Folder, Trash2 } from "lucide-react";
 
 interface ProjectGroup {
-  projectRoot: string;
+  projectPath: string;
   sessions: SessionInfo[];
 }
 
@@ -19,8 +23,8 @@ function groupSessionsByProject(sessions: SessionInfo[]): ProjectGroup[] {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(s);
   }
-  return [...groups.entries()].map(([projectRoot, sessions]) => ({
-    projectRoot,
+  return [...groups.entries()].map(([projectPath, sessions]) => ({
+    projectPath,
     sessions: sessions.sort((a, b) => b.modified.localeCompare(a.modified)),
   }));
 }
@@ -30,17 +34,17 @@ function getProjectName(projectRoot: string): string {
   return parts[parts.length - 1] || projectRoot;
 }
 
-function formatRelativeTime(iso: string, t: (key: string, ...args: string[]) => string): string {
+function formatRelativeTime(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffMin = Math.floor(diffMs / 60000);
   const diffHr = Math.floor(diffMin / 60);
   const diffDay = Math.floor(diffHr / 24);
-  if (diffMin < 1) return t("chat.just_now");
-  if (diffMin < 60) return t("chat.min_ago", String(diffMin));
-  if (diffHr < 24) return t("chat.hr_ago", String(diffHr));
-  if (diffDay < 7) return t("chat.day_ago", String(diffDay));
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffDay < 7) return `${diffDay}d ago`;
   return d.toLocaleDateString();
 }
 
@@ -61,12 +65,10 @@ export function ChatPage() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const chatInputRef = useRef<ChatInputHandle | null>(null);
 
-  // ─── Load sessions ─────────────────────────────────────
-
+  // Load sessions
   useEffect(() => {
     chatListSessions()
       .then((data) => {
-        // Map bridge SessionInfo to chat.ts SessionInfo format
         const mapped: SessionInfo[] = data.map((s) => ({
           ...s,
           messageCount: s.message_count,
@@ -78,24 +80,18 @@ export function ChatPage() {
       .catch(() => setLoading(false));
   }, [refreshKey]);
 
-  // ─── Browse directories (uses fs_read_dir from Tauri) ───
-
   const browse = useCallback(async (path: string) => {
     setBrowsePath(path);
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       const result = await invoke<{ path: string; items: { name: string; isDirectory: boolean; path: string }[] }>(
-        "fs_list_dir",
-        { path }
+        "fs_list_dir", { path }
       );
       setBrowseItems(result.items ?? []);
-    } catch {
-      setBrowseItems([]);
-    }
+    } catch { setBrowseItems([]); }
   }, []);
 
   useEffect(() => {
-    // Load home directory on mount
     const loadHome = async () => {
       try {
         const { invoke } = await import("@tauri-apps/api/core");
@@ -107,8 +103,6 @@ export function ChatPage() {
     loadHome();
   }, [browse]);
 
-  // ─── Session selection ─────────────────────────────────
-
   const handleSelectSession = useCallback((session: SessionInfo) => {
     setNewSessionCwd(null);
     setSelectedSession(session);
@@ -116,9 +110,14 @@ export function ChatPage() {
     setContextUsage(null);
   }, []);
 
-  const handleNewSession = useCallback(() => {
-    setShowCwdPicker(true);
+  const handleBack = useCallback(() => {
+    setSelectedSession(null);
+    setNewSessionCwd(null);
+    setSessionStats(null);
+    setContextUsage(null);
   }, []);
+
+  const handleNewSession = useCallback(() => setShowCwdPicker(true), []);
 
   const handleConfirmCwd = useCallback(async () => {
     setCwdError(null);
@@ -133,7 +132,7 @@ export function ChatPage() {
     } catch (e) {
       setCwdError(String(e));
     }
-  }, [cwdInput, t]);
+  }, [cwdInput]);
 
   const handleSessionCreated = useCallback((session: SessionInfo) => {
     setSelectedSession(session);
@@ -145,471 +144,275 @@ export function ChatPage() {
     setRefreshKey((k) => k + 1);
   }, []);
 
-  // ─── Delete session ────────────────────────────────────
-
   const handleDeleteSession = useCallback(async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(t("chat.delete_confirm"))) return;
+    if (!confirm('Delete this session?')) return;
     try {
       await chatDeleteSession(sessionId);
       setRefreshKey((k) => k + 1);
-      if (selectedSession?.id === sessionId) {
-        setSelectedSession(null);
-      }
-    } catch {
-      // ignore
-    }
+      if (selectedSession?.id === sessionId) setSelectedSession(null);
+    } catch { /* ignore */ }
   }, [selectedSession]);
 
-  // ─── Render ────────────────────────────────────────────
-
   const projectGroups = groupSessionsByProject(sessions);
-
-  // ─── Expand / Collapse all groups ──────────────────────
-
-  const expandAll = useCallback(() => {
-    setCollapsedGroups(new Set());
-  }, []);
-
-  const collapseAll = useCallback(() => {
-    setCollapsedGroups(new Set(projectGroups.map((g) => g.projectRoot)));
-  }, [projectGroups]);
-
   const effectiveCwd = selectedSession?.cwd ?? newSessionCwd;
   const showChat = selectedSession !== null || newSessionCwd !== null;
 
+  // Compute stats for the stats bar
+  const statsTokens = sessionStats?.tokens ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 };
+  const contextLimit = contextUsage?.contextWindow ?? 0;
+  const contextPercent = contextUsage?.percent ?? 0;
+  const contextTokens = contextLimit * (contextPercent / 100);
+
   return (
-    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
-      {/* Session Sidebar */}
-      <div style={{
-        width: 280,
-        flexShrink: 0,
-        borderRight: "1px solid var(--border)",
-        background: "var(--bg-panel)",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}>
+    <div className="flex h-full overflow-hidden">
+      {/* ─── Session List (Left Sidebar) ──────────────────── */}
+      <div
+        className="flex flex-col overflow-hidden"
+        style={{
+          width: 260,
+          flexShrink: 0,
+          borderRight: '1px solid var(--border)',
+          background: 'var(--bg-panel)',
+        }}
+      >
         {/* Header */}
-        <div style={{
-          padding: "12px 14px",
-          borderBottom: "1px solid var(--border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{t("chat.sessions")}</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            {projectGroups.length > 0 && (() => {
-              const allExpanded = collapsedGroups.size === 0;
-              return (
-                <button
-                  onClick={allExpanded ? collapseAll : expandAll}
-                  title={allExpanded ? t("chat.collapse_all") : t("chat.expand_all")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 3,
-                    height: 26,
-                    padding: "0 8px",
-                    borderRadius: 6,
-                    border: "1px solid var(--border)",
-                    background: "var(--bg)",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                    fontSize: 11,
-                    fontWeight: 500,
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg)"; }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: allExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                  {allExpanded ? t("chat.collapse_all") : t("chat.expand_all")}
-                </button>
-              );
-            })()}
-            <button
-              onClick={handleNewSession}
-              title={t("chat.new_session")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 28,
-                height: 28,
-                borderRadius: 6,
-                border: "none",
-                background: "var(--accent)",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: 18,
-              }}
-            >
-              +
-            </button>
-          </div>
+        <div
+          className="flex items-center justify-between"
+          style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)' }}
+        >
+          <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+            Sessions
+          </span>
+          <button
+            onClick={handleNewSession}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-white"
+            style={{ background: 'var(--accent)' }}
+          >
+            <Plus className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Session list */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div style={{ padding: 16, fontSize: 13, color: "var(--text-muted)" }}>{t("chat.loading")}</div>
+            <p className="p-4 text-xs" style={{ color: 'var(--text-muted)' }}>Loading...</p>
           ) : projectGroups.length === 0 ? (
-            <div style={{ padding: 16, fontSize: 13, color: "var(--text-muted)" }}>
-              {t("chat.no_sessions")}
-            </div>
+            <p className="p-4 text-xs" style={{ color: 'var(--text-muted)' }}>No sessions yet</p>
           ) : (
             projectGroups.map((group) => {
-                const isCollapsed = collapsedGroups.has(group.projectRoot);
-                return (
-              <div key={group.projectRoot}>
-                {/* Project header - clickable to collapse/expand */}
-                <button
-                  onClick={() => {
-                    setCollapsedGroups((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(group.projectRoot)) {
-                        next.delete(group.projectRoot);
-                      } else {
-                        next.add(group.projectRoot);
-                      }
-                      return next;
-                    });
-                  }}
-                  style={{
-                    padding: "6px 14px",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: "var(--text-dim)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    background: "var(--bg)",
-                    width: "100%",
-                    border: "none",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    textAlign: "left",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg)"; }}
-                >
-                  <span>{getProjectName(group.projectRoot)}</span>
-                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ fontSize: 10, opacity: 0.7 }}>{group.sessions.length}</span>
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      style={{
-                        transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)",
-                        transition: "transform 0.2s",
-                      }}
-                    >
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </span>
-                </button>
-                {/* Sessions */}
-                {!isCollapsed && group.sessions.map((s) => (
-                  <div
-                    key={s.id}
-                    onClick={() => handleSelectSession(s)}
+              const isCollapsed = collapsedGroups.has(group.projectRoot);
+              return (
+                <div key={group.projectPath}>
+                  {/* Project header */}
+                  <button
+                    onClick={() => {
+                      setCollapsedGroups((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(group.projectRoot)) next.delete(group.projectRoot);
+                        else next.add(group.projectRoot);
+                        return next;
+                      });
+                    }}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left"
                     style={{
-                      padding: "8px 14px",
-                      cursor: "pointer",
-                      background: selectedSession?.id === s.id ? "var(--bg-selected)" : "transparent",
-                      borderLeft: selectedSession?.id === s.id ? "3px solid var(--accent)" : "3px solid transparent",
-                      transition: "background 0.1s",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selectedSession?.id !== s.id) e.currentTarget.style.background = "var(--bg-hover)";
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selectedSession?.id !== s.id) e.currentTarget.style.background = "transparent";
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'var(--text-dim)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
                     }}
                   >
-                    <div style={{
-                      fontSize: 13,
-                      color: selectedSession?.id === s.id ? "var(--text)" : "var(--text-muted)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}>
-                      {s.name || s.firstMessage?.slice(0, 50) || t("chat.untitled")}
-                    </div>
-                    <div style={{
-                      fontSize: 11,
-                      color: "var(--text-dim)",
-                      marginTop: 2,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}>
-                      <span>{formatRelativeTime(s.modified, t)}</span>
-                      <span>·</span>
-                      <span>{t("chat.msg_count", String(s.messageCount))}</span>
+                    <span className="flex items-center gap-1">
+                      {isCollapsed ? (
+                        <ChevronRight className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                      {getProjectName(group.projectRoot)}
+                    </span>
+                    <span style={{ fontSize: 10, opacity: 0.6 }}>{group.sessions.length}</span>
+                  </button>
+                  {/* Sessions */}
+                  {!isCollapsed && group.sessions.map((s) => (
+                    <div
+                      key={s.id}
+                      onClick={() => handleSelectSession(s)}
+                      className="group flex cursor-pointer items-center gap-2 px-3 py-2"
+                      style={{
+                        background: selectedSession?.id === s.id ? 'var(--bg-selected)' : 'transparent',
+                        borderLeft: selectedSession?.id === s.id ? '3px solid var(--accent)' : '3px solid transparent',
+                      }}
+                    >
+                      <Folder className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--text-dim)' }} />
+                      <div className="min-w-0 flex-1">
+                        <div
+                          className="truncate text-xs"
+                          style={{ color: selectedSession?.id === s.id ? 'var(--text)' : 'var(--text-muted)' }}
+                        >
+                          {s.name || s.firstMessage?.slice(0, 40) || 'Untitled'}
+                        </div>
+                        <div className="flex items-center gap-1" style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                          <span>{formatRelativeTime(s.modified)}</span>
+                          <span>·</span>
+                          <span>{s.messageCount} msgs</span>
+                        </div>
+                      </div>
                       <button
                         onClick={(e) => handleDeleteSession(s.id, e)}
-                        title={t("chat.delete")}
+                        className="hidden group-hover:block"
                         style={{
-                          marginLeft: "auto",
-                          background: "none",
-                          border: "none",
-                          color: "var(--text-dim)",
-                          cursor: "pointer",
-                          fontSize: 12,
-                          padding: 0,
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-dim)',
+                          cursor: 'pointer',
+                          padding: 2,
                         }}
                       >
-                        ×
+                        <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            );
+                  ))}
+                </div>
+              );
             })
           )}
         </div>
       </div>
 
-      {/* Chat area */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-        {/* Top bar */}
-        {showChat && (
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "8px 16px",
-            borderBottom: "1px solid var(--border)",
-            background: "var(--bg-panel)",
-            flexShrink: 0,
-          }}>
-            <span style={{ fontSize: 13, color: "var(--text-muted)", fontFamily: "var(--font-mono, monospace)" }}>
-              {effectiveCwd}
-            </span>
-            {/* Session stats */}
-            {sessionStats && (
-              <div style={{ marginLeft: "auto", display: "flex", gap: 12, fontSize: 11, color: "var(--text-muted)" }}>
-                {sessionStats.tokens.input > 0 && (
-                  <span title="Input tokens">↑{sessionStats.tokens.input.toLocaleString()}</span>
-                )}
-                {sessionStats.tokens.output > 0 && (
-                  <span title="Output tokens">↓{sessionStats.tokens.output.toLocaleString()}</span>
-                )}
-                {sessionStats.cost > 0 && (
-                  <span title="Cost">${sessionStats.cost.toFixed(4)}</span>
-                )}
-                {contextUsage?.contextWindow && (
-                  <span
-                    title="Context usage"
-                    style={{
-                      color: contextUsage.percent && contextUsage.percent > 90 ? "#ef4444"
-                        : contextUsage.percent && contextUsage.percent > 70 ? "rgba(234,179,8,0.95)"
-                        : undefined,
-                    }}
-                  >
-                    {contextUsage.percent ? `${contextUsage.percent.toFixed(0)}%` : "?"} / {contextUsage.contextWindow.toLocaleString()}
-                  </span>
-                )}
+      {/* ─── Chat Area (Right) ────────────────────────────── */}
+      <div className="relative flex flex-1 flex-col overflow-hidden">
+        {showChat ? (
+          <>
+            {/* Top bar: Back + Session name + Model selector */}
+            <div
+              className="flex flex-shrink-0 items-center gap-3 px-4 py-2"
+              style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-panel)' }}
+            >
+              <button
+                onClick={handleBack}
+                className="rounded p-1"
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium" style={{ color: 'var(--text)' }}>
+                  {selectedSession?.name || newSessionCwd?.split('/').pop() || 'New Chat'}
+                </div>
+                <div className="truncate text-xs" style={{ color: 'var(--text-dim)' }}>
+                  {selectedSession?.model || 'claude-sonnet-4-sonnet'}
+                </div>
               </div>
+              <ModelSelector
+                models={[]}
+                currentModel={null}
+                onChange={() => {}}
+              />
+            </div>
+
+            {/* Stats bar */}
+            {sessionStats && (
+              <ChatStatsBar
+                contextTokens={contextTokens}
+                contextLimit={contextLimit}
+                contextPercent={contextPercent}
+                cost={sessionStats.cost}
+                inputTokens={statsTokens.input}
+                outputTokens={statsTokens.output}
+              />
             )}
+
+            {/* Chat messages */}
+            <div className="relative flex-1 overflow-hidden">
+              <ChatWindow
+                session={selectedSession}
+                newSessionCwd={newSessionCwd}
+                onAgentEnd={handleAgentEnd}
+                onSessionCreated={handleSessionCreated}
+                chatInputRef={chatInputRef}
+                onSessionStatsChange={setSessionStats}
+                onContextUsageChange={setContextUsage}
+              />
+            </div>
+          </>
+        ) : (
+          /* Empty state */
+          <div className="flex h-full flex-col items-center justify-center p-6" style={{ color: 'var(--text-muted)' }}>
+            <div className="mb-4 text-5xl opacity-20">π</div>
+            <div className="mb-2 text-lg font-semibold" style={{ color: 'var(--text)' }}>
+              Select a session
+            </div>
+            <div className="max-w-sm text-center text-sm" style={{ opacity: 0.7 }}>
+              Choose a session from the list or start a new one
+            </div>
           </div>
         )}
 
-        {/* Chat window or placeholder */}
-        <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-          {showChat ? (
-            <ChatWindow
-              session={selectedSession}
-              newSessionCwd={newSessionCwd}
-              onAgentEnd={handleAgentEnd}
-              onSessionCreated={handleSessionCreated}
-              chatInputRef={chatInputRef}
-              onSessionStatsChange={setSessionStats}
-              onContextUsageChange={setContextUsage}
-            />
-          ) : (
-            <div style={{
-              height: "100%",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 24,
-              color: "var(--text-muted)",
-            }}>
-              <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }}>π</div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>
-                {t("chat.welcome_title")}
-              </div>
-              <div style={{ fontSize: 14, textAlign: "center", maxWidth: 400, lineHeight: 1.6 }}>
-                {t("chat.welcome_desc")}
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* CWD Picker Modal */}
         {showCwdPicker && (
-          <div style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(0,0,0,0.3)",
-          }}>
-            <div style={{
-              width: "min(560px, 90%)",
-              maxHeight: "80%",
-              background: "var(--bg-panel)",
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-            }}>
-              {/* Header */}
-              <div style={{
-                padding: "12px 16px",
-                borderBottom: "1px solid var(--border)",
-                fontSize: 14,
-                fontWeight: 600,
-                color: "var(--text)",
-              }}>
-                {t("chat.select_cwd")}
+          <div
+            className="absolute inset-0 z-50 flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.4)' }}
+          >
+            <div
+              className="flex max-h-[80%] w-[560px] flex-col overflow-hidden rounded-xl"
+              style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
+            >
+              <div className="px-4 py-3 text-sm font-semibold" style={{ borderBottom: '1px solid var(--border)', color: 'var(--text)' }}>
+                Select working directory
               </div>
-
-              {/* CWD input */}
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+              <div className="border-b px-4 py-3" style={{ borderColor: 'var(--border)' }}>
                 <input
                   value={cwdInput}
-                  onChange={(e) => {
-                    setCwdInput(e.target.value);
-                    setCwdError(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleConfirmCwd();
-                    if (e.key === "Escape") setShowCwdPicker(false);
-                  }}
+                  onChange={(e) => { setCwdInput(e.target.value); setCwdError(null); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmCwd(); if (e.key === 'Escape') setShowCwdPicker(false); }}
                   placeholder="/path/to/project"
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    borderRadius: 8,
-                    border: "1px solid var(--border)",
-                    background: "var(--bg)",
-                    color: "var(--text)",
-                    fontSize: 13,
-                    fontFamily: "var(--font-mono, monospace)",
-                    outline: "none",
-                  }}
+                  className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
                 />
-                {cwdError && (
-                  <div style={{ marginTop: 6, fontSize: 12, color: "#dc2626" }}>{cwdError}</div>
-                )}
+                {cwdError && <p className="mt-2 text-xs" style={{ color: '#dc2626' }}>{cwdError}</p>}
               </div>
-
-              {/* Directory browser */}
-              <div style={{ flex: 1, overflow: "auto", padding: "4px 0" }}>
-                {/* Current path breadcrumb */}
-                <div style={{
-                  padding: "4px 16px",
-                  fontSize: 11,
-                  color: "var(--text-dim)",
-                  fontFamily: "var(--font-mono, monospace)",
-                  borderBottom: "1px solid var(--border)",
-                }}>
+              <div className="flex-1 overflow-auto py-1">
+                <div className="px-4 py-1 font-mono text-xs" style={{ color: 'var(--text-dim)', borderBottom: '1px solid var(--border)' }}>
                   {browsePath}
                 </div>
-                {/* Parent directory */}
                 <div
-                  onClick={() => {
-                    const parent = browsePath.replace(/\/[^/]+\/?$/, "") || "/";
-                    browse(parent);
-                    setCwdInput(parent);
-                  }}
-                  style={{
-                    padding: "6px 16px",
-                    cursor: "pointer",
-                    fontSize: 13,
-                    color: "var(--text-muted)",
-                  }}
+                  onClick={() => { const p = browsePath.replace(/\/[^/]+\/?$/, '') || '/'; browse(p); setCwdInput(p); }}
+                  className="cursor-pointer px-4 py-1.5 text-xs hover:bg-[var(--bg-hover)]"
+                  style={{ color: 'var(--text-muted)' }}
                 >
                   ../
                 </div>
-                {/* Items */}
-                {browseItems.filter((item) => item.isDirectory).map((item) => (
+                {browseItems.filter((i) => i.isDirectory).map((item) => (
                   <div
                     key={item.path}
-                    onClick={() => {
-                      browse(item.path);
-                      setCwdInput(item.path);
-                    }}
-                    style={{
-                      padding: "6px 16px",
-                      cursor: "pointer",
-                      fontSize: 13,
-                      color: "var(--text)",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    onClick={() => { browse(item.path); setCwdInput(item.path); }}
+                    className="cursor-pointer px-4 py-1.5 text-xs hover:bg-[var(--bg-hover)]"
+                    style={{ color: 'var(--text)' }}
                   >
-                    <span style={{ marginRight: 6 }}>📁</span>
+                    <Folder className="mr-1.5 inline h-3 w-3" />
                     {item.name}
                   </div>
                 ))}
               </div>
-
-              {/* Footer */}
-              <div style={{
-                padding: "10px 16px",
-                borderTop: "1px solid var(--border)",
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 8,
-              }}>
+              <div className="flex justify-end gap-2 px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
                 <button
                   onClick={() => setShowCwdPicker(false)}
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: 6,
-                    border: "1px solid var(--border)",
-                    background: "var(--bg)",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                    fontSize: 13,
-                  }}
+                  className="rounded-md px-3 py-1.5 text-xs"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
                 >
-                  {t("chat.cancel")}
+                  Cancel
                 </button>
                 <button
                   onClick={handleConfirmCwd}
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: 6,
-                    border: "none",
-                    background: "var(--accent)",
-                    color: "#fff",
-                    cursor: "pointer",
-                    fontSize: 13,
-                    fontWeight: 500,
-                  }}
+                  className="rounded-md px-3 py-1.5 text-xs font-medium text-white"
+                  style={{ background: 'var(--accent)', border: 'none' }}
                 >
-                  {t("chat.start_chat")}
+                  Start Chat
                 </button>
               </div>
             </div>

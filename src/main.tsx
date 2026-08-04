@@ -1,5 +1,6 @@
 import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { listen } from "@tauri-apps/api/event";
 import { useConfigStore } from "@/store/config-store";
 import { I18nProvider } from "@/lib/i18n";
 import { useTranslation } from "@/lib/i18n";
@@ -123,11 +124,12 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>
 );
 
-// ─── PWA: register service worker ──────────────────────
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch((err) => {
-      console.warn("SW registration failed:", err);
-    });
+// ─── File watcher: auto-refresh on pi config changes ────
+// Listen for Rust file watcher events and refresh the store
+if (typeof window !== "undefined" && window.__TAURI_INTERNALS__) {
+  listen("pi-files-changed", () => {
+    useConfigStore.getState().init();
+  }).catch(() => {
+    // Tauri context not available (e.g., during SSR)
   });
 }
