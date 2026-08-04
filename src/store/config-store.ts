@@ -225,13 +225,19 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   allProviders: [],
   allModels: [],
   usage: null,
+  usageRangeData: null, // Cached dashboard range data
   initialized: false,
   loading: true,
   error: null,
 
-  // ─── Init ───────────────────────────────────────────────
+  // ─── Init (with caching) ─────────────────────────────────
 
   init: async () => {
+    // If already initialized, skip reload (data cached in store)
+    if (get().initialized && get().settings) {
+      set({ loading: false });
+      return;
+    }
     set({ loading: true, error: null });
     try {
       const [settings, auth, modelsJson, usage, builtinsRes] = await Promise.all([

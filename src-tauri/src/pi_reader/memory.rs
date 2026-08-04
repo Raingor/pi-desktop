@@ -6,6 +6,7 @@ use crate::pi_reader::pi_dir;
 // ─── Types ─────────────────────────────────────────────
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct MemoryFile {
     pub name: String,
     pub filename: String,

@@ -7,6 +7,7 @@ use crate::pi_reader::pi_dir;
 // ─── Types ─────────────────────────────────────────────
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct CatalogModel {
     pub id: String,
     pub name: Option<String>,
@@ -18,6 +19,7 @@ pub struct CatalogModel {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ModelCost {
     pub input: f64,
     pub output: f64,
@@ -26,6 +28,7 @@ pub struct ModelCost {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct CatalogProvider {
     pub id: String,
     pub name: String,

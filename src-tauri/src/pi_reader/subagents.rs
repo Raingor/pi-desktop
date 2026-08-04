@@ -7,6 +7,7 @@ use crate::pi_reader::pi_dir;
 // ─── Types ─────────────────────────────────────────────
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct AgentDef {
     pub name: String,
     pub file_name: String,
@@ -24,6 +25,7 @@ pub struct AgentDef {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ChainStep {
     pub agent: String,
     pub phase: Option<String>,
@@ -34,6 +36,7 @@ pub struct ChainStep {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ChainDef {
     pub name: String,
     pub file_name: String,
@@ -44,6 +47,7 @@ pub struct ChainDef {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct RunRecord {
     pub agent: String,
     pub ts: i64,
@@ -54,6 +58,7 @@ pub struct RunRecord {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct SubagentsData {
     pub agents: Vec<AgentDef>,
     pub chains: Vec<ChainDef>,

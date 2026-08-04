@@ -2,6 +2,7 @@ use serde::Serialize;
 use crate::pi_api::http::{build_client, resolve_api_key};
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct FetchedModel {
     pub id: String,
     pub name: Option<String>,
@@ -15,6 +16,7 @@ pub struct FetchedModel {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ModelCost {
     pub input: f64,
     pub output: f64,

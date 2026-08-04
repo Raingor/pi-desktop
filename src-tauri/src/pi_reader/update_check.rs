@@ -6,6 +6,7 @@ use crate::pi_reader::pi_dir;
 // ─── Types ─────────────────────────────────────────────
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateItem {
     pub name: String,
     pub installed: String,
@@ -14,6 +15,7 @@ pub struct UpdateItem {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateCheckResult {
     pub pi: Option<UpdateItem>,
     pub extensions: Vec<UpdateItem>,
@@ -21,6 +23,7 @@ pub struct UpdateCheckResult {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ApplyUpdateResult {
     pub name: String,
     pub success: bool,

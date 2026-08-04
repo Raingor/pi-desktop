@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useConfigStore } from "@/store/config-store";
 import { useTranslation } from "@/lib/i18n";
 import { useCurrency } from "@/lib/currency";
@@ -160,9 +160,9 @@ function downloadCsv(filename: string, headers: string[], rows: (string | number
   URL.revokeObjectURL(a.href);
 }
 
-// ─── Stat Card ──────────────────────────────────────────
+// ─── Stat Card (memoized) ───────────────────────────────
 
-function StatCard({
+const StatCard = memo(function StatCard({
   title,
   value,
   subtitle,
@@ -217,11 +217,11 @@ function StatCard({
       {children}
     </div>
   );
-}
+});
 
-// ─── Breakdown Row ──────────────────────────────────────
+// ─── Breakdown Row (memoized) ───────────────────────────
 
-function BreakdownRow({ label, value, total, color, lang = "en" }: { label: string; value: number; total: number; color: string; lang?: string }) {
+const BreakdownRow = memo(function BreakdownRow({ label, value, total, color, lang = "en" }: { label: string; value: number; total: number; color: string; lang?: string }) {
   const pct = total > 0 ? (value / total) * 100 : 0;
   return (
     <div className="flex items-center justify-between py-1.5">
@@ -235,7 +235,7 @@ function BreakdownRow({ label, value, total, color, lang = "en" }: { label: stri
       </div>
     </div>
   );
-}
+});
 
 // ─── Sortable Table Header ──────────────────────────────
 
@@ -289,25 +289,32 @@ export function DashboardPage() {
 
   const customInvalid = range === "custom" && !!customFrom && !!customTo && customFrom > customTo;
 
-  const fetchData = useCallback(() => {
+  const fetchData = useCallback(async () => {
     if (!initialized || customInvalid) return;
+    // Don't set loading=true on range switch if we already have data
+    if (!data) setLoading(true);
     setRefreshing(true);
-    const to = (range === "custom" && customFrom) ? (customTo || customFrom) : "";
-    piUsageRangeGet(range, customFrom || "", to)
-      .then((d) => {
-        setData(d);
-        setLoading(false);
-        setRefreshing(false);
-        setLastUpdated(new Date().toLocaleTimeString());
-      })
-      .catch(() => { setLoading(false); setRefreshing(false); });
+    try {
+      const to = (range === "custom" && customFrom) ? (customTo || customFrom) : "";
+      const d = await piUsageRangeGet(range, customFrom || "", to);
+      setData(d);
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch {
+      // Keep old data on error
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
 
     // Previous period of equal length → period-over-period trend on stat cards
     const prev = getPrevRange(range);
     if (prev) {
-      piUsageRangeGet("custom", prev.from, prev.to)
-        .then((p) => setPrevTotals({ tokens: p.totalTokens ?? 0, cost: p.totalCost ?? 0 }))
-        .catch(() => setPrevTotals(null));
+      try {
+        const p = await piUsageRangeGet("custom", prev.from, prev.to);
+        setPrevTotals({ tokens: p.totalTokens ?? 0, cost: p.totalCost ?? 0 });
+      } catch {
+        setPrevTotals(null);
+      }
     } else {
       setPrevTotals(null);
     }
@@ -327,39 +334,69 @@ export function DashboardPage() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  // Chart data: hourly for "today", daily for 7d/30d/custom
-  const rawBreakdown = range === "today" ? data?.hourlyBreakdown : data?.dailyBreakdown;
-  const chartData = (rawBreakdown ?? []).map((d: any) => ({
-    date: range === "today" ? d.hour?.slice(-5) : formatDateShort(d.date || d.hour),
-    rawDate: d.date || d.hour,
-    input: Math.round(d.input / 1000),
-    output: Math.round(d.output / 1000),
-    cacheRead: Math.round(d.cacheRead / 1000),
-    cacheWrite: Math.round(d.cacheWrite / 1000),
-    cost: parseFloat(d.cost.toFixed(4)),
-    requests: d.requests,
-  }));
+  // Chart data: hourly for "today", daily for 7d/30d/custom (memoized)
+  const chartData = useMemo(() => {
+    if (!data) return [];
+    const rawBreakdown = range === "today" ? data.hourlyBreakdown : data.dailyBreakdown;
+    return rawBreakdown.map((d) => ({
+      date: range === "today" ? d.hour?.slice(-5) : formatDateShort(d.date || d.hour),
+      rawDate: d.date || d.hour,
+      input: Math.round(d.input / 1000),
+      output: Math.round(d.output / 1000),
+      cacheRead: Math.round(d.cacheRead / 1000),
+      cacheWrite: Math.round(d.cacheWrite / 1000),
+      cost: parseFloat(d.cost.toFixed(4)),
+      requests: d.requests,
+    }));
+  }, [data, range]);
 
-  // Period-over-period trends (undefined → hidden)
-  const tokenTrend = data && prevTotals && prevTotals.tokens > 0
-    ? ((data.totalTokens - prevTotals.tokens) / prevTotals.tokens) * 100
-    : undefined;
-  const costTrend = data && prevTotals && prevTotals.cost > 0
-    ? ((data.totalCost - prevTotals.cost) / prevTotals.cost) * 100
-    : undefined;
+  // Period-over-period trends (memoized)
+  const tokenTrend = useMemo(() =>
+    data && prevTotals && prevTotals.tokens > 0
+      ? ((data.totalTokens - prevTotals.tokens) / prevTotals.tokens) * 100
+      : undefined,
+    [data, prevTotals]
+  );
+  const costTrend = useMemo(() =>
+    data && prevTotals && prevTotals.cost > 0
+      ? ((data.totalCost - prevTotals.cost) / prevTotals.cost) * 100
+      : undefined,
+    [data, prevTotals]
+  );
 
-  // Sorted stats + request-log pagination
-  const sortedProviders = sortRows(data?.providerStats ?? [], providerSort.key, providerSort.dir);
-  const sortedModels = sortRows(data?.modelStats ?? [], modelSort.key, modelSort.dir);
-  const providerTotalCost = (data?.providerStats ?? []).reduce((s, p) => s + p.totalCost, 0);
-  const totalLogPages = Math.max(1, Math.ceil((data?.requestLog.length ?? 0) / LOG_PAGE_SIZE));
+  // Sorted stats + request-log pagination (memoized)
+  const sortedProviders = useMemo(
+    () => sortRows(data?.providerStats ?? [], providerSort.key, providerSort.dir),
+    [data?.providerStats, providerSort.key, providerSort.dir]
+  );
+  const sortedModels = useMemo(
+    () => sortRows(data?.modelStats ?? [], modelSort.key, modelSort.dir),
+    [data?.modelStats, modelSort.key, modelSort.dir]
+  );
+  const providerTotalCost = useMemo(
+    () => (data?.providerStats ?? []).reduce((s, p) => s + p.totalCost, 0),
+    [data?.providerStats]
+  );
+  const totalLogPages = useMemo(
+    () => Math.max(1, Math.ceil((data?.requestLog.length ?? 0) / LOG_PAGE_SIZE)),
+    [data?.requestLog]
+  );
   const currentLogPage = Math.min(logPage, totalLogPages);
-  const pagedLog = (data?.requestLog ?? []).slice((currentLogPage - 1) * LOG_PAGE_SIZE, currentLogPage * LOG_PAGE_SIZE);
+  const pagedLog = useMemo(
+    () => (data?.requestLog ?? []).slice((currentLogPage - 1) * LOG_PAGE_SIZE, currentLogPage * LOG_PAGE_SIZE),
+    [data?.requestLog, currentLogPage]
+  );
 
-  const fmtCostCell = (v: number) => (currency === "CNY" ? `¥${(v * USD_TO_CNY).toFixed(4)}` : formatCostShort(v));
+  const fmtCostCell = useCallback(
+    (v: number) => (currency === "CNY" ? `¥${(v * USD_TO_CNY).toFixed(4)}` : formatCostShort(v)),
+    [currency]
+  );
 
-  const toggleSort = (setter: typeof setProviderSort) => (key: string) =>
-    setter((s) => (s.key === key ? { key, dir: s.dir === "desc" ? "asc" : "desc" } : { key, dir: "desc" }));
+  const toggleSort = useCallback(
+    (setter: typeof setProviderSort) => (key: string) =>
+      setter((s) => (s.key === key ? { key, dir: s.dir === "desc" ? "asc" : "desc" } : { key, dir: "desc" })),
+    []
+  );
 
   const handleExport = () => {
     if (!data) return;
@@ -501,14 +538,8 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Loading State */}
-      {loading && (
-        <div className="flex items-center justify-center h-64">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-600 border-t-blue-500" />
-        </div>
-      )}
-
-      {!loading && data && (
+      {/* Content — always render, show loading overlay if refreshing */}
+      {data && (
         <div className={cn("space-y-5 transition-opacity", refreshing && "opacity-60")}>
           {/* Overview Cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -766,6 +797,16 @@ export function DashboardPage() {
                 </table>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* No data state */}
+      {!data && (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="h-8 w-8 mx-auto mb-4 animate-spin rounded-full border-2 border-gray-600 border-t-blue-500" />
+            <p className="text-sm" style={{ color: "var(--muted-text)" }}>Loading...</p>
           </div>
         </div>
       )}

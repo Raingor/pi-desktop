@@ -36,6 +36,7 @@ fn main() {
             pi_api::fetch_models::pi_fetch_provider_models,
             // Phase 3: chat_agent — session management via Node bridge
             chat_agent::session::chat_list_sessions,
+            chat_agent::session::chat_get_session,
             chat_agent::session::chat_start_session,
             chat_agent::session::chat_send_command,
             chat_agent::session::chat_get_state,

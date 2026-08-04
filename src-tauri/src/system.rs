@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use dirs::home_dir;
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct DirEntry {
     pub name: String,
     pub is_directory: bool,
@@ -11,6 +12,7 @@ pub struct DirEntry {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct FileContent {
     pub path: String,
     pub content: String,

@@ -9,6 +9,7 @@ use crate::pi_reader::pi_dir;
 // ─── Types ─────────────────────────────────────────────
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct SessionFileInfo {
     pub id: String,
     pub file_name: String,
@@ -23,6 +24,7 @@ pub struct SessionFileInfo {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectGroup {
     pub project_path: String,
     pub project_name: String,
@@ -32,6 +34,7 @@ pub struct ProjectGroup {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct TrashEntry {
     pub trash_path: String,
     pub original_path: String,
@@ -44,6 +47,7 @@ pub struct TrashEntry {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct SessionPreviewMessage {
     pub role: String,
     pub text: String,
@@ -51,6 +55,7 @@ pub struct SessionPreviewMessage {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct SessionPreview {
     pub messages: Vec<SessionPreviewMessage>,
     pub total: usize,

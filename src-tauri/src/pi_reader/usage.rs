@@ -4,7 +4,6 @@ use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use chrono::Timelike;
-use walkdir::WalkDir;
 use crate::pi_reader::pi_dir;
 
 // ─── Types ─────────────────────────────────────────────
@@ -67,6 +66,7 @@ pub struct UsageData {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct UsageRangeData {
     pub total_tokens: u64,
     pub total_input: u64,
@@ -106,6 +106,7 @@ pub struct HourlyBreakdown {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct RequestLogEntry {
     pub timestamp: String,
     pub provider_id: String,
@@ -117,6 +118,7 @@ pub struct RequestLogEntry {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ProviderStatEntry {
     pub provider_id: String,
     pub total_tokens: u64,
@@ -128,6 +130,7 @@ pub struct ProviderStatEntry {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ModelStatEntry {
     pub model_id: String,
     pub provider_id: String,
@@ -138,24 +141,117 @@ pub struct ModelStatEntry {
     pub total_requests: u64,
 }
 
-// ─── Core Functions ────────────────────────────────────
+// ─── Cache ──────────────────────────────────────────────
 
-/// Read all usage records from session JSONL files.
+use std::sync::Mutex;
+
+lazy_static::lazy_static! {
+    /// Cached pre-computed usage data (refreshed every 30s or on demand)
+    static ref USAGE_CACHE: Mutex<Option<(UsageStats, std::time::Instant)>> = Mutex::new(None);
+}
+
+/// Pre-computed usage statistics.
+#[derive(Clone)]
+pub struct UsageStats {
+    pub records: Vec<UsageRecord>,
+    pub daily_aggregates: Vec<DailyAggregate>,
+    pub provider_summaries: Vec<ProviderSummary>,
+    pub model_summaries: Vec<ModelSummary>,
+    pub totals: Totals,
+}
+
+/// Read all usage records (with 30s cache + pre-computed aggregates).
 pub fn read_all_usage() -> Result<Vec<UsageRecord>, String> {
+    let stats = read_usage_stats()?;
+    Ok(stats.records)
+}
+
+/// Read pre-computed usage stats (cached for 30 seconds).
+pub fn read_usage_stats() -> Result<UsageStats, String> {
+    // Check cache
+    {
+        let cache = USAGE_CACHE.lock().map_err(|e| e.to_string())?;
+        if let Some((ref stats, ref at)) = *cache {
+            if at.elapsed() < std::time::Duration::from_secs(30) {
+                return Ok(stats.clone());
+            }
+        }
+    }
+
+    let stats = compute_usage_stats()?;
+
+    // Update cache
+    {
+        let mut cache = USAGE_CACHE.lock().map_err(|e| e.to_string())?;
+        *cache = Some((stats.clone(), std::time::Instant::now()));
+    }
+
+    Ok(stats)
+}
+
+/// Invalidate cache (called after data changes).
+pub fn invalidate_usage_cache() {
+    if let Ok(mut cache) = USAGE_CACHE.lock() {
+        *cache = None;
+    }
+}
+
+/// Compute usage stats from JSONL files.
+fn compute_usage_stats() -> Result<UsageStats, String> {
+    let records = read_all_usage_uncached()?;
+
+    // Pre-compute aggregates
+    let daily_aggregates = get_daily_aggregates(&records);
+    let provider_summaries = get_provider_summaries(&records);
+    let model_summaries = get_model_summaries(&records);
+    let totals = get_totals(&records);
+
+    Ok(UsageStats {
+        records,
+        daily_aggregates,
+        provider_summaries,
+        model_summaries,
+        totals,
+    })
+}
+
+/// Read all usage records without caching.
+/// Only reads .jsonl files directly in session directories (not subdirectories like run-0/).
+fn read_all_usage_uncached() -> Result<Vec<UsageRecord>, String> {
     let sessions_dir = pi_dir().join("sessions");
     if !sessions_dir.exists() {
         return Ok(Vec::new());
     }
 
-    let mut records = Vec::new();
+    let mut records = Vec::with_capacity(1024); // Pre-allocate
 
-    for entry in WalkDir::new(&sessions_dir)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().is_file() && e.path().extension().map_or(false, |ext| ext == "jsonl"))
-    {
-        let file_records = parse_session_file(entry.path());
-        records.extend(file_records);
+    // Get session directories (starting with "--")
+    let session_dirs = match std::fs::read_dir(&sessions_dir) {
+        Ok(entries) => entries
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.file_name().to_string_lossy().starts_with("--")
+                    && e.file_type().map(|t| t.is_dir()).unwrap_or(false)
+            })
+            .collect::<Vec<_>>(),
+        Err(_) => return Ok(records),
+    };
+
+    // Read .jsonl files directly in each session directory
+    for dir in session_dirs {
+        let dir_path = dir.path();
+        let files = match std::fs::read_dir(&dir_path) {
+            Ok(entries) => entries,
+            Err(_) => continue,
+        };
+
+        for file in files.filter_map(|e| e.ok()) {
+            let path = file.path();
+            if path.extension().map_or(false, |e| e == "jsonl") {
+                let file_records = parse_session_file(&path);
+                records.extend(file_records);
+            }
+        }
     }
 
     records.sort_by(|a, b| a.date.cmp(&b.date));
@@ -360,20 +456,45 @@ pub fn get_totals(records: &[UsageRecord]) -> Totals {
 
 #[tauri::command]
 pub fn pi_usage_get() -> Result<UsageData, String> {
-    let records = read_all_usage()?;
+    // Use cached stats (avoids re-parsing JSONL files)
+    let stats = read_usage_stats()?;
     Ok(UsageData {
-        daily_aggregates: get_daily_aggregates(&records),
-        provider_summaries: get_provider_summaries(&records),
-        model_summaries: get_model_summaries(&records),
-        totals: get_totals(&records),
+        daily_aggregates: stats.daily_aggregates,
+        provider_summaries: stats.provider_summaries,
+        model_summaries: stats.model_summaries,
+        totals: stats.totals,
     })
 }
 
 #[tauri::command]
 pub fn pi_usage_range_get(range: String, from: String, to: String) -> Result<UsageRangeData, String> {
     let records = read_all_usage()?;
+
+    // Resolve date range
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let (from_date, to_date) = match range.as_str() {
+        "today" => (today.clone(), today),
+        "7d" => {
+            let d = chrono::Local::now() - chrono::Duration::days(6);
+            (d.format("%Y-%m-%d").to_string(), today)
+        }
+        "30d" => {
+            let d = chrono::Local::now() - chrono::Duration::days(29);
+            (d.format("%Y-%m-%d").to_string(), today)
+        }
+        "custom" => {
+            if from.is_empty() {
+                (today.clone(), today)
+            } else {
+                let t = if to.is_empty() { from.clone() } else { to };
+                (from, t)
+            }
+        }
+        _ => (today.clone(), today),
+    };
+
     let filtered: Vec<_> = records.iter()
-        .filter(|r| r.date >= from && r.date <= to)
+        .filter(|r| r.date >= from_date && r.date <= to_date)
         .cloned()
         .collect();
 

@@ -1,6 +1,5 @@
 import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { listen } from "@tauri-apps/api/event";
 import { useConfigStore } from "@/store/config-store";
 import { I18nProvider } from "@/lib/i18n";
 import { useTranslation } from "@/lib/i18n";
@@ -126,10 +125,14 @@ createRoot(document.getElementById("root")!).render(
 
 // ─── File watcher: auto-refresh on pi config changes ────
 // Listen for Rust file watcher events and refresh the store
-if (typeof window !== "undefined" && window.__TAURI_INTERNALS__) {
-  listen("pi-files-changed", () => {
-    useConfigStore.getState().init();
-  }).catch(() => {
-    // Tauri context not available (e.g., during SSR)
-  });
+async function setupFileWatcher() {
+  try {
+    const { listen } = await import("@tauri-apps/api/event");
+    await listen("pi-files-changed", () => {
+      useConfigStore.getState().init();
+    });
+  } catch {
+    // Tauri context not available (e.g., running in browser)
+  }
 }
+setupFileWatcher();

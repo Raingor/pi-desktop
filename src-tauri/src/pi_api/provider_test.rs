@@ -2,6 +2,7 @@ use serde::Serialize;
 use crate::pi_api::http::{build_client, resolve_api_key};
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ProviderTestResult {
     pub success: bool,
     pub status: Option<u16>,

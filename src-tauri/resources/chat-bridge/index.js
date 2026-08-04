@@ -8,29 +8,27 @@
  */
 
 const readline = require('readline');
-const path = require('path');
 
-// Path to the pi-web-switch server modules (sibling project)
-const PI_WEB_SWITCH = path.resolve(__dirname, '../../../../pi-web-switch');
-
-// Lazy-load the agent-session-manager (Node.js-only pi SDK wrapper)
+// Try to load agent-session-manager from pi-web-switch
 let agentSessionManager = null;
+let loadError = null;
+
+try {
+  const path = require('path');
+  const PI_WEB_SWITCH = path.resolve(__dirname, '../../../../pi-web-switch');
+  agentSessionManager = require(path.join(PI_WEB_SWITCH, 'server/agent-session-manager'));
+} catch (e) {
+  loadError = e.message;
+  process.stderr.write(`chat-bridge: agent-session-manager not available: ${e.message}\n`);
+}
+
 function getManager() {
-  if (!agentSessionManager) {
-    try {
-      agentSessionManager = require(path.join(PI_WEB_SWITCH, 'server/agent-session-manager'));
-    } catch (e) {
-      process.stderr.write(`Failed to load agent-session-manager: ${e.message}\n`);
-      process.exit(1);
-    }
-  }
   return agentSessionManager;
 }
 
 // Event listeners per session
 const sessionListeners = new Map();
 
-// Omitted event types (same as chat-api-plugin.ts)
 const OMITTED_EVENT_TYPES = new Set(['turn_start', 'turn_end', 'tool_execution_update']);
 
 function toClientEvent(event) {
@@ -44,13 +42,6 @@ function toClientEvent(event) {
   return event;
 }
 
-function emitEvent(sessionId, event) {
-  const clientEvent = toClientEvent(event);
-  if (clientEvent) {
-    writeResponse({ method: 'event', params: { sessionId, event: clientEvent } });
-  }
-}
-
 function writeResponse(msg) {
   process.stdout.write(JSON.stringify(msg) + '\n');
 }
@@ -58,18 +49,31 @@ function writeResponse(msg) {
 async function handleRequest(req) {
   const { id, method, params = {} } = req;
 
+  // If manager not loaded, return error for session-related methods
+  if (!getManager() && method !== 'list_sessions') {
+    if (id !== undefined) {
+      writeResponse({ id, error: `pi SDK not available: ${loadError}` });
+    }
+    return;
+  }
+
   try {
     const mgr = getManager();
     let result;
 
     switch (method) {
       case 'list_sessions': {
-        const sessions = await mgr.listAllSessions();
-        result = { sessions, runningSessionIds: mgr.getRunningRpcSessionIds() };
+        if (mgr) {
+          const sessions = await mgr.listAllSessions();
+          result = { sessions, runningSessionIds: mgr.getRunningRpcSessionIds() };
+        } else {
+          result = { sessions: [], runningSessionIds: [] };
+        }
         break;
       }
 
       case 'get_session': {
+        if (!mgr) { result = null; break; }
         const data = await mgr.getSessionData(params.id);
         result = data;
         break;
@@ -84,15 +88,15 @@ async function handleRequest(req) {
           ...(options.thinkingLevel ? { thinkingLevel: options.thinkingLevel } : {}),
         });
 
-        // Set up event listener
         const unsubscribe = session.onEvent((event) => {
-          emitEvent(realSessionId, event);
+          const clientEvent = toClientEvent(event);
+          if (clientEvent) {
+            writeResponse({ method: 'event', params: { sessionId: realSessionId, event: clientEvent } });
+          }
         });
         sessionListeners.set(realSessionId, unsubscribe);
 
-        // Get initial state
         const state = await session.send({ type: 'get_state' });
-
         result = {
           sessionId: realSessionId,
           model: state.model ? { provider: state.model.provider, modelId: state.model.id } : null,
@@ -107,14 +111,14 @@ async function handleRequest(req) {
 
         if (!session || !session.isAlive()) {
           const filePath = await mgr.resolveSessionPath(sessionId);
-          if (!filePath) {
-            throw new Error('Session not found');
-          }
+          if (!filePath) throw new Error('Session not found');
           ({ session } = await mgr.startRpcSession(sessionId, filePath, undefined));
 
-          // Set up event listener for restored session
           const unsubscribe = session.onEvent((event) => {
-            emitEvent(sessionId, event);
+            const clientEvent = toClientEvent(event);
+            if (clientEvent) {
+              writeResponse({ method: 'event', params: { sessionId, event: clientEvent } });
+            }
           });
           sessionListeners.set(sessionId, unsubscribe);
         }
@@ -152,7 +156,6 @@ async function handleRequest(req) {
         await mgr.getRpcSession(params.id)?.shutdown();
         require('fs').unlinkSync(filePath);
         mgr.invalidateSessionListCache();
-        // Clean up listener
         sessionListeners.delete(params.id);
         result = { ok: true };
         break;

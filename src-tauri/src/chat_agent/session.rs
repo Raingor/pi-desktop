@@ -69,6 +69,14 @@ pub async fn chat_list_sessions(
 }
 
 #[tauri::command]
+pub async fn chat_get_session(
+    id: String,
+    bridge: State<'_, ChatBridgeState>,
+) -> Result<Option<serde_json::Value>, String> {
+    bridge.call("get_session", serde_json::json!({ "id": id })).await
+}
+
+#[tauri::command]
 pub async fn chat_start_session(
     cwd: String,
     options: StartSessionOptions,
@@ -153,9 +161,10 @@ pub fn chat_subscribe_events(
 
     std::thread::spawn(move || {
         loop {
+            // Use try_recv with sleep to avoid blocking the shared receiver
             let msg = {
                 let rx = event_rx.lock().unwrap();
-                rx.recv()
+                rx.try_recv()
             };
             match msg {
                 Ok(event) => {
@@ -170,8 +179,14 @@ pub fn chat_subscribe_events(
                             }
                         }
                     }
+                    // Brief sleep to avoid busy-waiting
+                    std::thread::sleep(std::time::Duration::from_millis(50));
                 }
-                Err(_) => break, // Channel closed
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    // No message available, sleep briefly
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
             }
         }
     });
@@ -263,11 +278,12 @@ impl ChatBridgeState {
         }
 
         // Wait for response with matching id (with timeout)
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
         while std::time::Instant::now() < deadline {
+            // Brief lock to check for message, then release immediately
             let msg = {
                 let rx = self.inner.event_rx.lock().map_err(|e| e.to_string())?;
-                rx.recv_timeout(std::time::Duration::from_millis(100))
+                rx.try_recv()
             };
             match msg {
                 Ok(msg) => {
@@ -280,9 +296,15 @@ impl ChatBridgeState {
                                 .map_err(|e| format!("Deserialize result: {}", e));
                         }
                     }
+                    // Not our response, continue polling
                 }
-                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
-                Err(_) => return Err("Event channel closed".to_string()),
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    // No message yet, yield and retry
+                    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    return Err("Event channel closed".to_string());
+                }
             }
         }
 
