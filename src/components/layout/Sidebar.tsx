@@ -5,19 +5,26 @@ import {
   History,
   Brain,
   Globe,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation, LANGUAGES } from "@/lib/i18n";
 import { useState } from "react";
 
-// 4 nav items only: Dashboard, Sessions, Memory, Settings
-// Providers/Models/Subagents are now tabs inside Settings
+// Navigation — Chat first (primary view, like Cindy's default cc-agent view),
+// then Dashboard / Sessions / Memory / Settings.
+// Providers/Models/Subagents are tabs inside Settings.
 const navItems = [
+  { to: "/chat", icon: MessageCircle, key: "nav.chat" },
   { to: "/", icon: LayoutDashboard, key: "nav.dashboard" },
   { to: "/sessions", icon: History, key: "nav.sessions" },
   { to: "/memory", icon: Brain, key: "nav.memory" },
   { to: "/settings", icon: Settings, key: "nav.settings" },
 ];
+
+// Cindy-style pill row: h-8, rounded-full, 15px icon (strokeWidth 1.8)
+const ROW_CLASS =
+  "flex h-8 w-full items-center gap-2.5 rounded-full px-3 text-sm font-normal transition-colors hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-hover-text)]";
 
 export function Sidebar() {
   const { t, lang, setLang } = useTranslation();
@@ -43,25 +50,23 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation — 4 items */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      {/* Navigation — pill rows, active = inverted capsule */}
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
         {navItems.map(({ to, icon: Icon, key }) => (
           <NavLink
             key={to}
             to={to}
             end={to === "/"}
             className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-              )
+              cn(ROW_CLASS, isActive && "font-medium hover:bg-[var(--sidebar-active-bg)] hover:text-[var(--sidebar-active-text)]")
             }
             style={({ isActive }) => ({
               backgroundColor: isActive ? "var(--sidebar-active-bg)" : "transparent",
               color: isActive ? "var(--sidebar-active-text)" : "var(--sidebar-text)",
             })}
           >
-            <Icon className="h-4 w-4" />
-            {t(key)}
+            <Icon size={15} strokeWidth={1.8} className="shrink-0" />
+            <span className="leading-none">{t(key)}</span>
           </NavLink>
         ))}
       </nav>
@@ -70,11 +75,11 @@ export function Sidebar() {
       <div className="border-t px-3 py-3" style={{ borderColor: "var(--sidebar-border)" }}>
         <button
           onClick={() => setLangOpen(!langOpen)}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+          className={cn(ROW_CLASS)}
           style={{ color: "var(--sidebar-text)" }}
         >
-          <Globe className="h-4 w-4" />
-          <span className="flex-1 text-left">{LANGUAGES.find((l) => l.code === lang)?.nativeLabel || "English"}</span>
+          <Globe size={15} strokeWidth={1.8} className="shrink-0" />
+          <span className="flex-1 text-left leading-none">{LANGUAGES.find((l) => l.code === lang)?.nativeLabel || "English"}</span>
         </button>
         {langOpen && (
           <div className="mt-1 space-y-0.5 px-1">
@@ -82,13 +87,11 @@ export function Sidebar() {
               <button
                 key={l.code}
                 onClick={() => { setLang(l.code); setLangOpen(false); }}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                  lang === l.code ? "bg-blue-600/10 text-blue-400" : ""
-                )}
+                className="flex w-full items-center gap-2.5 rounded-full px-3 py-1.5 text-xs transition-colors hover:bg-[var(--sidebar-hover-bg)]"
                 style={{
                   color: lang === l.code ? "var(--sidebar-active-text)" : "var(--sidebar-text)",
                   backgroundColor: lang === l.code ? "var(--sidebar-active-bg)" : "transparent",
+                  fontWeight: lang === l.code ? 500 : 400,
                 }}
               >
                 {l.nativeLabel}

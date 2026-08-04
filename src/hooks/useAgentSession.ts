@@ -21,7 +21,7 @@ import type {
   ContextUsage,
   ToolResultMessage,
 } from "@/types/chat";
-import { chatSendCommand, chatStartSession, chatGetState, chatLoadModels } from "@/lib/tauri";
+import { chatSendCommand, chatStartSession, chatGetState, chatLoadModels, chatGetSession } from "@/lib/tauri";
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -402,7 +402,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (!selectedModel) setNewSessionDefaultModel(result.model);
       }
       if (result.thinkingLevel) {
-        setThinkingLevel(result.thinkingLevel);
+        setThinkingLevel(result.thinkingLevel as ThinkingLevelOption);
       }
       return realId;
     })();

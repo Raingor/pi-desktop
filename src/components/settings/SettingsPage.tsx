@@ -11,9 +11,9 @@ import {
 } from "@/lib/config";
 import type { PiConfig, UpdateCheckResult } from "@/types";
 import { cn } from "@/lib/utils";
-import { piCheckUpdates, piApplyUpdates } from "@/lib/tauri";
-import { ProvidersModelsPage } from "@/components/providers/ProvidersModelsPage";
-import { SubagentsPage } from "@/components/subagents/SubagentsPage";
+import { piCheckUpdates, piApplyUpdates, piBuiltinCatalogGet, piTestProvider, piFetchProviderModels, piTestModel } from "@/lib/tauri";
+import { piSubagentsGet } from "@/lib/tauri";
+import type { Model } from "@/types";
 import {
   Download,
   Upload,
@@ -472,16 +472,12 @@ export function SettingsPage() {
 
       {/* ── Providers ─────────────────────────────────────── */}
       {activeTab === "providers" && (
-        <div className="space-y-6">
-          <ProvidersModelsPage />
-        </div>
+        <ProvidersTab />
       )}
 
       {/* ── Subagents ─────────────────────────────────────── */}
       {activeTab === "subagents" && (
-        <div className="space-y-6">
-          <SubagentsPage />
-        </div>
+        <SubagentsTab />
       )}
 
       {/* ── About / Updates ───────────────────────────────── */}
@@ -689,6 +685,171 @@ export function SettingsPage() {
           </div>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+// ─── Providers Tab ───────────────────────────────────────
+
+function ProvidersTab() {
+  const { t } = useTranslation();
+  const { allProviders, builtinProviders } = useConfigStore();
+  const [testing, setTesting] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; message?: string }>>({});
+
+  const handleTest = async (providerId: string, baseUrl: string, apiKey?: string) => {
+    setTesting(providerId);
+    try {
+      const result = await piTestProvider(baseUrl, apiKey);
+      setTestResults((prev) => ({ ...prev, [providerId]: { success: result.success, message: result.message } }));
+    } catch {
+      setTestResults((prev) => ({ ...prev, [providerId]: { success: false, message: 'Connection failed' } }));
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Built-in Providers */}
+      <Card icon={Plug} title={t("settings.builtin_providers")} desc={t("settings.builtin_providers_desc")}>
+        <div className="space-y-2">
+          {builtinProviders.map((p) => (
+            <div key={p.id} className="flex items-center justify-between rounded-lg border px-4 py-3" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}>
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center text-xs font-bold" style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent)' }}>
+                  {p.name?.charAt(0) || p.id.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div className="text-sm font-medium" style={{ color: 'var(--page-text)' }}>{p.name || p.id}</div>
+                  <div className="text-xs" style={{ color: 'var(--muted-text)' }}>{p.baseUrl || p.api || 'Built-in'}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {testResults[p.id] && (
+                  <span className={`text-xs ${testResults[p.id].success ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {testResults[p.id].success ? '✓' : '✗'} {testResults[p.id].message || ''}
+                  </span>
+                )}
+                {p.baseUrl && (
+                  <button
+                    onClick={() => handleTest(p.id, p.baseUrl!, undefined)}
+                    disabled={testing === p.id}
+                    className="rounded-md border px-2 py-1 text-xs"
+                    style={{ borderColor: 'var(--card-border)', color: 'var(--muted-text)' }}
+                  >
+                    {testing === p.id ? '...' : t("settings.test")}
+                  </button>
+                )}
+                {p.hasAuth && (
+                  <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-400">Auth</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Custom Providers */}
+      <Card icon={Plug} title={t("settings.custom_providers")} desc={t("settings.custom_providers_desc")}>
+        {allProviders.filter((p) => p.type === 'custom').length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--muted-text)' }}>{t("settings.no_custom_providers")}</p>
+        ) : (
+          <div className="space-y-2">
+            {allProviders.filter((p) => p.type === 'custom').map((p) => (
+              <div key={p.id} className="flex items-center justify-between rounded-lg border px-4 py-3" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}>
+                <div>
+                  <div className="text-sm font-medium" style={{ color: 'var(--page-text)' }}>{p.name || p.id}</div>
+                  <div className="text-xs" style={{ color: 'var(--muted-text)' }}>{p.baseUrl}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {testResults[p.id] && (
+                    <span className={`text-xs ${testResults[p.id].success ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {testResults[p.id].success ? '✓' : '✗'}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => handleTest(p.id, p.baseUrl || '', p.apiKey)}
+                    disabled={testing === p.id}
+                    className="rounded-md border px-2 py-1 text-xs"
+                    style={{ borderColor: 'var(--card-border)', color: 'var(--muted-text)' }}
+                  >
+                    {testing === p.id ? '...' : t("settings.test")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ─── Subagents Tab ───────────────────────────────────────
+
+function SubagentsTab() {
+  const { t } = useTranslation();
+  const [data, setData] = useState<{ agents: Array<{ name: string; description: string; file_name: string }>; chains: Array<{ name: string; description: string; steps: Array<{ agent: string }> }> } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    piSubagentsGet()
+      .then((d) => setData({
+        agents: d.agents.map((a) => ({ name: a.name, description: a.description, file_name: a.fileName })),
+        chains: d.chains,
+      }))
+      .catch(() => setData({ agents: [], chains: [] }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      {/* Agents */}
+      <Card icon={Users} title={t("settings.agents")} desc={t("settings.agents_desc")}>
+        {loading ? (
+          <p className="text-sm" style={{ color: 'var(--muted-text)' }}>Loading...</p>
+        ) : data?.agents.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--muted-text)' }}>{t("settings.no_agents")}</p>
+        ) : (
+          <div className="space-y-2">
+            {data?.agents.map((agent) => (
+              <div key={agent.name} className="rounded-lg border px-4 py-3" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}>
+                <div className="text-sm font-medium" style={{ color: 'var(--page-text)' }}>{agent.name}</div>
+                {agent.description && <div className="text-xs mt-1" style={{ color: 'var(--muted-text)' }}>{agent.description}</div>}
+                <div className="text-xs mt-1 font-mono" style={{ color: 'var(--subtle-text)' }}>{agent.file_name}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Chains */}
+      <Card icon={Users} title={t("settings.chains")} desc={t("settings.chains_desc")}>
+        {loading ? (
+          <p className="text-sm" style={{ color: 'var(--muted-text)' }}>Loading...</p>
+        ) : data?.chains.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--muted-text)' }}>{t("settings.no_chains")}</p>
+        ) : (
+          <div className="space-y-2">
+            {data?.chains.map((chain) => (
+              <div key={chain.name} className="rounded-lg border px-4 py-3" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}>
+                <div className="text-sm font-medium" style={{ color: 'var(--page-text)' }}>{chain.name}</div>
+                {chain.description && <div className="text-xs mt-1" style={{ color: 'var(--muted-text)' }}>{chain.description}</div>}
+                {chain.steps.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {chain.steps.map((step, i) => (
+                      <span key={i} className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] text-blue-400">
+                        {step.agent}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

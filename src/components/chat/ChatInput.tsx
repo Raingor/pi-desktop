@@ -831,12 +831,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(p
             width: 44,
             background: isStreaming
               ? "rgba(239,68,68,0.1)"
-              : (text.trim() || attachedImages.length) ? "var(--accent)" : "transparent",
+              : (text.trim() || attachedImages.length) ? "var(--page-text)" : "transparent",
             border: "none",
             borderLeft: "1px solid var(--border)",
             color: isStreaming
               ? "#dc2626"
-              : (text.trim() || attachedImages.length) ? "#fff" : "var(--text-dim)",
+              : (text.trim() || attachedImages.length) ? "var(--page-bg)" : "var(--text-dim)",
             cursor: isStreaming || (text.trim() || attachedImages.length) ? "pointer" : "default",
             flexShrink: 0,
             borderRadius: "0 11px 11px 0",

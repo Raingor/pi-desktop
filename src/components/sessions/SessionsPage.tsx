@@ -33,24 +33,7 @@ interface SessionInfo {
   duration?: number;
 }
 
-interface ProjectGroup {
-  projectPath: string;
-  projectName: string;
-  sessions: SessionInfo[];
-  totalSessions: number;
-  lastActive: string;
-}
-
-interface TrashEntry {
-  trashPath: string;
-  originalPath: string;
-  fileName: string;
-  trashedAt: string;
-  sessionId: string;
-  sessionName: string;
-  lastActive: string;
-  messageCount: number;
-}
+// ProjectGroup / TrashEntry / SessionPreview types are imported from @/lib/tauri
 
 interface PreviewMessage {
   role: string;

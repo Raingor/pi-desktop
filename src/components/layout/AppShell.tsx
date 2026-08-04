@@ -3,7 +3,8 @@ import { Sidebar } from "./Sidebar";
 
 export function AppShell() {
   const location = useLocation();
-  const isFullHeightPage = location.pathname.startsWith("/chat");
+  const isFullHeightPage =
+    location.pathname.startsWith("/chat") || /^\/sessions\/.+/.test(location.pathname);
 
   return (
     <div className="flex h-screen overflow-hidden">

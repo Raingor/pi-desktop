@@ -11,6 +11,7 @@ import type {
   Model,
   UpdateCheckResult,
 } from "@/types";
+import type { SessionData } from "@/types/chat";
 
 // ─── Settings ───────────────────────────────────────────
 
@@ -63,8 +64,66 @@ interface UsageData {
 }
 
 export const piUsageGet = () => invoke<UsageData>("pi_usage_get");
+
+// Range queries return a richer shape (see Rust UsageRangeData, camelCase serde)
+export interface UsageRangeData {
+  totalTokens: number;
+  totalInput: number;
+  totalOutput: number;
+  totalCacheRead: number;
+  totalCacheWrite: number;
+  totalCost: number;
+  totalRequests: number;
+  cacheHitRate: number;
+  dailyBreakdown: Array<{
+    date: string;
+    input: number;
+    output: number;
+    cacheRead: number;
+    cacheWrite: number;
+    cost: number;
+    requests: number;
+  }>;
+  hourlyBreakdown: Array<{
+    hour: string;
+    input: number;
+    output: number;
+    cacheRead: number;
+    cacheWrite: number;
+    cost: number;
+    requests: number;
+  }>;
+  requestLog: Array<{
+    timestamp: string;
+    providerId: string;
+    modelId: string;
+    input: number;
+    output: number;
+    cost: number;
+    requests: number;
+  }>;
+  providerStats: Array<{
+    providerId: string;
+    totalTokens: number;
+    totalInput: number;
+    totalOutput: number;
+    totalCost: number;
+    totalRequests: number;
+    modelCount: number;
+  }>;
+  modelStats: Array<{
+    modelId: string;
+    providerId: string;
+    totalTokens: number;
+    totalInput: number;
+    totalOutput: number;
+    totalCost: number;
+    totalRequests: number;
+  }>;
+}
+
 export const piUsageRangeGet = (range: string, from: string, to: string) =>
-  invoke<UsageData>("pi_usage_range_get", { range, from, to });
+  invoke<UsageRangeData>("pi_usage_range_get", { range, from, to });
 
 // ─── Sessions ───────────────────────────────────────────
 
@@ -81,7 +140,7 @@ interface SessionFileInfo {
   duration?: number;
 }
 
-interface ProjectGroup {
+export interface ProjectGroup {
   projectPath: string;
   projectName: string;
   sessions: SessionFileInfo[];
@@ -89,7 +148,7 @@ interface ProjectGroup {
   lastActive: string;
 }
 
-interface TrashEntry {
+export interface TrashEntry {
   trashPath: string;
   originalPath: string;
   fileName: string;
@@ -100,7 +159,7 @@ interface TrashEntry {
   messageCount: number;
 }
 
-interface SessionPreview {
+export interface SessionPreview {
   messages: Array<{ role: string; text: string; timestamp: string }>;
   total: number;
 }
@@ -284,7 +343,24 @@ interface AgentState {
   };
 }
 
-export const chatListSessions = () => invoke<SessionInfo[]>("chat_list_sessions");
+// chat_list_sessions returns the Rust SessionInfo struct as-is (snake_case serde)
+export interface RawSessionInfo {
+  id: string;
+  path: string;
+  cwd: string;
+  name?: string;
+  created: string;
+  modified: string;
+  message_count: number;
+  first_message: string;
+  parent_session_id?: string;
+  project_root?: string;
+  worktree_branch?: string;
+}
+
+export const chatListSessions = () => invoke<RawSessionInfo[]>("chat_list_sessions");
+export const chatGetSession = (id: string) =>
+  invoke<SessionData | null>("chat_get_session", { id });
 export const chatStartSession = (cwd: string, options: StartSessionOptions) =>
   invoke<StartSessionResult>("chat_start_session", { cwd, options });
 export const chatSendCommand = (sessionId: string, command: Record<string, unknown>) =>

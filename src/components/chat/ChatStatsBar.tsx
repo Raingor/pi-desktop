@@ -26,7 +26,7 @@ export function ChatStatsBar({
   const contextColor =
     contextPercent > 90 ? '#ef4444' :
     contextPercent > 70 ? '#eab308' :
-    '#3b82f6';
+    'var(--text-muted)';
 
   return (
     <div

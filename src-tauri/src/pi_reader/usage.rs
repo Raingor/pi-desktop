@@ -84,6 +84,7 @@ pub struct UsageRangeData {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct DailyBreakdown {
     pub date: String,
     pub input: u64,
@@ -95,6 +96,7 @@ pub struct DailyBreakdown {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct HourlyBreakdown {
     pub hour: String,
     pub input: u64,

@@ -12,6 +12,7 @@ export default function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/chat" element={<ChatPage />} />
           <Route path="/sessions" element={<SessionsPage />} />
           <Route path="/sessions/:id" element={<ChatPage />} />
           <Route path="/memory" element={<MemoryPage />} />
@@ -21,7 +22,6 @@ export default function App() {
           <Route path="/providers" element={<Navigate to="/settings/providers" replace />} />
           <Route path="/models" element={<Navigate to="/settings/models" replace />} />
           <Route path="/subagents" element={<Navigate to="/settings/subagents" replace />} />
-          <Route path="/chat" element={<Navigate to="/sessions" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -338,16 +338,19 @@ export function DashboardPage() {
   const chartData = useMemo(() => {
     if (!data) return [];
     const rawBreakdown = range === "today" ? data.hourlyBreakdown : data.dailyBreakdown;
-    return rawBreakdown.map((d) => ({
-      date: range === "today" ? d.hour?.slice(-5) : formatDateShort(d.date || d.hour),
-      rawDate: d.date || d.hour,
-      input: Math.round(d.input / 1000),
-      output: Math.round(d.output / 1000),
-      cacheRead: Math.round(d.cacheRead / 1000),
-      cacheWrite: Math.round(d.cacheWrite / 1000),
-      cost: parseFloat(d.cost.toFixed(4)),
-      requests: d.requests,
-    }));
+    return rawBreakdown.map((d) => {
+      const label = "hour" in d ? d.hour : d.date;
+      return {
+        date: range === "today" ? label.slice(-5) : formatDateShort(label),
+        rawDate: label,
+        input: Math.round(d.input / 1000),
+        output: Math.round(d.output / 1000),
+        cacheRead: Math.round(d.cacheRead / 1000),
+        cacheWrite: Math.round(d.cacheWrite / 1000),
+        cost: parseFloat(d.cost.toFixed(4)),
+        requests: d.requests,
+      };
+    });
   }, [data, range]);
 
   // Period-over-period trends (memoized)

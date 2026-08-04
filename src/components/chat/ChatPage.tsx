@@ -70,9 +70,17 @@ export function ChatPage() {
     chatListSessions()
       .then((data) => {
         const mapped: SessionInfo[] = data.map((s) => ({
-          ...s,
+          id: s.id,
+          path: s.path,
+          cwd: s.cwd,
+          name: s.name,
+          created: s.created,
+          modified: s.modified,
           messageCount: s.message_count,
           firstMessage: s.first_message,
+          parentSessionId: s.parent_session_id,
+          projectRoot: s.project_root,
+          worktreeBranch: s.worktree_branch,
         }));
         setSessions(mapped);
         setLoading(false);
@@ -186,8 +194,8 @@ export function ChatPage() {
           </span>
           <button
             onClick={handleNewSession}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-white"
-            style={{ background: 'var(--accent)' }}
+            className="flex h-7 w-7 items-center justify-center rounded-full transition-opacity hover:opacity-80"
+            style={{ background: 'var(--page-text)', color: 'var(--page-bg)' }}
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -201,7 +209,7 @@ export function ChatPage() {
             <p className="p-4 text-xs" style={{ color: 'var(--text-muted)' }}>No sessions yet</p>
           ) : (
             projectGroups.map((group) => {
-              const isCollapsed = collapsedGroups.has(group.projectRoot);
+              const isCollapsed = collapsedGroups.has(group.projectPath);
               return (
                 <div key={group.projectPath}>
                   {/* Project header */}
@@ -209,8 +217,8 @@ export function ChatPage() {
                     onClick={() => {
                       setCollapsedGroups((prev) => {
                         const next = new Set(prev);
-                        if (next.has(group.projectRoot)) next.delete(group.projectRoot);
-                        else next.add(group.projectRoot);
+                        if (next.has(group.projectPath)) next.delete(group.projectPath);
+                        else next.add(group.projectPath);
                         return next;
                       });
                     }}
@@ -232,7 +240,7 @@ export function ChatPage() {
                       ) : (
                         <ChevronDown className="h-3 w-3" />
                       )}
-                      {getProjectName(group.projectRoot)}
+                      {getProjectName(group.projectPath)}
                     </span>
                     <span style={{ fontSize: 10, opacity: 0.6 }}>{group.sessions.length}</span>
                   </button>
@@ -241,10 +249,9 @@ export function ChatPage() {
                     <div
                       key={s.id}
                       onClick={() => handleSelectSession(s)}
-                      className="group flex cursor-pointer items-center gap-2 px-3 py-2"
+                      className="group mx-2 flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2"
                       style={{
                         background: selectedSession?.id === s.id ? 'var(--bg-selected)' : 'transparent',
-                        borderLeft: selectedSession?.id === s.id ? '3px solid var(--accent)' : '3px solid transparent',
                       }}
                     >
                       <Folder className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--text-dim)' }} />
@@ -304,7 +311,7 @@ export function ChatPage() {
                   {selectedSession?.name || newSessionCwd?.split('/').pop() || 'New Chat'}
                 </div>
                 <div className="truncate text-xs" style={{ color: 'var(--text-dim)' }}>
-                  {selectedSession?.model || 'claude-sonnet-4-sonnet'}
+                  {selectedSession?.cwd || ''}
                 </div>
               </div>
               <ModelSelector
@@ -409,8 +416,8 @@ export function ChatPage() {
                 </button>
                 <button
                   onClick={handleConfirmCwd}
-                  className="rounded-md px-3 py-1.5 text-xs font-medium text-white"
-                  style={{ background: 'var(--accent)', border: 'none' }}
+                  className="rounded-full px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+                  style={{ background: 'var(--page-text)', color: 'var(--page-bg)', border: 'none' }}
                 >
                   Start Chat
                 </button>
