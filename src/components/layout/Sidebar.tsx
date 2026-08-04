@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Settings,
@@ -6,9 +6,12 @@ import {
   Brain,
   Globe,
   MessageCircle,
+  CirclePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation, LANGUAGES } from "@/lib/i18n";
+import { useChatUI } from "@/store/chat-ui";
+import { ChatSessionList } from "@/components/chat/ChatSessionList";
 import { useState } from "react";
 
 // Navigation — Chat first (primary view, like Cindy's default cc-agent view),
@@ -29,6 +32,9 @@ const ROW_CLASS =
 export function Sidebar() {
   const { t, lang, setLang } = useTranslation();
   const [langOpen, setLangOpen] = useState(false);
+  const location = useLocation();
+  const chatActive = location.pathname.startsWith("/chat");
+  const startNewSession = useChatUI((s) => s.startNewSession);
 
   return (
     <aside
@@ -38,20 +44,32 @@ export function Sidebar() {
         borderColor: "var(--sidebar-border)",
       }}
     >
-      {/* Logo */}
+      {/* Top: brand row */}
       <div
-        className="flex items-center gap-3 border-b px-6 py-5"
+        className="flex items-center gap-3 border-b px-4 py-4"
         style={{ borderColor: "var(--sidebar-border)" }}
       >
-        <img src="/pi.svg" alt="pi-desktop" className="h-9 w-9 rounded-lg" />
-        <div>
-          <h1 className="text-base font-semibold" style={{ color: "var(--page-text)" }}>pi-desktop</h1>
-          <p className="text-xs" style={{ color: "var(--subtle-text)" }}>{t("app.subtitle")}</p>
+        <img src="/pi.svg" alt="pi-desktop" className="h-7 w-7 rounded-lg" />
+        <div className="min-w-0">
+          <h1 className="truncate text-sm font-semibold" style={{ color: "var(--page-text)" }}>pi-desktop</h1>
+          <p className="truncate text-[11px]" style={{ color: "var(--subtle-text)" }}>{t("app.subtitle")}</p>
         </div>
       </div>
 
-      {/* Navigation — pill rows, active = inverted capsule */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+      {/* Top action: New Chat (Cindy SidebarTopNav position) */}
+      <div className="px-3 pt-3 pb-1">
+        <button
+          onClick={startNewSession}
+          className={cn(ROW_CLASS, "font-medium")}
+          style={{ background: "var(--page-text)", color: "var(--page-bg)" }}
+        >
+          <CirclePlus size={15} strokeWidth={1.8} className="shrink-0" />
+          <span className="leading-none">{t("chat.new_session")}</span>
+        </button>
+      </div>
+
+      {/* Nav (Cindy pill rows, active = inverted capsule) */}
+      <nav className="space-y-0.5 px-3 pt-2 pb-1">
         {navItems.map(({ to, icon: Icon, key }) => (
           <NavLink
             key={to}
@@ -71,7 +89,23 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Language Switcher */}
+      {/* Session list slot — only in chat view (Cindy cc-agent sidebar slot) */}
+      {chatActive && (
+        <div
+          className="mt-2 flex min-h-0 flex-1 flex-col border-t pt-2"
+          style={{ borderColor: "var(--sidebar-border)" }}
+        >
+          <span
+            className="px-4 pb-1 text-[11px] font-semibold uppercase"
+            style={{ color: "var(--subtle-text)", letterSpacing: "0.05em" }}
+          >
+            {t("chat.sessions")}
+          </span>
+          <ChatSessionList />
+        </div>
+      )}
+
+      {/* Bottom: language + version (Cindy UserInfoSection position) */}
       <div className="border-t px-3 py-3" style={{ borderColor: "var(--sidebar-border)" }}>
         <button
           onClick={() => setLangOpen(!langOpen)}
@@ -99,14 +133,7 @@ export function Sidebar() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Version */}
-      <div
-        className="border-t px-6 py-3"
-        style={{ borderColor: "var(--sidebar-border)" }}
-      >
-        <p className="text-xs" style={{ color: "var(--subtle-text)" }}>{t("app.version")}</p>
+        <p className="mt-2 px-3 text-[11px]" style={{ color: "var(--subtle-text)" }}>{t("app.version")}</p>
       </div>
     </aside>
   );
