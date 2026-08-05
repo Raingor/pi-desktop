@@ -343,6 +343,7 @@ const zhTW: Record<string, string> = {
   // Chat
   "chat.sessions": "會話",
   "chat.back_to_chat": "返回聊天",
+  "chat.change_cwd": "更換目錄",
   "chat.new_session": "新建會話",
   "chat.loading": "載入中...",
   "chat.no_sessions": "尚無會話。點擊 + 開始新對話。",

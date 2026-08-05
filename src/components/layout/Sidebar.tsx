@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useTranslation, LANGUAGES } from "@/lib/i18n";
 import { useChatUI } from "@/store/chat-ui";
 import { ChatSessionList } from "@/components/chat/ChatSessionList";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 // Cindy-style pill row: h-8, rounded-full, 15px icon (strokeWidth 1.8)
 const ROW_CLASS =
@@ -14,26 +14,7 @@ export function Sidebar() {
   const { t, lang, setLang } = useTranslation();
   const [langOpen, setLangOpen] = useState(false);
   const navigate = useNavigate();
-  const startNewSession = useChatUI((s) => s.startNewSession);
-  const confirmCwd = useChatUI((s) => s.confirmCwd);
-
-  // Prefer the native OS folder picker (Tauri dialog plugin); fall back
-  // to the in-app modal when unavailable (e.g. running in a browser).
-  const handleNewChat = useCallback(async () => {
-    try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: "Select working directory",
-      });
-      if (selected) {
-        confirmCwd(typeof selected === "string" ? selected : String(selected));
-      }
-    } catch {
-      startNewSession();
-    }
-  }, [confirmCwd, startNewSession]);
+  const pickCwd = useChatUI((s) => s.pickCwd);
 
   return (
     <aside
@@ -58,7 +39,7 @@ export function Sidebar() {
       {/* Top action: New Chat */}
       <div className="rise px-3 pt-3 pb-1" style={{ ["--d" as string]: "40ms" }}>
         <button
-          onClick={() => void handleNewChat()}
+          onClick={() => void pickCwd()}
           className={cn(ROW_CLASS, "font-medium")}
           style={{ background: "var(--page-text)", color: "var(--page-bg)" }}
         >

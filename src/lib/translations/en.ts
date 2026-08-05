@@ -352,6 +352,7 @@ const en: Record<string, string> = {
   // Chat
   "chat.sessions": "Sessions",
   "chat.back_to_chat": "Back to Chat",
+  "chat.change_cwd": "Change directory",
   "chat.new_session": "New session",
   "chat.loading": "Loading...",
   "chat.no_sessions": "No sessions yet. Click + to start a new chat.",

@@ -9,6 +9,7 @@ import { ModelSelector } from "@/components/chat/ModelSelector";
 import type { ChatInputHandle } from "@/types/chat";
 import { useChatUI } from "@/store/chat-ui";
 import { useTranslation } from "@/lib/i18n";
+import { Folder } from "lucide-react";
 
 export function ChatPage() {
   const { t } = useTranslation();
@@ -20,9 +21,13 @@ export function ChatPage() {
   const setSessionStats = useChatUI((s) => s.setSessionStats);
   const setContextUsage = useChatUI((s) => s.setContextUsage);
   const refresh = useChatUI((s) => s.refresh);
+  const pickCwd = useChatUI((s) => s.pickCwd);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
 
   const showChat = selectedSession !== null || newSessionCwd !== null;
+  // A brand-new session (directory picked, chat not started yet) may have
+  // its working directory changed before the first message is sent.
+  const canChangeCwd = newSessionCwd !== null && selectedSession === null;
 
   // Compute stats for the stats bar
   const statsTokens = sessionStats?.tokens ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 };
@@ -44,9 +49,20 @@ export function ChatPage() {
                 {selectedSession?.name || newSessionCwd?.split("/").pop() || "New Chat"}
               </div>
               <div className="truncate text-xs" style={{ color: "var(--text-dim)" }}>
-                {selectedSession?.cwd || ""}
+                {selectedSession?.cwd || newSessionCwd || ""}
               </div>
             </div>
+            {canChangeCwd && (
+              <button
+                onClick={() => void pickCwd()}
+                title={t("chat.change_cwd")}
+                className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs transition-colors hover:bg-[var(--bg-hover)]"
+                style={{ color: "var(--text-muted)", border: "1px solid var(--border)", background: "transparent" }}
+              >
+                <Folder className="h-3.5 w-3.5" />
+                {t("chat.change_cwd")}
+              </button>
+            )}
             <ModelSelector
               models={[]}
               currentModel={null}

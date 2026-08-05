@@ -20,6 +20,10 @@ interface ChatUIState {
   refresh: () => void;
   selectSession: (s: SessionInfo | null) => void;
   startNewSession: () => void;
+  /** Open the working-directory picker: native dialog when available,
+   *  in-app modal as fallback. Used by the New Chat action and by
+   *  "change directory" before a new session has started. */
+  pickCwd: () => Promise<void>;
   closeCwdPicker: () => void;
   confirmCwd: (cwd: string) => void;
   deleteSession: (id: string) => Promise<void>;
@@ -78,6 +82,22 @@ export const useChatUI = create<ChatUIState>((set, get) => ({
   },
 
   startNewSession: () => set({ showCwdPicker: true }),
+
+  pickCwd: async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: "Select working directory",
+      });
+      if (selected) {
+        get().confirmCwd(typeof selected === "string" ? selected : String(selected));
+      }
+    } catch {
+      get().startNewSession();
+    }
+  },
 
   closeCwdPicker: () => set({ showCwdPicker: false }),
 
