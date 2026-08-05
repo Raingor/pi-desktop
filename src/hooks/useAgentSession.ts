@@ -21,7 +21,8 @@ import type {
   ContextUsage,
   ToolResultMessage,
 } from "@/types/chat";
-import { chatSendCommand, chatStartSession, chatGetState, chatLoadModels, chatGetSession } from "@/lib/tauri";
+import { chatSendCommand, chatStartSession, chatGetState, chatGetSession } from "@/lib/tauri";
+import { useConfigStore } from "@/store/config-store";
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -352,26 +353,34 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // ─── Load Models ───────────────────────────────────────
 
   const loadModels = useCallback(async (_signal?: AbortSignal) => {
-    const modelCwd = newSessionCwd ?? session?.cwd ?? "";
-    console.log("[loadModels] Loading models for cwd:", modelCwd);
+    // Build the model list from the config store (pi models.json + builtin
+    // catalog, already loaded and proven on the Dashboard/Settings pages).
+    // The chat bridge has no loadModels API, so this replaces the old call.
     try {
-      const d = await chatLoadModels(modelCwd);
-      console.log("[loadModels] Response:", { models: d.models, modelList: d.modelList, defaultModel: d.defaultModel, modelError: d.modelError });
-      setModelNames(d.models ?? {});
-      setModelError(d.modelError ?? null);
-      const nextModelList = d.modelList ?? [];
-      setModelList(nextModelList);
+      const { allModels, settings } = useConfigStore.getState();
+      const modelNames: Record<string, string> = {};
+      const modelList: ModelEntry[] = [];
+      for (const m of allModels) {
+        if (!m.id) continue;
+        modelNames[`${m.providerId}:${m.id}`] = m.name || m.id;
+        modelList.push({ id: m.id, name: m.name || m.id, provider: m.providerId });
+      }
+      setModelNames(modelNames);
+      setModelError(null);
+      setModelList(modelList);
       if (isNew && !sessionIdRef.current) {
-        const match = d.defaultModel
-          ? nextModelList.find((m: ModelEntry) => m.id === d.defaultModel?.modelId && m.provider === d.defaultModel?.provider)
+        const defProvider = settings?.defaultProvider;
+        const defModel = settings?.defaultModel;
+        const match = defProvider && defModel
+          ? modelList.find((m) => m.provider === defProvider && m.id === defModel)
           : undefined;
-        const display = match ?? nextModelList[0];
+        const display = match ?? modelList[0];
         setNewSessionDefaultModel(display ? { provider: display.provider, modelId: display.id } : null);
       }
     } catch (e) {
       console.error("Failed to load models:", e);
     }
-  }, [isNew, newSessionCwd, session?.cwd]);
+  }, [isNew]);
 
   // ─── Ensure New Session ────────────────────────────────
 
