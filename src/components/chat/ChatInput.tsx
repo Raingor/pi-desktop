@@ -668,8 +668,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(p
         gap: 0,
         borderRadius: 12,
         border: "1px solid var(--border)",
-        background: "var(--bg)",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)",
+        background: "var(--card-bg)",
         overflow: "hidden",
         transition: "border-color 0.15s ease, box-shadow 0.15s ease",
       }}>
@@ -830,12 +829,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(p
             height: "auto",
             width: 44,
             background: isStreaming
-              ? "rgba(239,68,68,0.1)"
+              ? "color-mix(in srgb, var(--danger) 12%, transparent)"
               : (text.trim() || attachedImages.length) ? "var(--page-text)" : "transparent",
             border: "none",
             borderLeft: "1px solid var(--border)",
             color: isStreaming
-              ? "#dc2626"
+              ? "var(--danger)"
               : (text.trim() || attachedImages.length) ? "var(--page-bg)" : "var(--text-dim)",
             cursor: isStreaming || (text.trim() || attachedImages.length) ? "pointer" : "default",
             flexShrink: 0,
@@ -856,7 +855,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(p
       </div>
 
       {modelError && (
-        <div style={{ marginTop: 4, fontSize: 11, color: "#d97706" }}>{modelError}</div>
+        <div style={{ marginTop: 4, fontSize: 11, color: "var(--warn)" }}>{modelError}</div>
       )}
     </div>
   );

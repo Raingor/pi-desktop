@@ -302,9 +302,9 @@ function TreeNodeItem({
         >
           {isDirectory ? (
             isExpanded ? (
-              <FolderOpen className="h-4 w-4" style={{ color: "#f59e0b" }} />
+              <FolderOpen className="h-4 w-4" style={{ color: "var(--warn)" }} />
             ) : (
-              <Folder className="h-4 w-4" style={{ color: "#f59e0b" }} />
+              <Folder className="h-4 w-4" style={{ color: "var(--warn)" }} />
             )
           ) : isProject ? (
             isExpanded ? (
@@ -323,7 +323,7 @@ function TreeNodeItem({
             <span
               className={`truncate ${isDirectory ? "font-semibold text-sm" : "font-medium text-sm"}`}
               style={{ 
-                color: isDirectory ? "#d97706" : "var(--page-text)",
+                color: isDirectory ? "var(--warn)" : "var(--page-text)",
               }}
             >
               {node.name}
@@ -333,7 +333,7 @@ function TreeNodeItem({
                 className="text-xs px-1.5 py-0.5 rounded-full"
                 style={{
                   backgroundColor: isDirectory ? "rgba(245,158,11,0.15)" : "var(--accent-bg)",
-                  color: isDirectory ? "#d97706" : "var(--sidebar-active-text)",
+                  color: isDirectory ? "var(--warn)" : "var(--sidebar-active-text)",
                 }}
               >
                 {node.sessionCount}
@@ -613,7 +613,7 @@ export function SessionsPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-sm" style={{ color: "var(--error-text, #ef4444)" }}>{t("sessions.load_failed")}: {error}</p>
+        <p className="text-sm" style={{ color: "var(--error-text, var(--danger))" }}>{t("sessions.load_failed")}: {error}</p>
       </div>
     );
   }
@@ -685,8 +685,8 @@ function countExpandableNodes(nodes: TreeNode[]): number {
             onClick={() => setTab(item.key)}
             className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors"
             style={{
-              color: tab === item.key ? "#3b82f6" : "var(--muted-text)",
-              borderBottomColor: tab === item.key ? "#3b82f6" : "transparent",
+              color: tab === item.key ? "var(--accent)" : "var(--muted-text)",
+              borderBottomColor: tab === item.key ? "var(--accent)" : "transparent",
             }}
           >
             {item.key === "trash" && <Trash2 className="h-3.5 w-3.5" />}
@@ -696,7 +696,7 @@ function countExpandableNodes(nodes: TreeNode[]): number {
                 className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
                 style={{
                   backgroundColor: item.key === "trash" && item.count > 0 ? "rgba(239,68,68,0.15)" : "var(--accent-bg)",
-                  color: item.key === "trash" && item.count > 0 ? "#ef4444" : "var(--sidebar-active-text)",
+                  color: item.key === "trash" && item.count > 0 ? "var(--danger)" : "var(--sidebar-active-text)",
                 }}
               >
                 {item.count}
@@ -778,7 +778,7 @@ function countExpandableNodes(nodes: TreeNode[]): number {
                   <button
                     onClick={handleBatchRestore}
                     className="flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium"
-                    style={{ borderColor: "#10b981", color: "#10b981" }}
+                    style={{ borderColor: "var(--ok)", color: "var(--ok)" }}
                   >
                     <Undo2 className="h-3 w-3" />
                     {t("sessions.restore_selected")}
@@ -786,7 +786,7 @@ function countExpandableNodes(nodes: TreeNode[]): number {
                   <button
                     onClick={() => setPurgeTarget("batch")}
                     className="flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium"
-                    style={{ borderColor: "#ef4444", color: "#ef4444" }}
+                    style={{ borderColor: "var(--danger)", color: "var(--danger)" }}
                   >
                     <Trash2 className="h-3 w-3" />
                     {t("sessions.delete_selected")}
@@ -807,7 +807,7 @@ function countExpandableNodes(nodes: TreeNode[]): number {
                 key={entry.trashPath}
                 className="flex items-center gap-3 rounded-lg border px-4 py-3"
                 style={{
-                  borderColor: selectedTrash.has(entry.trashPath) ? "#3b82f6" : "var(--card-border)",
+                  borderColor: selectedTrash.has(entry.trashPath) ? "var(--accent)" : "var(--card-border)",
                   backgroundColor: "var(--card-bg)",
                 }}
               >
@@ -821,7 +821,7 @@ function countExpandableNodes(nodes: TreeNode[]): number {
                     {entry.sessionName || entry.fileName.replace(/\.jsonl$/, "")}
                   </p>
                   <div className="flex items-center gap-3 text-xs mt-0.5" style={{ color: "var(--muted-text)" }}>
-                    <span style={{ color: "#ef4444" }}>{t("sessions.trashed_at", formatRelativeDate(entry.trashedAt, t))}</span>
+                    <span style={{ color: "var(--danger)" }}>{t("sessions.trashed_at", formatRelativeDate(entry.trashedAt, t))}</span>
                     <span className="flex items-center gap-1">
                       <MessageSquare className="h-3 w-3" />
                       {entry.messageCount}
@@ -832,7 +832,7 @@ function countExpandableNodes(nodes: TreeNode[]): number {
                 <button
                   onClick={() => handleRestore(entry.trashPath)}
                   className="flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium shrink-0"
-                  style={{ borderColor: "#10b981", color: "#10b981" }}
+                  style={{ borderColor: "var(--ok)", color: "var(--ok)" }}
                 >
                   <Undo2 className="h-3 w-3" />
                   {t("sessions.restore")}
@@ -840,7 +840,7 @@ function countExpandableNodes(nodes: TreeNode[]): number {
                 <button
                   onClick={() => setPurgeTarget(entry)}
                   className="flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium shrink-0"
-                  style={{ borderColor: "#ef4444", color: "#ef4444" }}
+                  style={{ borderColor: "var(--danger)", color: "var(--danger)" }}
                 >
                   <Trash2 className="h-3 w-3" />
                   {t("sessions.delete_forever")}
@@ -859,7 +859,7 @@ function countExpandableNodes(nodes: TreeNode[]): number {
       >
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" style={{ color: "#f59e0b" }} />
+            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" style={{ color: "var(--warn)" }} />
             <div>
               <p className="text-sm" style={{ color: "var(--page-text)" }}>
                 {t("sessions.delete_confirm")}
@@ -916,7 +916,7 @@ function countExpandableNodes(nodes: TreeNode[]): number {
       >
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
+            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" style={{ color: "var(--danger)" }} />
             <div>
               <p className="text-sm" style={{ color: "var(--page-text)" }}>
                 {t("sessions.delete_forever_confirm")}
@@ -968,7 +968,7 @@ function countExpandableNodes(nodes: TreeNode[]): number {
       >
         <div className="max-h-[60vh] overflow-y-auto space-y-2.5">
           {previewError ? (
-            <p className="text-sm py-6 text-center" style={{ color: "#ef4444" }}>{t("sessions.preview_failed")}</p>
+            <p className="text-sm py-6 text-center" style={{ color: "var(--danger)" }}>{t("sessions.preview_failed")}</p>
           ) : !preview ? (
             <div className="flex items-center justify-center py-10">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-blue-500" />
@@ -994,7 +994,7 @@ function countExpandableNodes(nodes: TreeNode[]): number {
                       className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase"
                       style={{
                         backgroundColor: m.role === "user" ? "rgba(59,130,246,0.15)" : "var(--accent-bg)",
-                        color: m.role === "user" ? "#3b82f6" : "var(--sidebar-active-text)",
+                        color: m.role === "user" ? "var(--accent)" : "var(--sidebar-active-text)",
                       }}
                     >
                       {m.role}

@@ -210,7 +210,7 @@ const StatCard = memo(function StatCard({
         <div className="mt-2 h-1.5 w-full rounded-full" style={{ backgroundColor: "var(--card-border)" }}>
           <div
             className="h-full rounded-full transition-all"
-            style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: progress > 90 ? "#10b981" : "#3b82f6" }}
+            style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: progress > 90 ? "var(--ok)" : "var(--accent)" }}
           />
         </div>
       )}
@@ -254,7 +254,7 @@ function SortableTh({
   return (
     <th
       className="px-4 py-3 text-right font-medium cursor-pointer select-none"
-      style={{ color: active ? "#3b82f6" : "var(--muted-text)" }}
+      style={{ color: active ? "var(--accent)" : "var(--muted-text)" }}
       onClick={() => onSort(sortKey)}
     >
       <span className="inline-flex items-center gap-0.5">

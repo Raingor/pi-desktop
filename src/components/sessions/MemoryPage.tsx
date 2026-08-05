@@ -39,9 +39,9 @@ const FILE_ICONS: Record<string, typeof Brain> = {
 };
 
 const FILE_COLORS: Record<string, string> = {
-  "MEMORY.md": "#3b82f6",
-  "USER.md": "#10b981",
-  "failures.md": "#ef4444",
+  "MEMORY.md": "var(--accent)",
+  "USER.md": "var(--ok)",
+  "failures.md": "var(--danger)",
 };
 
 const FILE_LABEL_KEYS: Record<string, string> = {
@@ -166,7 +166,7 @@ function renderInline(text: string, q: string): ReactNode {
           target="_blank"
           rel="noreferrer"
           className="underline underline-offset-2"
-          style={{ color: "#3b82f6" }}
+          style={{ color: "var(--accent)" }}
         >
           {highlight(link[1] ?? "", q)}
         </a>
@@ -226,7 +226,7 @@ function EntryCard({
         <button
           onClick={handleCopy}
           className="rounded p-1 transition-colors hover:bg-black/10"
-          style={{ color: copied ? "#10b981" : "var(--muted-text)" }}
+          style={{ color: copied ? "var(--ok)" : "var(--muted-text)" }}
           title={copied ? t("memory.copied") : t("memory.copy")}
         >
           {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -234,7 +234,7 @@ function EntryCard({
         <button
           onClick={onDelete}
           className="rounded p-1 transition-colors hover:bg-black/10"
-          style={{ color: "#ef4444" }}
+          style={{ color: "var(--danger)" }}
           title={t("memory.delete")}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -445,7 +445,7 @@ export function MemoryPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-sm" style={{ color: "var(--error-text, #ef4444)" }}>
+        <p className="text-sm" style={{ color: "var(--error-text, var(--danger))" }}>
           {t("memory.load_failed")}: {error}
         </p>
       </div>

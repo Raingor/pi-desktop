@@ -79,8 +79,8 @@ function ToolCallBlock({ block }: { block: ToolCallContent }) {
         >
           <polyline points="4 2.5 7.5 6 4 9.5" />
         </svg>
-        <span style={{ fontWeight: 600, color: "var(--accent, #2563eb)" }}>{block.toolName}</span>
-        <span style={{ fontSize: 11, opacity: 0.6 }}>tool call</span>
+        <span style={{ fontWeight: 600, color: "var(--accent, #3f6fd8)" }}>{block.toolName}</span>
+        <span className="label" style={{ fontSize: 10 }}>tool call</span>
       </button>
       {expanded && (
         <pre style={{
@@ -194,14 +194,14 @@ function ToolResultView({ message }: { message: ToolResultMessage }) {
       padding: "8px 12px",
       borderRadius: 8,
       background: message.isError ? "rgba(239,68,68,0.06)" : "var(--bg-panel, #f9fafb)",
-      border: `1px solid ${message.isError ? "rgba(239,68,68,0.2)" : "var(--border, #e5e7eb)"}`,
+      border: `1px solid ${message.isError ? "color-mix(in srgb, var(--danger) 30%, transparent)" : "var(--border, #e4e2db)"}`,
       fontSize: 13,
     }}>
       {message.toolName && (
         <div style={{
           fontSize: 11,
           fontWeight: 600,
-          color: message.isError ? "#dc2626" : "var(--text-muted, #6b7280)",
+          color: message.isError ? "var(--danger)" : "var(--text-muted, #6f6d66)",
           marginBottom: 4,
         }}>
           {message.toolName} result {message.isError ? "(error)" : ""}
@@ -259,7 +259,7 @@ function BashExecutionView({ message }: { message: BashExecutionMessage }) {
         <span style={{ color: "var(--accent, #2563eb)" }}>$</span>
         <span>{message.command}</span>
         {message.exitCode !== undefined && (
-          <span style={{ marginLeft: "auto", color: message.exitCode === 0 ? "#10b981" : "#dc2626" }}>
+          <span style={{ marginLeft: "auto", color: message.exitCode === 0 ? "var(--ok)" : "var(--danger)" }}>
             exit {message.exitCode}
           </span>
         )}
@@ -436,8 +436,8 @@ function MessageViewImpl({
           maxWidth: "80%",
           padding: "10px 14px",
           borderRadius: "16px 16px 4px 16px",
-          background: "var(--accent, #2563eb)",
-          color: "#fff",
+          background: "var(--page-text, #1a1a18)",
+          color: "var(--page-bg, #f7f6f3)",
           fontSize: 14,
           lineHeight: 1.6,
           wordBreak: "break-word",
@@ -529,7 +529,7 @@ function MessageViewImpl({
             </div>
           )}
           {am.usage && (
-            <div style={{
+            <div className="num" style={{
               marginTop: 6,
               fontSize: 11,
               color: "var(--text-dim)",
