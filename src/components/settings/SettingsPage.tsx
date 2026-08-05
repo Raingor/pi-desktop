@@ -71,14 +71,14 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-gray-800 bg-gray-900/50">
-      <div className="flex items-center gap-3 border-b border-gray-800 px-6 py-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-700 bg-gray-800">
-          <Icon className="h-4 w-4 text-blue-400" />
+    <section className="theme-card rise overflow-hidden">
+      <div className="hairline flex items-center gap-3 border-b px-6 py-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ backgroundColor: "var(--accent-soft)", color: "var(--accent)" }}>
+          <Icon className="h-4 w-4" />
         </div>
         <div>
-          <h2 className="text-sm font-semibold text-gray-300">{title}</h2>
-          {desc && <p className="text-xs text-gray-500">{desc}</p>}
+          <h2 className="text-sm font-semibold tracking-tight" style={{ color: "var(--page-text)" }}>{title}</h2>
+          {desc && <p className="text-xs" style={{ color: "var(--subtle-text)" }}>{desc}</p>}
         </div>
       </div>
       <div className="p-6">{children}</div>
@@ -298,28 +298,28 @@ export function SettingsPage() {
 
       {/* ── Hero ─────────────────────────────────────────── */}
       <header>
-        <div className="text-[11px] font-semibold uppercase tracking-widest text-blue-400">
+        <div className="mono text-[10px] font-semibold uppercase" style={{ color: "var(--accent)", letterSpacing: "0.16em" }}>
           pi · workspace
         </div>
-        <h1 className="mt-1 text-2xl font-bold text-white">{t("settings.title")}</h1>
-        <p className="mt-1 text-sm text-gray-400">{t("settings.subtitle")}</p>
+        <h1 className="mt-1 text-[26px] font-semibold tracking-tight" style={{ color: "var(--page-text)" }}>{t("settings.title")}</h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--muted-text)" }}>{t("settings.subtitle")}</p>
         <div className="mt-4 grid max-w-lg grid-cols-3 gap-3">
-          <div className="rounded-xl border border-gray-800 bg-gray-900/50 px-4 py-3">
-            <div className="text-xl font-bold text-white">{allProviders.length}</div>
-            <div className="text-xs text-gray-500">{t("settings.stat_providers")}</div>
+          <div className="theme-card px-4 py-3">
+            <div className="num text-xl font-semibold" style={{ color: "var(--page-text)" }}>{allProviders.length}</div>
+            <div className="label mt-0.5">{t("settings.stat_providers")}</div>
           </div>
-          <div className="rounded-xl border border-gray-800 bg-gray-900/50 px-4 py-3">
-            <div className="text-xl font-bold text-white">
+          <div className="theme-card px-4 py-3">
+            <div className="num text-xl font-semibold" style={{ color: "var(--page-text)" }}>
               {enabledModels.length}
-              <small className="ml-0.5 text-xs font-normal text-gray-500">/ {allModels.length}</small>
+              <small className="ml-0.5 text-xs font-normal" style={{ color: "var(--subtle-text)" }}>/ {allModels.length}</small>
             </div>
-            <div className="text-xs text-gray-500">{t("settings.stat_enabled")}</div>
+            <div className="label mt-0.5">{t("settings.stat_enabled")}</div>
           </div>
-          <div className="rounded-xl border border-gray-800 bg-gray-900/50 px-4 py-3">
-            <div className="pt-1 text-sm font-bold text-white">
+          <div className="theme-card px-4 py-3">
+            <div className="num pt-0.5 text-sm font-semibold" style={{ color: "var(--page-text)" }}>
               {t(themeLabelKey[settings?.theme ?? "light/dark"] ?? "settings.system")}
             </div>
-            <div className="mt-0.5 text-xs text-gray-500">{t("settings.stat_theme")}</div>
+            <div className="label mt-0.5">{t("settings.stat_theme")}</div>
           </div>
         </div>
       </header>

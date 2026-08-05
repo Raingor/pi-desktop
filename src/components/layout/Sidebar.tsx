@@ -45,18 +45,18 @@ export function Sidebar() {
     >
       {/* Top: brand row */}
       <div
-        className="flex items-center gap-3 border-b px-4 py-4"
+        className="rise flex items-center gap-3 border-b px-4 py-4"
         style={{ borderColor: "var(--sidebar-border)" }}
       >
-        <img src="/pi.svg" alt="pi-desktop" className="h-7 w-7 rounded-lg" />
+        <img src="/pi.svg" alt="pi-desktop" className="h-8 w-8 rounded-[10px]" />
         <div className="min-w-0">
-          <h1 className="truncate text-sm font-semibold" style={{ color: "var(--page-text)" }}>pi-desktop</h1>
-          <p className="truncate text-[11px]" style={{ color: "var(--subtle-text)" }}>{t("app.subtitle")}</p>
+          <h1 className="truncate text-[15px] font-semibold tracking-tight" style={{ color: "var(--page-text)" }}>pi-desktop</h1>
+          <p className="mono truncate text-[10px] uppercase" style={{ color: "var(--subtle-text)", letterSpacing: "0.14em" }}>{t("app.subtitle")}</p>
         </div>
       </div>
 
-      {/* Top action: New Chat (Cindy SidebarTopNav position) */}
-      <div className="px-3 pt-3 pb-1">
+      {/* Top action: New Chat */}
+      <div className="rise px-3 pt-3 pb-1" style={{ ["--d" as string]: "40ms" }}>
         <button
           onClick={() => void handleNewChat()}
           className={cn(ROW_CLASS, "font-medium")}
@@ -72,12 +72,7 @@ export function Sidebar() {
         className="mt-2 flex min-h-0 flex-1 flex-col border-t pt-2"
         style={{ borderColor: "var(--sidebar-border)" }}
       >
-        <span
-          className="px-4 pb-1 text-[11px] font-semibold uppercase"
-          style={{ color: "var(--subtle-text)", letterSpacing: "0.05em" }}
-        >
-          {t("chat.sessions")}
-        </span>
+        <span className="label px-4 pb-1.5">{t("chat.sessions")}</span>
         <ChatSessionList />
       </div>
 
@@ -117,7 +112,7 @@ export function Sidebar() {
             ))}
           </div>
         )}
-        <p className="mt-2 px-3 text-[11px]" style={{ color: "var(--subtle-text)" }}>{t("app.version")}</p>
+        <p className="num mt-2 px-3 text-[10px]" style={{ color: "var(--subtle-text)" }}>{t("app.version")}</p>
       </div>
     </aside>
   );

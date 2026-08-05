@@ -1,192 +1,283 @@
 @import "tailwindcss";
 
-/* ─── Theme Variables ──────────────────────────────────── */
-/* Design reference: Cindy design system (docs/design-rules/cindy-design-system.md)
-   - Near-monochrome grayscale, chromatic color only for sanctioned signals
-   - Layer system: Surface (page) / Card (elevated) / Board (hairline borders)
-   - Light: #f8f8f6 / #ffffff / #d7d7d4 · Dark: #1f1f1e / #2c2c2a / #3c3c3a
-   - Radii: 8px inner controls / 12px containers / 9999px pills
-   - No shadows; depth from background shifts + 1px borders */
+/* ─────────────────────────────────────────────────────────
+   pi-desktop · "Graphite Instrument" design system
+   A calm, precise developer instrument.
+   · Canvas: warm paper (light) / deep graphite (dark), near-monochrome
+   · Voice: monospace for brand sub, numerals, paths, section labels
+   · One disciplined signal color for interactive/focus
+   · Hairline dividers, pill controls, 8/12/9999 radii, no heavy shadows
+   ───────────────────────────────────────────────────────── */
 
 :root,
 .light {
   --color-scheme: light;
-  --page-bg: #f8f8f6;
-  --page-text: #171717;
-  --card-bg: #ffffff;
-  --card-border: #d7d7d4;
-  --card-header-border: #d7d7d4;
-  --card-header-text: #525252;
-  --input-bg: #ffffff;
-  --input-border: #d7d7d4;
-  --input-text: #171717;
-  --muted-text: #737373;
-  --subtle-text: #a3a3a3;
-  --accent-bg: #efefec;
-  --hover-bg: #f1f1ef;
-  --sidebar-bg: #f8f8f6;
-  --sidebar-border: #d7d7d4;
-  --sidebar-logo: #171717;
-  --sidebar-active-bg: #171717;
-  --sidebar-active-text: #ffffff;
-  --sidebar-text: #525252;
-  --sidebar-hover-bg: #efefec;
-  --sidebar-hover-text: #171717;
-  --scrollbar-thumb: #d7d7d4;
-  --scrollbar-thumb-hover: #a3a3a3;
 
-  /* Chat component variables */
-  --bg: #f8f8f6;
-  --bg-panel: #f8f8f6;
-  --bg-hover: #f1f1ef;
-  --bg-selected: #ebebe8;
-  --border: #d7d7d4;
-  --text: #171717;
-  --text-muted: #737373;
-  --text-dim: #a3a3a3;
-  --accent: #417cdd;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* Canvas layers */
+  --page-bg: #f7f6f3;
+  --page-text: #1a1a18;
+  --card-bg: #fdfdfc;
+  --card-border: #e4e2db;
+  --card-header-border: #e4e2db;
+  --card-header-text: #55534d;
+  --input-bg: #fdfdfc;
+  --input-border: #dcdad2;
+  --input-text: #1a1a18;
+  --muted-text: #6f6d66;
+  --subtle-text: #a3a199;
+
+  /* Interactive */
+  --accent: #3f6fd8;
+  --accent-soft: #e8eefb;
+  --accent-bg: #eef2fb;
+  --hover-bg: #f0efea;
+  --bg-selected: #e9e7e0;
+
+  /* Sidebar */
+  --sidebar-bg: #f7f6f3;
+  --sidebar-border: #e4e2db;
+  --sidebar-logo: #1a1a18;
+  --sidebar-active-bg: #1a1a18;
+  --sidebar-active-text: #f7f6f3;
+  --sidebar-text: #57554e;
+  --sidebar-hover-bg: #efeee8;
+  --sidebar-hover-text: #1a1a18;
+
+  /* Feedback */
+  --ok: #2a8f52;
+  --warn: #c07a12;
+  --danger: #d91f37;
+
+  --scrollbar-thumb: #d8d6ce;
+  --scrollbar-thumb-hover: #b5b3aa;
+
+  /* Chat component variables (kept for compatibility) */
+  --bg: #f7f6f3;
+  --bg-panel: #f7f6f3;
+  --bg-hover: #f0efea;
+  --border: #e4e2db;
+  --text: #1a1a18;
+  --text-muted: #6f6d66;
+  --text-dim: #a3a199;
+
+  /* Type */
+  --font-sans: -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Cascadia Code", ui-monospace, Menlo, Consolas, monospace;
+
+  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  --shadow-pop: 0 12px 32px -12px rgba(26, 26, 24, 0.18);
 }
 
 .dark {
   --color-scheme: dark;
-  --page-bg: #1f1f1e;
-  --page-text: #d4d4d4;
-  --card-bg: #2c2c2a;
-  --card-border: #3c3c3a;
-  --card-header-border: #3c3c3a;
-  --card-header-text: #a3a3a3;
-  --input-bg: #2c2c2a;
-  --input-border: #3c3c3a;
-  --input-text: #d4d4d4;
-  --muted-text: #a3a3a3;
-  --subtle-text: #737373;
-  --accent-bg: rgba(255, 255, 255, 0.06);
-  --hover-bg: rgba(255, 255, 255, 0.05);
-  --sidebar-bg: #1f1f1e;
-  --sidebar-border: #3c3c3a;
-  --sidebar-logo: #d4d4d4;
-  --sidebar-active-bg: #e7e7e4;
-  --sidebar-active-text: #171717;
-  --sidebar-text: #a3a3a3;
-  --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
-  --sidebar-hover-text: #e7e7e4;
-  --scrollbar-thumb: #3c3c3a;
-  --scrollbar-thumb-hover: #575754;
 
-  /* Chat component variables */
-  --bg: #1f1f1e;
-  --bg-panel: #1f1f1e;
-  --bg-hover: rgba(255, 255, 255, 0.05);
+  --page-bg: #161615;
+  --page-text: #d8d7d2;
+  --card-bg: #201f1d;
+  --card-border: #33322e;
+  --card-header-border: #33322e;
+  --card-header-text: #a09e97;
+  --input-bg: #201f1d;
+  --input-border: #3a3934;
+  --input-text: #d8d7d2;
+  --muted-text: #98968e;
+  --subtle-text: #6b6962;
+
+  --accent: #8fb0f0;
+  --accent-soft: rgba(143, 176, 240, 0.14);
+  --accent-bg: rgba(143, 176, 240, 0.1);
+  --hover-bg: rgba(255, 255, 255, 0.05);
   --bg-selected: rgba(255, 255, 255, 0.08);
-  --border: #3c3c3a;
-  --text: #d4d4d4;
-  --text-muted: #a3a3a3;
-  --text-dim: #737373;
-  --accent: #79a3e8;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  --sidebar-bg: #161615;
+  --sidebar-border: #33322e;
+  --sidebar-logo: #d8d7d2;
+  --sidebar-active-bg: #e8e6e0;
+  --sidebar-active-text: #161615;
+  --sidebar-text: #a09e97;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+  --sidebar-hover-text: #e8e6e0;
+
+  --ok: #58b97e;
+  --warn: #d99a3d;
+  --danger: #ef5b72;
+
+  --scrollbar-thumb: #3a3934;
+  --scrollbar-thumb-hover: #55534c;
+
+  --bg: #161615;
+  --bg-panel: #161615;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --border: #33322e;
+  --text: #d8d7d2;
+  --text-muted: #98968e;
+  --text-dim: #6b6962;
+
+  --font-sans: -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Cascadia Code", ui-monospace, Menlo, Consolas, monospace;
+
+  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+  --shadow-pop: 0 16px 40px -16px rgba(0, 0, 0, 0.6);
 }
 
 :root {
   color-scheme: var(--color-scheme, dark);
 }
 
+/* ─── Base ─────────────────────────────────────────────── */
 body {
-  font-family: "Inter", "SF Pro", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--page-bg);
   color: var(--page-text);
+  font-feature-settings: "cv02", "cv03", "cv11";
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Theme-aware utility classes */
+::selection {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: 6px;
+}
+
+/* ─── Type voices ─────────────────────────────────────── */
+/* Monospace instrument voice: brand sub, labels, numerals, paths */
+.mono,
+.num {
+  font-family: var(--font-mono);
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--subtle-text);
+}
+
+/* ─── Surfaces ────────────────────────────────────────── */
 .theme-card {
   background-color: var(--card-bg);
-  border-color: var(--card-border);
+  border: 1px solid var(--card-border);
   border-radius: 12px;
 }
-
 .theme-input {
   background-color: var(--input-bg);
   border-color: var(--input-border);
   color: var(--input-text);
 }
+.hairline {
+  border-color: var(--card-border);
+}
 
-/* Custom scrollbar */
+/* ─── Scrollbar ───────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: 3px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
+  background-clip: content-box;
+  border: 2px solid transparent;
 }
 
-/* Smooth transitions for theme toggle */
+/* ─── Motion ──────────────────────────────────────────── */
 * {
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
 }
 
-/* ─── Light Mode Overrides ──────────────────────────────
-   Remap hardcoded Tailwind dark-mode classes to light colors.
-   This is needed because most components use fixed classes
-   like text-white, text-gray-400, bg-gray-950, border-gray-800, etc. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rise {
+  animation: rise 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--d, 0ms);
+}
 
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+  * {
+    transition: none;
+  }
+}
+
+/* ─── Light overrides: remap hardcoded Tailwind grays ─── */
 .light .text-white,
 .light .text-gray-100 {
-  color: #171717;
+  color: #1a1a18;
 }
 .light .text-gray-200,
 .light .text-gray-300 {
-  color: #404040;
+  color: #45433d;
 }
 .light .text-gray-400 {
-  color: #737373;
+  color: #6f6d66;
 }
 .light .text-gray-500,
 .light .text-gray-600 {
-  color: #a3a3a3;
+  color: #a3a199;
 }
 .light .bg-gray-950,
 .light .bg-gray-900,
 .light .bg-gray-900\/50,
 .light .bg-gray-900\/30,
 .light .bg-gray-900\/70 {
-  background-color: #ffffff;
+  background-color: #fdfdfc;
 }
 .light .bg-gray-800,
 .light .bg-gray-800\/30,
 .light .bg-gray-800\/50,
 .light .bg-gray-800\/20 {
-  background-color: #f1f1ef;
+  background-color: #f0efea;
 }
 .light .bg-black\/60 {
-  background-color: rgba(115, 115, 115, 0.5);
+  background-color: rgba(111, 109, 102, 0.5);
 }
 .light .border-gray-800,
 .light .border-gray-800\/50,
 .light .border-gray-700 {
-  border-color: #d7d7d4;
-}
-.light .border-gray-700 {
-  border-color: #d7d7d4;
+  border-color: #e4e2db;
 }
 .light .border-gray-600 {
-  border-color: #c9c9c5;
+  border-color: #cfcdc5;
 }
 .light .text-blue-400 {
-  color: #417cdd;
+  color: #3f6fd8;
 }
 .light .bg-blue-600 {
-  background-color: #417cdd;
+  background-color: #3f6fd8;
 }
 .light .bg-blue-500\/10,
 .light .bg-blue-600\/10 {
-  background-color: #eceff5;
+  background-color: #e8eefb;
 }
 .light .text-emerald-400 {
   color: #2a8f52;
@@ -213,9 +304,6 @@ body {
 .light .bg-emerald-500\/10 {
   background-color: #f0faf3;
 }
-.light .text-emerald-400 {
-  color: #2a8f52;
-}
 .light .bg-amber-500\/10 {
   background-color: #fdf6ea;
 }
@@ -225,81 +313,77 @@ body {
 .light .hover\:bg-gray-800\/40,
 .light .hover\:bg-gray-800\/30 {
   &:hover {
-    background-color: #e5e7eb;
+    background-color: #e7e5de;
   }
 }
 .light .hover\:bg-gray-700 {
   &:hover {
-    background-color: #d7d7d4;
+    background-color: #d8d6ce;
   }
 }
 .light .hover\:text-gray-200 {
   &:hover {
-    color: #404040;
+    color: #45433d;
   }
 }
 .light .placeholder-gray-500 {
   &::placeholder {
-    color: #a3a3a3;
+    color: #a3a199;
   }
 }
 .light input,
 .light select,
 .light textarea {
-  background-color: #ffffff;
-  border-color: #d7d7d4;
-  color: #171717;
+  background-color: #fdfdfc;
+  border-color: #dcdad2;
+  color: #1a1a18;
 }
 
-/* ─── Dark Mode Overrides ──────────────────────────────
-   Remap hardcoded Tailwind cool-gray classes to Cindy's
-   warm-neutral dark palette (Surface #1f1f1e / Card #2c2c2a /
-   Board #3c3c3a). */
-
+/* ─── Dark overrides: remap hardcoded Tailwind grays ──── */
 .dark .bg-gray-950 {
-  background-color: #1f1f1e;
+  background-color: #161615;
 }
 .dark .bg-gray-900,
 .dark .bg-gray-900\/50,
 .dark .bg-gray-900\/30,
 .dark .bg-gray-900\/70 {
-  background-color: rgba(44, 44, 42, 0.6);
+  background-color: rgba(32, 31, 29, 0.7);
 }
 .dark .bg-gray-800,
 .dark .bg-gray-800\/30,
 .dark .bg-gray-800\/50,
 .dark .bg-gray-800\/20 {
-  background-color: rgba(60, 60, 58, 0.5);
+  background-color: rgba(51, 50, 46, 0.5);
 }
 .dark .border-gray-800,
 .dark .border-gray-800\/50 {
-  border-color: #3c3c3a;
+  border-color: #33322e;
 }
 .dark .border-gray-700 {
-  border-color: #4a4a47;
+  border-color: #45433d;
 }
 .dark .border-gray-600 {
-  border-color: #575754;
+  border-color: #55534c;
 }
 .dark .text-gray-100,
 .dark .text-gray-200 {
-  color: #e7e7e4;
+  color: #e8e6e0;
 }
 .dark .text-gray-300 {
-  color: #d4d4d4;
+  color: #d8d7d2;
 }
 .dark .text-gray-400 {
-  color: #a3a3a3;
+  color: #98968e;
 }
 .dark .text-gray-500,
 .dark .text-gray-600 {
-  color: #737373;
+  color: #6b6962;
 }
 .dark .text-blue-400 {
-  color: #79a3e8;
+  color: #8fb0f0;
 }
 .dark .bg-blue-600 {
-  background-color: #417cdd;
+  background-color: #3f6fd8;
 }
 .dark .hover\:bg-gray-800,
 .dark .hover\:bg-gray-800\/70,
@@ -317,18 +401,18 @@ body {
 }
 .dark .hover\:text-gray-200 {
   &:hover {
-    color: #e7e7e4;
+    color: #e8e6e0;
   }
 }
 .dark .placeholder-gray-500 {
   &::placeholder {
-    color: #737373;
+    color: #6b6962;
   }
 }
 .dark input,
 .dark select,
 .dark textarea {
-  background-color: #2c2c2a;
-  border-color: #3c3c3a;
-  color: #d4d4d4;
+  background-color: #201f1d;
+  border-color: #3a3934;
+  color: #d8d7d2;
 }
