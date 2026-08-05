@@ -51,7 +51,7 @@ export function ChatWindow({
     loading, error, messages, entryIds, streamState,
     agentRunning, bashRunning, pendingBash,
     modelNames, modelList, modelError,
-    newSessionModel, toolPreset, thinkingLevel,
+    newSessionModel, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
     isCompacting, compactError, compactResult,
     displayModel, sessionStats,
@@ -63,7 +63,7 @@ export function ChatWindow({
     handleSend, handleAbort, handleFork, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
     handleRecallQueue, handleBuiltinSlashCommand,
-    handleToolPresetChange, handleThinkingLevelChange, loadSlashCommands,
+    handleThinkingLevelChange, loadSlashCommands,
     isAutoModelSelection,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
@@ -205,8 +205,6 @@ export function ChatWindow({
               onCompact={handleCompact}
               isCompacting={isCompacting}
               compactError={compactError}
-              toolPreset={toolPreset}
-              onToolPresetChange={handleToolPresetChange}
               thinkingLevel={thinkingLevel}
               onThinkingLevelChange={handleThinkingLevelChange}
               retryInfo={retryInfo}
@@ -315,8 +313,6 @@ export function ChatWindow({
               isCompacting={isCompacting}
               compactError={compactError}
               onAbortCompaction={handleAbortCompaction}
-              toolPreset={toolPreset}
-              onToolPresetChange={handleToolPresetChange}
               thinkingLevel={thinkingLevel}
               onThinkingLevelChange={handleThinkingLevelChange}
               retryInfo={retryInfo}

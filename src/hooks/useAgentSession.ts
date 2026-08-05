@@ -254,8 +254,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const thinkingLevelOverrideRef = useRef<Exclude<ThinkingLevelOption, "auto"> | null>(null);
   const promptRunIdRef = useRef(0);
   const optimisticUserMessageKeyRef = useRef<string | null>(null);
-  const toolPresetRef = useRef<"none" | "default" | "full">("default");
-  const [toolPreset, setToolPresetState] = useState<"none" | "default" | "full">("default");
 
   const currentModel = currentModelOverride ?? data?.context.model ?? pendingModel ?? null;
   const displayModel = isNew ? (newSessionModel ?? newSessionDefaultModel) : currentModel;
@@ -393,11 +391,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const selectedModel = newSessionModelOverrideRef.current;
       const selectedThinkingLevel = thinkingLevelOverrideRef.current;
       if (selectedModel) setPendingModel(selectedModel);
-      const toolNames = toolPresetRef.current === "default"
-        ? ["read", "bash", "edit", "write", "grep", "find", "ls"]
-        : toolPresetRef.current === "full"
-          ? ["read", "bash", "edit", "write", "grep", "find", "ls"]
-          : [];
+      const toolNames = ["read", "bash", "edit", "write", "grep", "find", "ls"];
       const result = await chatStartSession(newSessionCwd, {
         toolNames,
         provider: selectedModel?.provider,
@@ -879,23 +873,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [isNew]);
 
-  // ─── Tool Preset ───────────────────────────────────────
-
-  const handleToolPresetChange = useCallback(async (preset: "none" | "default" | "full") => {
-    const toolNames = preset === "default" || preset === "full"
-      ? ["read", "bash", "edit", "write", "grep", "find", "ls"]
-      : [];
-    setToolPresetState(preset);
-    toolPresetRef.current = preset;
-    const sid = sessionIdRef.current ?? await ensuringNewSessionRef.current;
-    if (!sid) return;
-    try {
-      await sendAgentCommand(sid, { type: "set_tools", toolNames });
-    } catch (e) {
-      console.error("Failed to set tools:", e);
-    }
-  }, []);
-
   // ─── Slash Commands ────────────────────────────────────
 
   const loadSlashCommands = useCallback(async () => {
@@ -1060,7 +1037,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // State
     data, loading, error, messages, entryIds, streamState,
     agentRunning, modelNames, modelList, modelError,
-    newSessionModel, toolPreset, thinkingLevel,
+    newSessionModel, thinkingLevel,
     retryInfo, contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, compactResult, currentModel, displayModel, sessionStats,
     slashCommands, slashCommandsLoading, queuedMessages,
@@ -1074,7 +1051,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
     handleRecallQueue, handleBuiltinSlashCommand,
-    handleToolPresetChange, handleThinkingLevelChange, loadSlashCommands,
+    handleThinkingLevelChange, loadSlashCommands,
     addNotice,
     // Derived
     isAutoModelSelection: isNew && newSessionModel === null,

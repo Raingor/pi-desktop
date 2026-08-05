@@ -21,8 +21,6 @@ interface Props {
   onAbortCompaction?: () => void;
   isCompacting?: boolean;
   compactError?: string | null;
-  toolPreset: "none" | "default" | "full";
-  onToolPresetChange: (preset: "none" | "default" | "full") => void;
   thinkingLevel: string;
   onThinkingLevelChange: (level: any) => void;
   retryInfo?: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
@@ -46,7 +44,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(p
     onSend, onAbort, onSteer, onFollowUp, isStreaming,
     model, isAutoModelSelection, modelNames, modelList, modelError, onModelChange,
     onCompact, isCompacting, compactError,
-    toolPreset, onToolPresetChange,
     thinkingLevel, onThinkingLevelChange,
     retryInfo, queuedMessages, onRecallQueue,
     slashCommands, slashCommandsLoading, onLoadSlashCommands,
@@ -57,7 +54,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(p
   const [text, setText] = useState("");
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState("");
-  const [showToolMenu, setShowToolMenu] = useState(false);
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -203,7 +199,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(p
     if (e.key === "Escape") {
       setShowSlashMenu(false);
       setShowModelMenu(false);
-      setShowToolMenu(false);
     }
   }, [text, isStreaming, historyIndex, inputHistory, onSteer, handleSend, onLoadSlashCommands]);
 
@@ -580,46 +575,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(p
         </div>
       )}
 
-      {/* Tool preset dropdown */}
-      {showToolMenu && (
-        <div style={{
-          position: "absolute",
-          bottom: "100%",
-          left: 100,
-          background: "var(--bg-panel)",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          marginBottom: 4,
-          zIndex: 10,
-          minWidth: 160,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-        }}>
-          {(["default", "full", "none"] as const).map((preset) => (
-            <button
-              key={preset}
-              onClick={() => {
-                onToolPresetChange(preset);
-                setShowToolMenu(false);
-              }}
-              style={{
-                display: "block",
-                width: "100%",
-                padding: "8px 12px",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                textAlign: "left",
-                fontSize: 13,
-                color: "var(--text)",
-              }}
-            >
-              {preset === "default" ? t("chat.default_tools") : preset === "full" ? t("chat.all_tools") : t("chat.no_tools")}
-              {toolPreset === preset && <span style={{ marginLeft: 8, color: "var(--accent)" }}>✓</span>}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Attached images preview */}
       {attachedImages.length > 0 && (
         <div style={{
@@ -674,7 +629,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(p
       }}>
         {/* Model selector button */}
         <button
-          onClick={() => { setShowModelMenu(!showModelMenu); setShowToolMenu(false); setShowSlashMenu(false); }}
+          onClick={() => { setShowModelMenu(!showModelMenu); setShowSlashMenu(false); }}
           title={modelError ?? (modelList && modelList.length > 0 ? undefined : t("chat.no_models_available"))}
           style={{
             display: "flex",
@@ -705,30 +660,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(p
               <polyline points="6 9 12 15 18 9" />
             </svg>
           )}
-        </button>
-
-        {/* Tool preset button */}
-        <button
-          onClick={() => { setShowToolMenu(!showToolMenu); setShowModelMenu(false); setShowSlashMenu(false); }}
-          title={t("chat.tool_preset")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: TEXTAREA_MIN_HEIGHT,
-            height: "auto",
-            width: 36,
-            background: "none",
-            border: "none",
-            borderRight: "1px solid var(--border)",
-            color: toolPreset === "none" ? "var(--text-dim)" : "var(--text-muted)",
-            cursor: "pointer",
-            flexShrink: 0,
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-          </svg>
         </button>
 
         {/* Compact button */}
