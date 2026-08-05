@@ -311,44 +311,42 @@ export function SettingsPage() {
         </div>
       </header>
 
-      {/* ── Tab nav ──────────────────────────────────────── */}
-      <nav className="flex gap-2 border-b border-gray-800 pb-3">
-        {tabs.map(({ key, icon: Icon, label }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className={cn(
-              "flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm transition-all",
-              activeTab === key
-                ? "border-blue-500 bg-blue-500/10 text-blue-400"
-                : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600"
-            )}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            {label}
-          </button>
-        ))}
-      </nav>
+      {/* ── Settings panel: left item list + right content ── */}
+      <div className="flex gap-10">
+        {/* Left: settings item list */}
+        <nav className="w-56 shrink-0 space-y-0.5">
+          {tabs.map(({ key, icon: Icon, label }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className="flex h-8 w-full items-center gap-2.5 rounded-full px-3 text-sm transition-colors hover:bg-[var(--sidebar-hover-bg)]"
+              style={{
+                backgroundColor: activeTab === key ? "var(--sidebar-active-bg)" : "transparent",
+                color: activeTab === key ? "var(--sidebar-active-text)" : "var(--sidebar-text)",
+                fontWeight: activeTab === key ? 500 : 400,
+              }}
+            >
+              <Icon size={15} strokeWidth={1.8} className="shrink-0" />
+              <span className="leading-none">{label}</span>
+            </button>
+          ))}
+        </nav>
 
-      {/* ── Dashboard ─────────────────────────────────────── */}
-      {activeTab === "dashboard" && (
-        <div className="space-y-6">
-          <DashboardPage />
-        </div>
-      )}
+        {/* Right: content */}
+        <div className="min-w-0 flex-1 space-y-6">
+          {/* ── Dashboard ─────────────────────────────────────── */}
+          {activeTab === "dashboard" && (
+            <DashboardPage />
+          )}
 
       {/* ── Sessions ──────────────────────────────────────── */}
       {activeTab === "sessions" && (
-        <div className="space-y-6">
-          <SessionsPage />
-        </div>
+        <SessionsPage />
       )}
 
       {/* ── Memory ────────────────────────────────────────── */}
       {activeTab === "memory" && (
-        <div className="space-y-6">
-          <MemoryPage />
-        </div>
+        <MemoryPage />
       )}
 
       {/* ── General ───────────────────────────────────────── */}
@@ -715,6 +713,8 @@ export function SettingsPage() {
           </div>
         </div>
       </Modal>
+        </div>
+      </div>
     </div>
   );
 }
