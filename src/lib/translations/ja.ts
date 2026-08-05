@@ -347,6 +347,8 @@ const ja: Record<string, string> = {
   "chat.new_session": "新規セッション",
   "chat.loading": "読み込み中...",
   "chat.no_sessions": "セッションがありません。+ をクリックして新しいチャットを開始してください。",
+  "chat.no_cwd_hint": "作業ディレクトリを選択すると、そのセッションを表示します",
+  "chat.no_sessions_in_dir": "このディレクトリにはまだセッションがありません",
   "chat.welcome_title": "Pi Chat へようこそ",
   "chat.welcome_desc": "サイドバーからセッションを選択するか、+ をクリックしてプロジェクトディレクトリで新しいチャットを開始します。",
   "chat.select_cwd": "作業ディレクトリを選択",

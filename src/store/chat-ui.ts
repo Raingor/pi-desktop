@@ -7,6 +7,9 @@ import { chatListSessions, chatDeleteSession } from "@/lib/tauri";
 
 interface ChatUIState {
   sessions: SessionInfo[];
+  /** Current working directory — the session list only shows sessions
+   *  under this directory (set when a working dir is picked). */
+  activeCwd: string | null;
   selectedSession: SessionInfo | null;
   newSessionCwd: string | null;
   loading: boolean;
@@ -35,6 +38,7 @@ interface ChatUIState {
 
 export const useChatUI = create<ChatUIState>((set, get) => ({
   sessions: [],
+  activeCwd: null,
   selectedSession: null,
   newSessionCwd: null,
   loading: false,
@@ -45,10 +49,23 @@ export const useChatUI = create<ChatUIState>((set, get) => ({
   showCwdPicker: false,
 
   loadSessions: async () => {
+    const cwd = get().activeCwd;
+    // Don't import the whole session list up front — only load sessions
+    // once a working directory has been picked, and only keep sessions
+    // that belong to that directory.
+    if (!cwd) {
+      set({ sessions: [], loading: false });
+      return;
+    }
     set({ loading: true });
     try {
       const data = await chatListSessions();
-      set({ sessions: data.sessions, loading: false });
+      const norm = (p?: string) => (p ?? "").replace(/\/+$/, "") || "/";
+      const cwdNorm = norm(cwd);
+      const filtered = data.sessions.filter(
+        (s) => norm(s.projectRoot) === cwdNorm || norm(s.cwd) === cwdNorm
+      );
+      set({ sessions: filtered, loading: false });
     } catch {
       set({ loading: false });
     }
@@ -90,12 +107,14 @@ export const useChatUI = create<ChatUIState>((set, get) => ({
 
   confirmCwd: (cwd) => {
     set({
+      activeCwd: cwd,
       selectedSession: null,
       newSessionCwd: cwd,
       showCwdPicker: false,
       sessionStats: null,
       contextUsage: null,
     });
+    void get().loadSessions();
   },
 
   deleteSession: async (id) => {

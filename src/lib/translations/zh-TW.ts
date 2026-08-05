@@ -347,6 +347,8 @@ const zhTW: Record<string, string> = {
   "chat.new_session": "新建會話",
   "chat.loading": "載入中...",
   "chat.no_sessions": "尚無會話。點擊 + 開始新對話。",
+  "chat.no_cwd_hint": "選擇工作目錄以顯示該目錄的會話",
+  "chat.no_sessions_in_dir": "該目錄尚無會話記錄",
   "chat.welcome_title": "歡迎使用 Pi Chat",
   "chat.welcome_desc": "從側欄選擇一個會話，或點擊 + 在專案目錄中開始新的對話。",
   "chat.select_cwd": "選擇工作目錄",

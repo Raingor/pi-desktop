@@ -347,6 +347,8 @@ const zhCN: Record<string, string> = {
   "chat.new_session": "新建会话",
   "chat.loading": "加载中...",
   "chat.no_sessions": "暂无会话。点击 + 开始新对话。",
+  "chat.no_cwd_hint": "选择工作目录以显示该目录的会话",
+  "chat.no_sessions_in_dir": "该目录暂无会话记录",
   "chat.welcome_title": "欢迎使用 Pi Chat",
   "chat.welcome_desc": "从侧栏选择一个会话，或点击 + 在项目目录中开始新的对话。",
   "chat.select_cwd": "选择工作目录",

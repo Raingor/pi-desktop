@@ -11,7 +11,7 @@ import type {
   Model,
   UpdateCheckResult,
 } from "@/types";
-import type { SessionData } from "@/types/chat";
+import type { SessionData, SessionInfo } from "@/types/chat";
 
 // ─── Settings ───────────────────────────────────────────
 
@@ -305,17 +305,6 @@ export const piBuiltinCatalogGet = () =>
   invoke<CatalogProvider[] | null>("pi_builtin_catalog_get");
 
 // ─── Chat (via Node bridge) ────────────────────────────
-
-interface SessionInfo {
-  id: string;
-  path: string;
-  cwd: string;
-  name?: string;
-  created: string;
-  modified: string;
-  messageCount: number;
-  firstMessage: string;
-}
 
 interface StartSessionOptions {
   toolNames?: string[];

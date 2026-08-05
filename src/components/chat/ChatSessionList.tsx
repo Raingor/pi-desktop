@@ -1,7 +1,8 @@
-// ChatSessionList — DIAGNOSTIC STEP A: full render, minimal selectors
-import { useEffect, useRef } from "react";
+// ChatSessionList — sidebar session list for the current working
+// directory. Loaded only after a working dir is picked (see chat-ui store).
 import { useChatUI } from "@/store/chat-ui";
 import type { SessionInfo } from "@/types/chat";
+import { useTranslation } from "@/lib/i18n";
 import { ChevronDown, ChevronRight, Folder, Trash2 } from "lucide-react";
 
 interface ProjectGroup {
@@ -41,30 +42,36 @@ function formatRelativeTime(iso: string): string {
 }
 
 export function ChatSessionList() {
+  const { t } = useTranslation();
   const sessions = useChatUI((s) => s.sessions);
+  const activeCwd = useChatUI((s) => s.activeCwd);
   const loading = useChatUI((s) => s.loading);
   const selectedSession = useChatUI((s) => s.selectedSession);
   const collapsedGroups = useChatUI((s) => s.collapsedGroups);
   const toggleGroup = useChatUI((s) => s.toggleGroup);
   const selectSession = useChatUI((s) => s.selectSession);
   const deleteSession = useChatUI((s) => s.deleteSession);
-  const loadSessions = useChatUI((s) => s.loadSessions);
-
-  const loadedRef = useRef(false);
-  useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
-    void loadSessions();
-  }, [loadSessions]);
 
   const projectGroups = groupSessionsByProject(sessions);
+
+  // No working directory picked yet — prompt the user instead of listing
+  // every session across all projects.
+  if (!activeCwd) {
+    return (
+      <div className="px-4 py-6 text-center">
+        <p className="mono text-[11px] leading-relaxed" style={{ color: "var(--text-dim)" }}>
+          {t("chat.no_cwd_hint")}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-y-auto">
       {loading ? (
         <p className="p-4 text-xs" style={{ color: "var(--text-muted)" }}>Loading...</p>
       ) : projectGroups.length === 0 ? (
-        <p className="p-4 text-xs" style={{ color: "var(--text-muted)" }}>No sessions yet</p>
+        <p className="p-4 text-xs" style={{ color: "var(--text-muted)" }}>{t("chat.no_sessions_in_dir")}</p>
       ) : (
         projectGroups.map((group) => {
           const isCollapsed = collapsedGroups.has(group.projectPath);

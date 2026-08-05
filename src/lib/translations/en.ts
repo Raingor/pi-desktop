@@ -356,6 +356,8 @@ const en: Record<string, string> = {
   "chat.new_session": "New session",
   "chat.loading": "Loading...",
   "chat.no_sessions": "No sessions yet. Click + to start a new chat.",
+  "chat.no_cwd_hint": "Pick a working directory to show its sessions",
+  "chat.no_sessions_in_dir": "No sessions in this directory yet",
   "chat.welcome_title": "Welcome to Pi Chat",
   "chat.welcome_desc": "Select a session from the sidebar, or click + to start a new chat session in a project directory.",
   "chat.select_cwd": "Select Working Directory",
