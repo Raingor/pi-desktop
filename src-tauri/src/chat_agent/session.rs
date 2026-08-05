@@ -209,9 +209,17 @@ pub struct ChatBridgeState {
 
 impl ChatBridgeState {
     pub fn new(app: &AppHandle) -> Result<Self, String> {
-        let bridge_path = app.path().resource_dir()
+        // The bridge script ships under src-tauri/resources/chat-bridge.
+        // In packaged builds it lands in resource_dir; in dev builds that
+        // dir points at target/debug, so fall back to the source tree.
+        // index.mjs is ESM so the pi SDK loads from this app's node_modules.
+        let mut bridge_path = app.path().resource_dir()
             .map_err(|e| format!("Resource dir: {}", e))?
-            .join("chat-bridge/index.js");
+            .join("chat-bridge/index.mjs");
+        if !bridge_path.exists() {
+            bridge_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("resources/chat-bridge/index.mjs");
+        }
 
         let mut child = std::process::Command::new("node")
             .arg(&bridge_path)
@@ -225,20 +233,34 @@ impl ChatBridgeState {
         let (event_tx, event_rx) = std::sync::mpsc::channel::<serde_json::Value>();
         let event_rx = Arc::new(Mutex::new(event_rx));
 
-        // Spawn stdout reader thread
+        // Spawn stdout reader thread — forward every NDJSON line into the
+        // shared channel. call() matches responses by id; the event
+        // subscription thread matches method/params events. (Previously
+        // responses {id,result} were filtered out, so calls always timed out.)
         std::thread::spawn(move || {
             use std::io::{BufRead, BufReader};
             let reader = BufReader::new(stdout);
             for line in reader.lines() {
                 if let Ok(line) = line {
                     if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
-                        if msg.get("method").is_some() && msg.get("params").is_some() {
-                            event_tx.send(msg).ok();
-                        }
+                        event_tx.send(msg).ok();
                     }
                 }
             }
         });
+
+        // Drain stderr so the child never blocks on a full pipe, and log it.
+        if let Some(stderr) = child.stderr.take() {
+            std::thread::spawn(move || {
+                use std::io::{BufRead, BufReader};
+                let reader = BufReader::new(stderr);
+                for line in reader.lines() {
+                    if let Ok(line) = line {
+                        eprintln!("[chat-bridge] {}", line);
+                    }
+                }
+            });
+        }
 
         Ok(ChatBridgeState {
             inner: Arc::new(ChatBridgeStateInner {
@@ -272,8 +294,14 @@ impl ChatBridgeState {
             let mut writer = self.inner.writer.lock().map_err(|e| e.to_string())?;
             if let Some(ref mut stdin) = *writer {
                 let line = format!("{}\n", request);
-                stdin.write_all(line.as_bytes()).map_err(|e| e.to_string())?;
-                stdin.flush().map_err(|e| e.to_string())?;
+                if let Err(e) = stdin.write_all(line.as_bytes()).and_then(|_| stdin.flush()) {
+                    // The bridge process has exited — drop the writer so later
+                    // calls fail fast with a clear message instead of EPIPE.
+                    *writer = None;
+                    return Err(format!("Chat bridge unavailable: {}", e));
+                }
+            } else {
+                return Err("Chat bridge unavailable: process exited".to_string());
             }
         }
 

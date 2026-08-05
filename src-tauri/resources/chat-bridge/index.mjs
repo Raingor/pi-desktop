@@ -1,30 +1,25 @@
 /**
- * chat-bridge/index.js — long-lived Node.js process bridging Rust ↔ pi SDK.
+ * chat-bridge/index.mjs — long-lived Node.js process bridging Rust ↔ pi SDK.
  *
  * Protocol: newline-delimited JSON (NDJSON) on stdin/stdout.
  *   Rust → Node: {"id":1,"method":"start_session","params":{...}}\n
  *   Node → Rust: {"id":1,"result":{...}}\n
  *   Node → Rust: {"method":"event","params":{"sessionId":"abc","event":{...}}}\n
+ *
+ * ESM module so the pi SDK (ESM-only, uses import.meta.url for its own
+ * resources) is loaded from this app's node_modules. agent-session-manager
+ * is a pre-bundled ESM copy of pi-web-switch/server/agent-session-manager.ts.
  */
 
-const readline = require('readline');
+import { createInterface } from 'readline';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
+import { SessionManager } from '@earendil-works/pi-coding-agent';
+import * as agentSessionManager from './agent-session-manager.mjs';
 
-// Try to load agent-session-manager from pi-web-switch
-let agentSessionManager = null;
-let loadError = null;
-
-try {
-  const path = require('path');
-  const PI_WEB_SWITCH = path.resolve(__dirname, '../../../../pi-web-switch');
-  agentSessionManager = require(path.join(PI_WEB_SWITCH, 'server/agent-session-manager'));
-} catch (e) {
-  loadError = e.message;
-  process.stderr.write(`chat-bridge: agent-session-manager not available: ${e.message}\n`);
-}
-
-function getManager() {
-  return agentSessionManager;
-}
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Event listeners per session
 const sessionListeners = new Map();
@@ -46,19 +41,25 @@ function writeResponse(msg) {
   process.stdout.write(JSON.stringify(msg) + '\n');
 }
 
+// Never crash on a closed pipe (e.g. the Rust side shut down): log it instead.
+process.stdout.on('error', (err) => {
+  if (err.code !== 'EPIPE') {
+    process.stderr.write(`chat-bridge stdout error: ${err.message}\n`);
+  }
+});
+
 async function handleRequest(req) {
   const { id, method, params = {} } = req;
 
-  // If manager not loaded, return error for session-related methods
-  if (!getManager() && method !== 'list_sessions') {
+  if (!agentSessionManager && method !== 'list_sessions') {
     if (id !== undefined) {
-      writeResponse({ id, error: `pi SDK not available: ${loadError}` });
+      writeResponse({ id, error: `pi SDK not available` });
     }
     return;
   }
 
   try {
-    const mgr = getManager();
+    const mgr = agentSessionManager;
     let result;
 
     switch (method) {
@@ -89,9 +90,13 @@ async function handleRequest(req) {
         });
 
         const unsubscribe = session.onEvent((event) => {
-          const clientEvent = toClientEvent(event);
-          if (clientEvent) {
-            writeResponse({ method: 'event', params: { sessionId: realSessionId, event: clientEvent } });
+          try {
+            const clientEvent = toClientEvent(event);
+            if (clientEvent) {
+              writeResponse({ method: 'event', params: { sessionId: realSessionId, event: clientEvent } });
+            }
+          } catch (e) {
+            process.stderr.write(`chat-bridge event callback error: ${e.message}\n`);
           }
         });
         sessionListeners.set(realSessionId, unsubscribe);
@@ -115,9 +120,13 @@ async function handleRequest(req) {
           ({ session } = await mgr.startRpcSession(sessionId, filePath, undefined));
 
           const unsubscribe = session.onEvent((event) => {
-            const clientEvent = toClientEvent(event);
-            if (clientEvent) {
-              writeResponse({ method: 'event', params: { sessionId, event: clientEvent } });
+            try {
+              const clientEvent = toClientEvent(event);
+              if (clientEvent) {
+                writeResponse({ method: 'event', params: { sessionId, event: clientEvent } });
+              }
+            } catch (e) {
+              process.stderr.write(`chat-bridge event callback error: ${e.message}\n`);
             }
           });
           sessionListeners.set(sessionId, unsubscribe);
@@ -142,7 +151,6 @@ async function handleRequest(req) {
       case 'rename_session': {
         const filePath = await mgr.resolveSessionPath(params.id);
         if (!filePath) throw new Error('Session not found');
-        const { SessionManager } = require('@earendil-works/pi-coding-agent');
         const sm = SessionManager.open(filePath);
         sm.appendSessionInfo(params.name);
         mgr.invalidateSessionListCache();
@@ -154,7 +162,7 @@ async function handleRequest(req) {
         const filePath = await mgr.resolveSessionPath(params.id);
         if (!filePath) throw new Error('Session not found');
         await mgr.getRpcSession(params.id)?.shutdown();
-        require('fs').unlinkSync(filePath);
+        fs.unlinkSync(filePath);
         mgr.invalidateSessionListCache();
         sessionListeners.delete(params.id);
         result = { ok: true };
@@ -162,7 +170,7 @@ async function handleRequest(req) {
       }
 
       case 'load_models': {
-        const cwd = params.cwd || require('os').homedir();
+        const cwd = params.cwd || os.homedir();
         const data = await mgr.loadModels(cwd);
         result = data;
         break;
@@ -171,7 +179,6 @@ async function handleRequest(req) {
       case 'auto_name': {
         const filePath = await mgr.resolveSessionPath(params.id);
         if (!filePath) throw new Error('Session not found');
-        const { SessionManager } = require('@earendil-works/pi-coding-agent');
         const sm = SessionManager.open(filePath);
         const entries = sm.getEntries();
         const firstUserMsg = entries.find((e) => e.type === 'message' && e.message?.role === 'user');
@@ -205,7 +212,7 @@ async function handleRequest(req) {
 }
 
 // Read requests from stdin
-const rl = readline.createInterface({ input: process.stdin });
+const rl = createInterface({ input: process.stdin });
 rl.on('line', (line) => {
   try {
     const req = JSON.parse(line.trim());
