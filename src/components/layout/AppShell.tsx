@@ -5,8 +5,8 @@ import { CwdPickerModal } from "@/components/chat/CwdPickerModal";
 
 export function AppShell() {
   const location = useLocation();
-  const isFullHeightPage =
-    location.pathname.startsWith("/chat") || /^\/sessions\/.+/.test(location.pathname);
+  // Chat is the main (full-height) view; settings is a regular page.
+  const isChat = location.pathname.startsWith("/chat");
 
   return (
     <div className="relative flex h-screen overflow-hidden">
@@ -15,10 +15,10 @@ export function AppShell() {
         className="flex min-w-0 flex-1 flex-col overflow-hidden"
         style={{ backgroundColor: "var(--page-bg)" }}
       >
-        {!isFullHeightPage && <ContentHeader />}
+        {!isChat && <ContentHeader />}
         <div
           className={
-            isFullHeightPage
+            isChat
               ? "min-h-0 flex-1 overflow-hidden"
               : "mx-auto w-full max-w-7xl flex-1 overflow-y-auto px-8 py-6"
           }

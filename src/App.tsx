@@ -1,8 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
-import { DashboardPage } from "@/components/dashboard/DashboardPage";
-import { SessionsPage } from "@/components/sessions/SessionsPage";
-import { MemoryPage } from "@/components/sessions/MemoryPage";
 import { SettingsPage } from "@/components/settings/SettingsPage";
 import { ChatPage } from "@/components/chat/ChatPage";
 
@@ -11,14 +8,16 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route element={<AppShell />}>
-          <Route path="/" element={<DashboardPage />} />
+          {/* Main view = chat (Cindy-style default) */}
+          <Route path="/" element={<Navigate to="/chat" replace />} />
           <Route path="/chat" element={<ChatPage />} />
-          <Route path="/sessions" element={<SessionsPage />} />
-          <Route path="/sessions/:id" element={<ChatPage />} />
-          <Route path="/memory" element={<MemoryPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/settings/:tab" element={<SettingsPage />} />
-          {/* Redirect old routes to settings */}
+          {/* All other modules live inside Settings */}
+          <Route path="/sessions" element={<Navigate to="/settings/sessions" replace />} />
+          <Route path="/memory" element={<Navigate to="/settings/memory" replace />} />
+          <Route path="/dashboard" element={<Navigate to="/settings/dashboard" replace />} />
+          {/* Legacy redirects */}
           <Route path="/providers" element={<Navigate to="/settings/providers" replace />} />
           <Route path="/models" element={<Navigate to="/settings/models" replace />} />
           <Route path="/subagents" element={<Navigate to="/settings/subagents" replace />} />

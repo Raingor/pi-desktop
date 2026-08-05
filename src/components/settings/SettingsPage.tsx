@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { useConfigStore } from "@/store/config-store";
 import { useTranslation } from "@/lib/i18n";
 import { Modal } from "@/components/ui/Modal";
+import { DashboardPage } from "@/components/dashboard/DashboardPage";
+import { SessionsPage } from "@/components/sessions/SessionsPage";
+import { MemoryPage } from "@/components/sessions/MemoryPage";
 import {
   exportConfig,
   exportConfigToDirectory,
@@ -32,9 +35,12 @@ import {
   ZoomIn,
   Plug,
   Users,
+  LayoutDashboard,
+  History,
+  Brain,
 } from "lucide-react";
 
-type SettingsTab = "general" | "providers" | "models" | "subagents" | "about";
+type SettingsTab = "dashboard" | "sessions" | "memory" | "general" | "providers" | "models" | "subagents" | "about";
 
 // Visual palette previews for the theme swatch picker (mirrors pi-desktop).
 const THEME_SWATCHES: {
@@ -262,6 +268,9 @@ export function SettingsPage() {
   };
 
   const tabs: { key: SettingsTab; icon: typeof Palette; label: string }[] = [
+    { key: "dashboard", icon: LayoutDashboard, label: t("settings.tab_dashboard") },
+    { key: "sessions", icon: History, label: t("settings.tab_sessions") },
+    { key: "memory", icon: Brain, label: t("settings.tab_memory") },
     { key: "general", icon: SettingsIcon, label: t("settings.tab_general") },
     { key: "providers", icon: Plug, label: t("settings.tab_providers") },
     { key: "models", icon: LayoutGrid, label: t("settings.tab_models") },
@@ -320,6 +329,27 @@ export function SettingsPage() {
           </button>
         ))}
       </nav>
+
+      {/* ── Dashboard ─────────────────────────────────────── */}
+      {activeTab === "dashboard" && (
+        <div className="space-y-6">
+          <DashboardPage />
+        </div>
+      )}
+
+      {/* ── Sessions ──────────────────────────────────────── */}
+      {activeTab === "sessions" && (
+        <div className="space-y-6">
+          <SessionsPage />
+        </div>
+      )}
+
+      {/* ── Memory ────────────────────────────────────────── */}
+      {activeTab === "memory" && (
+        <div className="space-y-6">
+          <MemoryPage />
+        </div>
+      )}
 
       {/* ── General ───────────────────────────────────────── */}
       {activeTab === "general" && (

@@ -1,29 +1,10 @@
-import { NavLink, useLocation } from "react-router-dom";
-import {
-  LayoutDashboard,
-  Settings,
-  History,
-  Brain,
-  Globe,
-  MessageCircle,
-  CirclePlus,
-} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Globe, CirclePlus, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation, LANGUAGES } from "@/lib/i18n";
 import { useChatUI } from "@/store/chat-ui";
 import { ChatSessionList } from "@/components/chat/ChatSessionList";
 import { useState } from "react";
-
-// Navigation — Chat first (primary view, like Cindy's default cc-agent view),
-// then Dashboard / Sessions / Memory / Settings.
-// Providers/Models/Subagents are tabs inside Settings.
-const navItems = [
-  { to: "/chat", icon: MessageCircle, key: "nav.chat" },
-  { to: "/", icon: LayoutDashboard, key: "nav.dashboard" },
-  { to: "/sessions", icon: History, key: "nav.sessions" },
-  { to: "/memory", icon: Brain, key: "nav.memory" },
-  { to: "/settings", icon: Settings, key: "nav.settings" },
-];
 
 // Cindy-style pill row: h-8, rounded-full, 15px icon (strokeWidth 1.8)
 const ROW_CLASS =
@@ -32,8 +13,7 @@ const ROW_CLASS =
 export function Sidebar() {
   const { t, lang, setLang } = useTranslation();
   const [langOpen, setLangOpen] = useState(false);
-  const location = useLocation();
-  const chatActive = location.pathname.startsWith("/chat");
+  const navigate = useNavigate();
   const startNewSession = useChatUI((s) => s.startNewSession);
 
   return (
@@ -68,48 +48,33 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Nav (Cindy pill rows, active = inverted capsule) */}
-      <nav className="space-y-0.5 px-3 pt-2 pb-1">
-        {navItems.map(({ to, icon: Icon, key }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/"}
-            className={({ isActive }) =>
-              cn(ROW_CLASS, isActive && "font-medium hover:bg-[var(--sidebar-active-bg)] hover:text-[var(--sidebar-active-text)]")
-            }
-            style={({ isActive }) => ({
-              backgroundColor: isActive ? "var(--sidebar-active-bg)" : "transparent",
-              color: isActive ? "var(--sidebar-active-text)" : "var(--sidebar-text)",
-            })}
-          >
-            <Icon size={15} strokeWidth={1.8} className="shrink-0" />
-            <span className="leading-none">{t(key)}</span>
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* Session list slot — only in chat view (Cindy cc-agent sidebar slot) */}
-      {chatActive && (
-        <div
-          className="mt-2 flex min-h-0 flex-1 flex-col border-t pt-2"
-          style={{ borderColor: "var(--sidebar-border)" }}
+      {/* Session list slot (Cindy cc-agent sidebar slot) */}
+      <div
+        className="mt-2 flex min-h-0 flex-1 flex-col border-t pt-2"
+        style={{ borderColor: "var(--sidebar-border)" }}
+      >
+        <span
+          className="px-4 pb-1 text-[11px] font-semibold uppercase"
+          style={{ color: "var(--subtle-text)", letterSpacing: "0.05em" }}
         >
-          <span
-            className="px-4 pb-1 text-[11px] font-semibold uppercase"
-            style={{ color: "var(--subtle-text)", letterSpacing: "0.05em" }}
-          >
-            {t("chat.sessions")}
-          </span>
-          <ChatSessionList />
-        </div>
-      )}
+          {t("chat.sessions")}
+        </span>
+        <ChatSessionList />
+      </div>
 
-      {/* Bottom: language + version (Cindy UserInfoSection position) */}
+      {/* Bottom: settings + language + version (Cindy UserInfoSection position) */}
       <div className="border-t px-3 py-3" style={{ borderColor: "var(--sidebar-border)" }}>
         <button
-          onClick={() => setLangOpen(!langOpen)}
+          onClick={() => navigate("/settings")}
           className={cn(ROW_CLASS)}
+          style={{ color: "var(--sidebar-text)" }}
+        >
+          <Settings size={15} strokeWidth={1.8} className="shrink-0" />
+          <span className="flex-1 text-left leading-none">{t("nav.settings")}</span>
+        </button>
+        <button
+          onClick={() => setLangOpen(!langOpen)}
+          className={cn(ROW_CLASS, "mt-0.5")}
           style={{ color: "var(--sidebar-text)" }}
         >
           <Globe size={15} strokeWidth={1.8} className="shrink-0" />
