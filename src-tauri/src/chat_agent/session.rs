@@ -5,8 +5,10 @@ use tauri::{AppHandle, Manager, State};
 use tauri::ipc::Channel;
 
 // ─── Types ─────────────────────────────────────────────
+// Wire format matches the bridge output (camelCase) in both directions.
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct SessionInfo {
     pub id: String,
     pub path: String,
@@ -22,6 +24,14 @@ pub struct SessionInfo {
     pub project_root: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub worktree_branch: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ListSessionsResult {
+    pub sessions: Vec<SessionInfo>,
+    #[serde(default)]
+    pub running_session_ids: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -64,7 +74,7 @@ pub struct AgentState {
 #[tauri::command]
 pub async fn chat_list_sessions(
     bridge: State<'_, ChatBridgeState>,
-) -> Result<Vec<SessionInfo>, String> {
+) -> Result<ListSessionsResult, String> {
     bridge.call("list_sessions", serde_json::json!({})).await
 }
 

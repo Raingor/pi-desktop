@@ -33,19 +33,6 @@ interface ChatUIState {
   markSessionCreated: (s: SessionInfo) => void;
 }
 
-function mapRaw(s: {
-  id: string; path: string; cwd: string; name?: string; created: string;
-  modified: string; message_count: number; first_message: string;
-  parent_session_id?: string; project_root?: string; worktree_branch?: string;
-}): SessionInfo {
-  return {
-    id: s.id, path: s.path, cwd: s.cwd, name: s.name, created: s.created,
-    modified: s.modified, messageCount: s.message_count, firstMessage: s.first_message,
-    parentSessionId: s.parent_session_id, projectRoot: s.project_root,
-    worktreeBranch: s.worktree_branch,
-  };
-}
-
 export const useChatUI = create<ChatUIState>((set, get) => ({
   sessions: [],
   selectedSession: null,
@@ -61,7 +48,7 @@ export const useChatUI = create<ChatUIState>((set, get) => ({
     set({ loading: true });
     try {
       const data = await chatListSessions();
-      set({ sessions: data.map(mapRaw), loading: false });
+      set({ sessions: data.sessions, loading: false });
     } catch {
       set({ loading: false });
     }

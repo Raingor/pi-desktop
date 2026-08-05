@@ -103,9 +103,9 @@ async function handleRequest(req) {
 
         const state = await session.send({ type: 'get_state' });
         result = {
-          sessionId: realSessionId,
-          model: state.model ? { provider: state.model.provider, modelId: state.model.id } : null,
-          thinkingLevel: state.thinkingLevel,
+          session_id: realSessionId,
+          model: state.model ? { provider: state.model.provider, model_id: state.model.id } : null,
+          thinking_level: state.thinkingLevel,
         };
         break;
       }
@@ -154,7 +154,7 @@ async function handleRequest(req) {
         const sm = SessionManager.open(filePath);
         sm.appendSessionInfo(params.name);
         mgr.invalidateSessionListCache();
-        result = { ok: true };
+        result = true;
         break;
       }
 
@@ -165,7 +165,7 @@ async function handleRequest(req) {
         fs.unlinkSync(filePath);
         mgr.invalidateSessionListCache();
         sessionListeners.delete(params.id);
-        result = { ok: true };
+        result = true;
         break;
       }
 
@@ -193,7 +193,7 @@ async function handleRequest(req) {
         }
         sm.appendSessionInfo(title);
         mgr.invalidateSessionListCache();
-        result = { title };
+        result = title;
         break;
       }
 

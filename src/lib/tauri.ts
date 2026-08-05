@@ -343,22 +343,10 @@ interface AgentState {
   };
 }
 
-// chat_list_sessions returns the Rust SessionInfo struct as-is (snake_case serde)
-export interface RawSessionInfo {
-  id: string;
-  path: string;
-  cwd: string;
-  name?: string;
-  created: string;
-  modified: string;
-  message_count: number;
-  first_message: string;
-  parent_session_id?: string;
-  project_root?: string;
-  worktree_branch?: string;
-}
-
-export const chatListSessions = () => invoke<RawSessionInfo[]>("chat_list_sessions");
+// chat_list_sessions returns { sessions, runningSessionIds } with
+// camelCase fields (matching the bridge output).
+export const chatListSessions = () =>
+  invoke<{ sessions: SessionInfo[]; runningSessionIds: string[] }>("chat_list_sessions");
 export const chatGetSession = (id: string) =>
   invoke<SessionData | null>("chat_get_session", { id });
 export const chatStartSession = (cwd: string, options: StartSessionOptions) =>
