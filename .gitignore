@@ -3,3 +3,4 @@ node_modules/
 target/
 .pi/
 *.tsbuildinfo
+.pi-subagents/

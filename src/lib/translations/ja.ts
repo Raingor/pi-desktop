@@ -342,6 +342,7 @@ const ja: Record<string, string> = {
 
   // Chat
   "chat.sessions": "セッション",
+  "chat.back_to_chat": "チャットに戻る",
   "chat.new_session": "新規セッション",
   "chat.loading": "読み込み中...",
   "chat.no_sessions": "セッションがありません。+ をクリックして新しいチャットを開始してください。",

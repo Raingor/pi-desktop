@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useConfigStore } from "@/store/config-store";
 import { useTranslation } from "@/lib/i18n";
 import { Modal } from "@/components/ui/Modal";
@@ -38,6 +39,7 @@ import {
   LayoutDashboard,
   History,
   Brain,
+  ArrowLeft,
 } from "lucide-react";
 
 type SettingsTab = "dashboard" | "sessions" | "memory" | "general" | "providers" | "models" | "subagents" | "about";
@@ -95,6 +97,7 @@ function SettingRow({ label, children }: { label: string; children: React.ReactN
 
 export function SettingsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const {
     settings,
     auth,
@@ -283,6 +286,16 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
+      {/* ── Back to chat ──────────────────────────────────── */}
+      <button
+        onClick={() => navigate("/chat")}
+        className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-[var(--sidebar-hover-bg)]"
+        style={{ color: "var(--sidebar-text)" }}
+      >
+        <ArrowLeft className="h-4 w-4" />
+        {t("chat.back_to_chat")}
+      </button>
+
       {/* ── Hero ─────────────────────────────────────────── */}
       <header>
         <div className="text-[11px] font-semibold uppercase tracking-widest text-blue-400">

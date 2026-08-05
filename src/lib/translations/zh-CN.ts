@@ -342,6 +342,7 @@ const zhCN: Record<string, string> = {
 
   // Chat
   "chat.sessions": "会话",
+  "chat.back_to_chat": "返回聊天",
   "chat.new_session": "新建会话",
   "chat.loading": "加载中...",
   "chat.no_sessions": "暂无会话。点击 + 开始新对话。",
