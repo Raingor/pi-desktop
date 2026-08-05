@@ -21,7 +21,7 @@ export function AppShell() {
           className={
             isChat
               ? "min-h-0 flex-1 overflow-hidden"
-              : isSettings ? "mx-auto w-full max-w-7xl flex-1 overflow-y-auto px-8 py-6" : "min-h-0 flex-1 overflow-y-auto"
+              : isSettings ? "w-full flex-1 overflow-y-auto px-8 py-6" : "min-h-0 flex-1 overflow-y-auto"
           }
         >
           <Outlet />

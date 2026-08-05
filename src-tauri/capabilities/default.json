@@ -15,6 +15,7 @@
     "core:window:allow-maximize",
     "core:window:allow-hide",
     "core:window:allow-show",
-    "shell:allow-execute"
+    "shell:allow-execute",
+    "dialog:default"
   ]
 }

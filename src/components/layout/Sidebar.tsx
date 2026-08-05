@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useTranslation, LANGUAGES } from "@/lib/i18n";
 import { useChatUI } from "@/store/chat-ui";
 import { ChatSessionList } from "@/components/chat/ChatSessionList";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 // Cindy-style pill row: h-8, rounded-full, 15px icon (strokeWidth 1.8)
 const ROW_CLASS =
@@ -15,6 +15,25 @@ export function Sidebar() {
   const [langOpen, setLangOpen] = useState(false);
   const navigate = useNavigate();
   const startNewSession = useChatUI((s) => s.startNewSession);
+  const confirmCwd = useChatUI((s) => s.confirmCwd);
+
+  // Prefer the native OS folder picker (Tauri dialog plugin); fall back
+  // to the in-app modal when unavailable (e.g. running in a browser).
+  const handleNewChat = useCallback(async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: "Select working directory",
+      });
+      if (selected) {
+        confirmCwd(typeof selected === "string" ? selected : String(selected));
+      }
+    } catch {
+      startNewSession();
+    }
+  }, [confirmCwd, startNewSession]);
 
   return (
     <aside
@@ -39,7 +58,7 @@ export function Sidebar() {
       {/* Top action: New Chat (Cindy SidebarTopNav position) */}
       <div className="px-3 pt-3 pb-1">
         <button
-          onClick={startNewSession}
+          onClick={() => void handleNewChat()}
           className={cn(ROW_CLASS, "font-medium")}
           style={{ background: "var(--page-text)", color: "var(--page-bg)" }}
         >

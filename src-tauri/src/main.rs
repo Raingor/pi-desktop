@@ -12,6 +12,7 @@ use tauri::{Manager, Emitter};
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             // Phase 1: pi_reader — file I/O commands
             pi_reader::settings::pi_settings_get,
