@@ -159,6 +159,14 @@ pub async fn chat_auto_name(
 }
 
 // ─── SSE via Channel ────────────────────────────────────
+//
+// The stdout reader thread (in new()) is the SINGLE consumer of the
+// bridge output. It dispatches each NDJSON line:
+//   · {id, result|error}  → the pending request channel for that id
+//   · {method, params}    → broadcast to every event subscriber
+// This avoids multiple consumers stealing each other's messages from a
+// shared receiver (which previously dropped events and left the UI
+// stuck at "thinking").
 
 #[tauri::command]
 pub fn chat_subscribe_events(
@@ -166,37 +174,27 @@ pub fn chat_subscribe_events(
     channel: Channel<serde_json::Value>,
     bridge: State<'_, ChatBridgeState>,
 ) -> Result<(), String> {
-    let event_rx = Arc::clone(&bridge.inner.event_rx);
+    let (tx, rx) = std::sync::mpsc::channel::<serde_json::Value>();
+    {
+        let mut subs = bridge.inner.subscribers.lock().map_err(|e| e.to_string())?;
+        subs.push(tx);
+    }
     let sid = session_id.clone();
 
     std::thread::spawn(move || {
-        loop {
-            // Use try_recv with sleep to avoid blocking the shared receiver
-            let msg = {
-                let rx = event_rx.lock().unwrap();
-                rx.try_recv()
-            };
-            match msg {
-                Ok(event) => {
-                    if event.get("params")
-                        .and_then(|p| p.get("sessionId"))
-                        .and_then(|s| s.as_str())
-                        .map_or(false, |s| s == sid)
-                    {
-                        if let Some(evt) = event.get("params").and_then(|p| p.get("event")) {
-                            if channel.send(evt.clone()).is_err() {
-                                break; // Channel closed
-                            }
-                        }
+        // Each subscriber owns its receiver; only this thread reads it,
+        // so no message stealing.
+        while let Ok(event) = rx.recv() {
+            if event.get("params")
+                .and_then(|p| p.get("sessionId"))
+                .and_then(|s| s.as_str())
+                .map_or(false, |s| s == sid)
+            {
+                if let Some(evt) = event.get("params").and_then(|p| p.get("event")) {
+                    if channel.send(evt.clone()).is_err() {
+                        break; // Channel closed
                     }
-                    // Brief sleep to avoid busy-waiting
-                    std::thread::sleep(std::time::Duration::from_millis(50));
                 }
-                Err(std::sync::mpsc::TryRecvError::Empty) => {
-                    // No message available, sleep briefly
-                    std::thread::sleep(std::time::Duration::from_millis(100));
-                }
-                Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
             }
         }
     });
@@ -208,7 +206,10 @@ pub fn chat_subscribe_events(
 
 pub struct ChatBridgeStateInner {
     writer: Mutex<Option<std::process::ChildStdin>>,
-    event_rx: Arc<Mutex<std::sync::mpsc::Receiver<serde_json::Value>>>,
+    /// Pending request-response channels keyed by request id.
+    pending: Arc<Mutex<std::collections::HashMap<u64, std::sync::mpsc::Sender<serde_json::Value>>>>,
+    /// Event subscribers (each owns a sender; reader broadcasts events).
+    subscribers: Arc<Mutex<Vec<std::sync::mpsc::Sender<serde_json::Value>>>>,
     request_id: Mutex<u64>,
 }
 
@@ -240,20 +241,31 @@ impl ChatBridgeState {
             .map_err(|e| format!("Spawn chat bridge: {}", e))?;
 
         let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
-        let (event_tx, event_rx) = std::sync::mpsc::channel::<serde_json::Value>();
-        let event_rx = Arc::new(Mutex::new(event_rx));
+        let pending: Arc<Mutex<std::collections::HashMap<u64, std::sync::mpsc::Sender<serde_json::Value>>>> =
+            Arc::new(Mutex::new(std::collections::HashMap::new()));
+        let subscribers: Arc<Mutex<Vec<std::sync::mpsc::Sender<serde_json::Value>>>> =
+            Arc::new(Mutex::new(Vec::new()));
+        let pending_for_reader = Arc::clone(&pending);
+        let subs_for_reader = Arc::clone(&subscribers);
 
-        // Spawn stdout reader thread — forward every NDJSON line into the
-        // shared channel. call() matches responses by id; the event
-        // subscription thread matches method/params events. (Previously
-        // responses {id,result} were filtered out, so calls always timed out.)
+        // Spawn stdout reader thread — the single consumer. Dispatches
+        // responses (id) to the matching pending request and broadcasts
+        // events (method) to all subscribers.
         std::thread::spawn(move || {
             use std::io::{BufRead, BufReader};
             let reader = BufReader::new(stdout);
             for line in reader.lines() {
                 if let Ok(line) = line {
                     if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
-                        event_tx.send(msg).ok();
+                        if let Some(id) = msg.get("id").and_then(|v| v.as_u64()) {
+                            let mut pend = pending_for_reader.lock().unwrap();
+                            if let Some(tx) = pend.remove(&id) {
+                                let _ = tx.send(msg);
+                            }
+                        } else if msg.get("method").is_some() {
+                            let mut subs = subs_for_reader.lock().unwrap();
+                            subs.retain(|tx| tx.send(msg.clone()).is_ok());
+                        }
                     }
                 }
             }
@@ -275,7 +287,8 @@ impl ChatBridgeState {
         Ok(ChatBridgeState {
             inner: Arc::new(ChatBridgeStateInner {
                 writer: Mutex::new(child.stdin.take()),
-                event_rx,
+                pending,
+                subscribers,
                 request_id: Mutex::new(1),
             }),
         })
@@ -299,14 +312,20 @@ impl ChatBridgeState {
 
         let request = serde_json::json!({ "id": id, "method": method, "params": params });
 
+        // Register a response channel for this request BEFORE writing, so
+        // the reader thread can route the matching response to us.
+        let (resp_tx, resp_rx) = std::sync::mpsc::channel::<serde_json::Value>();
+        {
+            let mut pend = self.inner.pending.lock().map_err(|e| e.to_string())?;
+            pend.insert(id, resp_tx);
+        }
+
         // Write request
         {
             let mut writer = self.inner.writer.lock().map_err(|e| e.to_string())?;
             if let Some(ref mut stdin) = *writer {
                 let line = format!("{}\n", request);
                 if let Err(e) = stdin.write_all(line.as_bytes()).and_then(|_| stdin.flush()) {
-                    // The bridge process has exited — drop the writer so later
-                    // calls fail fast with a clear message instead of EPIPE.
                     *writer = None;
                     return Err(format!("Chat bridge unavailable: {}", e));
                 }
@@ -315,37 +334,22 @@ impl ChatBridgeState {
             }
         }
 
-        // Wait for response with matching id (with timeout)
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
-        while std::time::Instant::now() < deadline {
-            // Brief lock to check for message, then release immediately
-            let msg = {
-                let rx = self.inner.event_rx.lock().map_err(|e| e.to_string())?;
-                rx.try_recv()
-            };
-            match msg {
-                Ok(msg) => {
-                    if msg.get("id").and_then(|v| v.as_u64()) == Some(id) {
-                        if let Some(err) = msg.get("error") {
-                            return Err(err.as_str().unwrap_or("Unknown error").to_string());
-                        }
-                        if let Some(result) = msg.get("result") {
-                            return serde_json::from_value(result.clone())
-                                .map_err(|e| format!("Deserialize result: {}", e));
-                        }
-                    }
-                    // Not our response, continue polling
+        // Wait for the routed response (with timeout).
+        match resp_rx.recv_timeout(std::time::Duration::from_secs(30)) {
+            Ok(msg) => {
+                if let Some(err) = msg.get("error") {
+                    return Err(err.as_str().unwrap_or("Unknown error").to_string());
                 }
-                Err(std::sync::mpsc::TryRecvError::Empty) => {
-                    // No message yet, yield and retry
-                    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                if let Some(result) = msg.get("result") {
+                    return serde_json::from_value(result.clone())
+                        .map_err(|e| format!("Deserialize result: {}", e));
                 }
-                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                    return Err("Event channel closed".to_string());
-                }
+                Err("Malformed response".to_string())
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => Err("Request timeout".to_string()),
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                Err("Response channel closed".to_string())
             }
         }
-
-        Err("Request timeout".to_string())
     }
 }
