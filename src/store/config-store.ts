@@ -211,6 +211,7 @@ interface ConfigState {
   addCustomProvider: (id: string, cfg: CustomProviderConfig) => Promise<boolean>;
   updateCustomProvider: (id: string, cfg: Partial<CustomProviderConfig>) => Promise<boolean>;
   removeCustomProvider: (id: string) => Promise<boolean>;
+  renameCustomProvider: (oldId: string, newId: string, cfg?: Partial<CustomProviderConfig>) => Promise<boolean>;
 
   // Import/Export (to localStorage for backup, writes back to pi files)
   importConfig: (config: PiConfig) => Promise<void>;
@@ -516,6 +517,45 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
       set({ allProviders: newAllProviders, allModels: newAllModels });
     }
     return ok;
+  },
+
+  renameCustomProvider: async (oldId, newId, cfg) => {
+    const { modelsJson, settings } = get();
+    if (!modelsJson || oldId === newId) return false;
+    const existing = modelsJson.providers[oldId];
+    if (!existing || modelsJson.providers[newId]) return false;
+    // Re-key in place, preserving provider order
+    const newProviders: PiModelsJson["providers"] = {};
+    for (const [k, v] of Object.entries(modelsJson.providers)) {
+      newProviders[k === oldId ? newId : k] = k === oldId ? { ...existing, ...cfg } : v;
+    }
+    const updated = { providers: newProviders };
+    const ok = await apiPost("/models", updated);
+    if (!ok) return false;
+    set({ modelsJson: updated });
+    // Rewrite provider references in settings
+    if (settings) {
+      const prefix = `${oldId}/`;
+      const patch: Partial<PiSettings> = {};
+      if (settings.defaultProvider === oldId) patch.defaultProvider = newId;
+      if (settings.defaultModel?.startsWith(prefix))
+        patch.defaultModel = `${newId}/${settings.defaultModel!.slice(prefix.length)}`;
+      if (settings.enabledModels?.some((r) => r.startsWith(prefix)))
+        patch.enabledModels = settings.enabledModels.map((r) =>
+          r.startsWith(prefix) ? `${newId}/${r.slice(prefix.length)}` : r
+        );
+      if (Object.keys(patch).length > 0) {
+        const updatedSettings = { ...settings, ...patch };
+        if (await apiPost("/settings", updatedSettings)) set({ settings: updatedSettings });
+      }
+    }
+    const { auth, builtinProviders } = get();
+    const newAllProviders = mergeProviders(builtinProviders, auth ?? {}, updated);
+    const newAllModels = newAllProviders.flatMap((p) =>
+      p.models.map((m) => ({ ...m, providerId: p.id, providerName: p.name }))
+    );
+    set({ allProviders: newAllProviders, allModels: newAllModels });
+    return true;
   },
 
   // ─── Import/Export ─────────────────────────────────────

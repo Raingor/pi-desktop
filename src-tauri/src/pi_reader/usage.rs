@@ -456,10 +456,13 @@ pub fn get_totals(records: &[UsageRecord]) -> Totals {
 
 // ─── Commands ───────────────────────────────────────────
 
+/// Async wrapper: run blocking I/O on a thread pool so the UI thread
+/// is never blocked by JSONL file parsing (can be slow with 200+ MB of data).
 #[tauri::command]
-pub fn pi_usage_get() -> Result<UsageData, String> {
-    // Use cached stats (avoids re-parsing JSONL files)
-    let stats = read_usage_stats()?;
+pub async fn pi_usage_get() -> Result<UsageData, String> {
+    let stats = tokio::task::spawn_blocking(|| read_usage_stats())
+        .await
+        .map_err(|e| format!("spawn_blocking: {}", e))??;
     Ok(UsageData {
         daily_aggregates: stats.daily_aggregates,
         provider_summaries: stats.provider_summaries,
@@ -469,8 +472,11 @@ pub fn pi_usage_get() -> Result<UsageData, String> {
 }
 
 #[tauri::command]
-pub fn pi_usage_range_get(range: String, from: String, to: String) -> Result<UsageRangeData, String> {
-    let records = read_all_usage()?;
+pub async fn pi_usage_range_get(range: String, from: String, to: String) -> Result<UsageRangeData, String> {
+    // Run the heavy file-read + aggregation on a blocking thread
+    let records = tokio::task::spawn_blocking(|| read_all_usage())
+        .await
+        .map_err(|e| format!("spawn_blocking: {}", e))??;
 
     // Resolve date range
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();

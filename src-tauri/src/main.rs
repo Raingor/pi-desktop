@@ -7,6 +7,7 @@ use pi_desktop_lib::pi_reader;
 use pi_desktop_lib::pi_api;
 use pi_desktop_lib::chat_agent;
 use pi_desktop_lib::system;
+use pi_desktop_lib::window_state;
 use tauri::{Manager, Emitter};
 
 // NOTE: dbg_log removed after diagnosis.
@@ -94,6 +95,25 @@ fn main() {
                     }
                 }
             });
+
+            // Restore window size/position from saved state, or 70% of screen
+            if let Some(window) = app.get_webview_window("main") {
+                window_state::restore_window_state(app.handle(), &window);
+
+                // Save window state on resize/move (debounced via the window event)
+                let app_for_save = app.handle().clone();
+                window.on_window_event(move |event| {
+                    use tauri::WindowEvent;
+                    match event {
+                        WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
+                            if let Some(w) = app_for_save.get_webview_window("main") {
+                                window_state::save_window_state(&app_for_save, &w);
+                            }
+                        }
+                        _ => {}
+                    }
+                });
+            }
 
             Ok(())
         })

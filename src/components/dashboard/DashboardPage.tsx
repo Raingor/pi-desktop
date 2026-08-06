@@ -306,15 +306,13 @@ export function DashboardPage() {
       setRefreshing(false);
     }
 
-    // Previous period of equal length → period-over-period trend on stat cards
+    // Previous period → fire-and-forget (won't block rendering)
+    // Thanks to the async Rust command, this runs on a worker thread.
     const prev = getPrevRange(range);
     if (prev) {
-      try {
-        const p = await piUsageRangeGet("custom", prev.from, prev.to);
-        setPrevTotals({ tokens: p.totalTokens ?? 0, cost: p.totalCost ?? 0 });
-      } catch {
-        setPrevTotals(null);
-      }
+      piUsageRangeGet("custom", prev.from, prev.to)
+        .then((p) => setPrevTotals({ tokens: p.totalTokens ?? 0, cost: p.totalCost ?? 0 }))
+        .catch(() => setPrevTotals(null));
     } else {
       setPrevTotals(null);
     }

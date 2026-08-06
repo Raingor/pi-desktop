@@ -6,6 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import { SessionsPage } from "@/components/sessions/SessionsPage";
 import { MemoryPage } from "@/components/sessions/MemoryPage";
+import { ProvidersModelsPage } from "@/components/providers/ProvidersModelsPage";
 import {
   exportConfig,
   exportConfigToDirectory,
@@ -15,7 +16,7 @@ import {
 } from "@/lib/config";
 import type { PiConfig, UpdateCheckResult } from "@/types";
 import { cn } from "@/lib/utils";
-import { piCheckUpdates, piApplyUpdates, piBuiltinCatalogGet, piTestProvider, piFetchProviderModels, piTestModel } from "@/lib/tauri";
+import { piCheckUpdates, piApplyUpdates } from "@/lib/tauri";
 import { piSubagentsGet } from "@/lib/tauri";
 import type { Model } from "@/types";
 import {
@@ -39,8 +40,7 @@ import {
   LayoutDashboard,
   History,
   Brain,
-  ArrowLeft,
-} from "lucide-react";
+  } from "lucide-react";
 
 type SettingsTab = "dashboard" | "sessions" | "memory" | "general" | "providers" | "models" | "subagents" | "about";
 
@@ -313,101 +313,47 @@ export function SettingsPage() {
     "rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white";
 
   return (
-    <div className="space-y-8">
-      {/* ── Back to chat ──────────────────────────────────── */}
-      <button
-        onClick={() => navigate("/chat")}
-        className="group flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
-        style={{ color: "var(--sidebar-text)" }}
-      >
-        <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
-        {t("chat.back_to_chat")}
-      </button>
-
-      {/* ── Hero ─────────────────────────────────────────── */}
-      <header>
-        <div className="label" style={{ color: "var(--accent)", letterSpacing: "0.18em" }}>
-          pi · workspace · configuration
-        </div>
-        <h1 className="mt-1.5 text-[28px] font-semibold tracking-tight" style={{ color: "var(--page-text)" }}>
-          {t("settings.title")}
-        </h1>
-        <p className="mt-1.5 max-w-xl text-sm" style={{ color: "var(--muted-text)" }}>{t("settings.subtitle")}</p>
-
-        {/* Instrument readouts */}
-        <div
-          className="mt-5 grid max-w-2xl grid-cols-3 overflow-hidden rounded-2xl"
-          style={{ border: "1px solid var(--card-border)", backgroundColor: "var(--card-bg)" }}
-        >
-          {[
-            { v: String(allProviders.length), l: t("settings.stat_providers") },
-            { v: `${enabledModels.length}/${allModels.length}`, l: t("settings.stat_enabled") },
-            { v: t(themeLabelKey[settings?.theme ?? "light/dark"] ?? "settings.system"), l: t("settings.stat_theme") },
-          ].map((s, i) => (
-            <div
-              key={s.l}
-              className="px-5 py-4"
-              style={{ borderLeft: i === 0 ? "none" : "1px solid var(--card-border)" }}
-            >
-              <div className="num text-2xl font-semibold leading-none tracking-tight" style={{ color: "var(--page-text)" }}>
-                {s.v}
-              </div>
-              <div className="label mt-1.5">{s.l}</div>
-            </div>
-          ))}
-        </div>
-      </header>
-
-      {/* ── Settings panel: left index rail + right content ── */}
-      <div className="flex gap-10">
-        {/* Left: indexed rail */}
-        <nav className="w-60 shrink-0">
-          <div className="label mb-3 px-3" style={{ color: "var(--subtle-text)" }}>// sections</div>
-          <div
-            className="overflow-hidden rounded-2xl"
-            style={{ border: "1px solid var(--card-border)", backgroundColor: "var(--card-bg)" }}
+    <div className="flex h-full gap-0">
+      {/* ── Left: sidebar navigation ───────────────────────── */}
+      <nav className="w-56 shrink-0 border-r py-6 pr-4" style={{ borderColor: "var(--sidebar-border)" }}>
+        <div className="mb-6 flex items-center justify-between px-3">
+          <div>
+            <div className="label" style={{ color: "var(--accent)" }}>pi</div>
+            <div className="text-xs font-medium mt-0.5" style={{ color: "var(--muted-text)" }}>settings</div>
+          </div>
+          <button
+            onClick={() => navigate("/chat")}
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-colors hover:bg-[var(--hover-bg)]"
+            style={{ color: "var(--sidebar-text)" }}
+            title="Back to chat"
           >
-            {tabs.map(({ key, icon: Icon, label }, i) => {
-              const active = activeTab === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => setActiveTab(key)}
-                  className="group relative flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
-                  style={{
-                    borderTop: i === 0 ? "none" : "1px solid var(--card-border)",
-                    backgroundColor: active ? "var(--accent-soft)" : "transparent",
-                    color: active ? "var(--accent)" : "var(--sidebar-text)",
-                  }}
-                >
-                  {active && (
-                    <span
-                      className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r"
-                      style={{ backgroundColor: "var(--accent)" }}
-                    />
-                  )}
-                  <span className="num w-6 shrink-0 text-[11px] font-medium opacity-70">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <Icon size={16} strokeWidth={1.8} className="shrink-0" />
-                  <span className="flex-1 text-sm font-medium leading-none">{label}</span>
-                  {active && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "var(--accent)" }} />}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
+            ← chat
+          </button>
+        </div>
+        <div className="space-y-0.5">
+          {tabs.map(({ key, icon: Icon, label }) => {
+            const active = activeTab === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors"
+                style={{
+                  backgroundColor: active ? "var(--accent-soft)" : "transparent",
+                  color: active ? "var(--accent)" : "var(--sidebar-text)",
+                }}
+              >
+                <Icon size={16} strokeWidth={1.6} className="shrink-0" />
+                <span className="font-medium leading-none">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
-        {/* Right: content */}
-        <div className="min-w-0 flex-1 space-y-6">
-          {/* Breadcrumb / section subhead */}
-          <div className="flex items-baseline gap-2">
-            <span className="label" style={{ color: "var(--subtle-text)" }}>settings</span>
-            <span style={{ color: "var(--subtle-text)" }}>/</span>
-            <span className="text-sm font-medium" style={{ color: "var(--page-text)" }}>
-              {tabs.find((x) => x.key === activeTab)?.label}
-            </span>
-          </div>
+      {/* ── Right: content ──────────────────────────────────── */}
+      <div className="min-w-0 flex-1 overflow-y-auto p-6">
+        <div className="mx-auto max-w-4xl space-y-6">
 
           {/* ── Dashboard ─────────────────────────────────────── */}
           {activeTab === "dashboard" && (
@@ -575,7 +521,7 @@ export function SettingsPage() {
 
       {/* ── Providers ─────────────────────────────────────── */}
       {activeTab === "providers" && (
-        <ProvidersTab />
+        <ProvidersModelsPage />
       )}
 
       {/* ── Subagents ─────────────────────────────────────── */}
@@ -790,114 +736,6 @@ export function SettingsPage() {
       </Modal>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── Providers Tab ───────────────────────────────────────
-
-function ProvidersTab() {
-  const { t } = useTranslation();
-  const { allProviders, builtinProviders } = useConfigStore();
-  const [testing, setTesting] = useState<string | null>(null);
-  const [testResults, setTestResults] = useState<Record<string, { success: boolean; message?: string }>>({});
-
-  const handleTest = async (providerId: string, baseUrl: string, apiKey?: string) => {
-    setTesting(providerId);
-    try {
-      const result = await piTestProvider(baseUrl, apiKey);
-      setTestResults((prev) => ({ ...prev, [providerId]: { success: result.success, message: result.message } }));
-    } catch {
-      setTestResults((prev) => ({ ...prev, [providerId]: { success: false, message: 'Connection failed' } }));
-    } finally {
-      setTesting(null);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Built-in Providers */}
-      <Card icon={Plug} title={t("settings.builtin_providers")} desc={t("settings.builtin_providers_desc")} kicker="// built-in">
-        <div className="space-y-2">
-          {builtinProviders.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center justify-between rounded-xl border px-4 py-3 transition-colors hover:border-[var(--accent)]"
-              style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex h-9 w-9 items-center justify-center rounded-[11px] text-sm font-bold"
-                  style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent)' }}
-                >
-                  {p.name?.charAt(0) || p.id.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <div className="text-sm font-medium" style={{ color: 'var(--page-text)' }}>{p.name || p.id}</div>
-                  <div className="label mt-0.5">{p.baseUrl || p.api || 'Built-in'}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {testResults[p.id] && (
-                  <span className="label text-xs" style={{ color: testResults[p.id].success ? 'var(--ok)' : 'var(--danger)' }}>
-                    {testResults[p.id].success ? '✓' : '✗'} {testResults[p.id].message || ''}
-                  </span>
-                )}
-                {p.baseUrl && (
-                  <button
-                    onClick={() => handleTest(p.id, p.baseUrl!, undefined)}
-                    disabled={testing === p.id}
-                    className="rounded-md border px-2.5 py-1 text-xs font-medium transition-colors"
-                    style={{ borderColor: 'var(--card-border)', color: 'var(--muted-text)' }}
-                  >
-                    {testing === p.id ? '...' : t("settings.test")}
-                  </button>
-                )}
-                {p.hasAuth && (
-                  <span className="rounded px-1.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: 'color-mix(in srgb, var(--ok) 14%, transparent)', color: 'var(--ok)' }}>Auth</span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Custom Providers */}
-      <Card icon={Plug} title={t("settings.custom_providers")} desc={t("settings.custom_providers_desc")} kicker="// custom">
-        {allProviders.filter((p) => p.type === 'custom').length === 0 ? (
-          <p className="text-sm" style={{ color: 'var(--muted-text)' }}>{t("settings.no_custom_providers")}</p>
-        ) : (
-          <div className="space-y-2">
-            {allProviders.filter((p) => p.type === 'custom').map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between rounded-xl border px-4 py-3 transition-colors hover:border-[var(--accent)]"
-                style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}
-              >
-                <div>
-                  <div className="text-sm font-medium" style={{ color: 'var(--page-text)' }}>{p.name || p.id}</div>
-                  <div className="label mt-0.5">{p.baseUrl}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {testResults[p.id] && (
-                    <span className="label text-xs" style={{ color: testResults[p.id].success ? 'var(--ok)' : 'var(--danger)' }}>
-                      {testResults[p.id].success ? '✓' : '✗'}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => handleTest(p.id, p.baseUrl || '', p.apiKey)}
-                    disabled={testing === p.id}
-                    className="rounded-md border px-2.5 py-1 text-xs font-medium transition-colors"
-                    style={{ borderColor: 'var(--card-border)', color: 'var(--muted-text)' }}
-                  >
-                    {testing === p.id ? '...' : t("settings.test")}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
     </div>
   );
 }

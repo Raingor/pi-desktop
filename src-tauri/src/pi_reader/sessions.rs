@@ -207,7 +207,13 @@ fn parse_session_file_info(path: &Path) -> Option<SessionFileInfo> {
 }
 
 #[tauri::command]
-pub fn pi_sessions_list() -> Result<Vec<ProjectGroup>, String> {
+pub async fn pi_sessions_list() -> Result<Vec<ProjectGroup>, String> {
+    tokio::task::spawn_blocking(|| list_sessions_blocking())
+        .await
+        .map_err(|e| format!("spawn_blocking: {}", e))?
+}
+
+fn list_sessions_blocking() -> Result<Vec<ProjectGroup>, String> {
     let sdir = sessions_dir();
     if !sdir.exists() {
         return Ok(Vec::new());
@@ -304,7 +310,13 @@ pub fn pi_session_delete_permanent(path: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub fn pi_trash_list() -> Result<Vec<TrashEntry>, String> {
+pub async fn pi_trash_list() -> Result<Vec<TrashEntry>, String> {
+    tokio::task::spawn_blocking(|| list_trash_blocking())
+        .await
+        .map_err(|e| format!("spawn_blocking: {}", e))?
+}
+
+fn list_trash_blocking() -> Result<Vec<TrashEntry>, String> {
     let tdir = trash_dir();
     if !tdir.exists() {
         return Ok(Vec::new());
@@ -351,7 +363,7 @@ pub fn pi_trash_list() -> Result<Vec<TrashEntry>, String> {
 // ─── Session Preview ────────────────────────────────────
 
 #[tauri::command]
-pub fn pi_session_preview(path: String) -> Result<SessionPreview, String> {
+pub async fn pi_session_preview(path: String) -> Result<SessionPreview, String> {
     let canonical = fs::canonicalize(&path).map_err(|e| e.to_string())?;
 
     let in_sessions = canonical.starts_with(fs::canonicalize(sessions_dir()).unwrap_or_default());
