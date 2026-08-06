@@ -9,6 +9,8 @@ use pi_desktop_lib::chat_agent;
 use pi_desktop_lib::system;
 use tauri::{Manager, Emitter};
 
+// NOTE: dbg_log removed after diagnosis.
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())

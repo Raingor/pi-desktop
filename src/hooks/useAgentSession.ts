@@ -3,7 +3,6 @@
 // Handles: session loading, SSE events, message sending, model switching, abort, compact.
 
 import { useState, useCallback, useRef, useEffect, useMemo, useReducer } from "react";
-import { Channel } from "@tauri-apps/api/core";
 import type {
   AgentMessage,
   AssistantMessage,
@@ -240,7 +239,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [noticeState, dispatchNotice] = useReducer(noticeReducer, { visible: [], pending: [] });
   const [retryInfo, setRetryInfo] = useState<{ attempt: number; maxAttempts: number; errorMessage?: string } | null>(null);
 
-  const channelRef = useRef<Channel<any> | null>(null);
+  const unlistenRef = useRef<(() => void) | null>(null);
+  const connectedSessionIdRef = useRef<string | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
   const agentRunningRef = useRef(false);
   const handleAgentEventRef = useRef<((event: any) => void) | null>(null);
@@ -438,23 +438,36 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // ─── Event Channel Connection (Tauri Channel replaces EventSource) ──
 
   const closeEvents = useCallback(() => {
-    channelRef.current = null;
-    // Channel is dropped when ref is cleared; Rust detects disconnect
+    if (unlistenRef.current) {
+      unlistenRef.current();
+      unlistenRef.current = null;
+    }
+    connectedSessionIdRef.current = null;
   }, []);
 
   const connectEvents = useCallback(async (sid: string) => {
+    // Idempotent: skip if already listening for this session.
+    if (connectedSessionIdRef.current === sid && unlistenRef.current) return;
     closeEvents();
-    const channel = new Channel<any>();
-    channelRef.current = channel;
-
-    channel.onmessage = (event: any) => {
-      if (event.type === "connected") return;
-      handleAgentEventRef.current?.(event);
-    };
-
-    // Tell Rust to start forwarding events for this session
-    const { invoke } = await import("@tauri-apps/api/core");
-    await invoke("chat_subscribe_events", { sessionId: sid, channel });
+    // Agent events are emitted by the Rust bridge reader thread as the
+    // "pi-agent-event" app event (thread-safe). Listen and filter by session.
+    try {
+      const { listen } = await import("@tauri-apps/api/event");
+      console.log("[connectEvents] registering listener for session", sid);
+      const unlisten = await listen<any>("pi-agent-event", (e) => {
+        const payload = e.payload as any;
+        if (payload?.params?.sessionId !== sid) return;
+        const event = payload?.params?.event;
+        if (!event || event.type === "connected") return;
+        console.log("[agent-event] received:", event.type, "for session", sid);
+        handleAgentEventRef.current?.(event);
+      });
+      unlistenRef.current = unlisten;
+      connectedSessionIdRef.current = sid;
+      console.log("[connectEvents] listener registered for session", sid);
+    } catch (e) {
+      console.error("[connectEvents] Failed to connect events:", e);
+    }
   }, [closeEvents]);
 
   // ─── Agent Event Handler ───────────────────────────────
@@ -485,6 +498,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         setAgentPhase(null);
         setRetryInfo(null);
         dispatch({ type: "end" });
+        // agent_end marks the agent stopping. Reset running state so we never
+        // stay stuck at "thinking" even if prompt_done/agent_settled is missed.
+        if (agentRunningRef.current) {
+          agentRunningRef.current = false;
+          setAgentRunning(false);
+          onAgentEnd?.();
+        }
         if (sessionIdRef.current) {
           loadSession(sessionIdRef.current);
           chatGetState(sessionIdRef.current)
@@ -497,40 +517,53 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         break;
 
       case "agent_settled": {
-        const wasRunning = agentRunningRef.current;
+        // Unconditionally reset running state. The previous `wasRunning` guard
+        // could skip the reset and leave the UI stuck at "thinking".
         agentRunningRef.current = false;
-        if (!wasRunning) break;
         setAgentRunning(false);
         setAgentPhase(null);
         setRetryInfo(null);
         dispatch({ type: "end" });
         setIsCompacting(false);
+        optimisticUserMessageKeyRef.current = null;
+        promptRunIdRef.current = 0;
         if (sessionIdRef.current) {
           loadSession(sessionIdRef.current);
         }
-        if (wasRunning) onAgentEnd?.();
+        onAgentEnd?.();
         break;
       }
 
       case "prompt_done": {
-        const runId = promptRunIdRef.current;
-        const promptWasPending = true;
-        promptRunIdRef.current = 0;
+        // Unconditionally reset running state. The previous `promptWasPending`
+        // guard (runId > 0) could skip the reset when the run id was already
+        // cleared, leaving the UI stuck at "thinking".
         optimisticUserMessageKeyRef.current = null;
-        if (!promptWasPending) break;
+        promptRunIdRef.current = 0;
         const sid = sessionIdRef.current;
         if (sid) loadSession(sid);
-        if (!agentRunningRef.current) {
-          setAgentRunning(false);
-          setAgentPhase(null);
-          dispatch({ type: "end" });
-        }
+        agentRunningRef.current = false;
+        setAgentRunning(false);
+        setAgentPhase(null);
+        setRetryInfo(null);
+        dispatch({ type: "end" });
         onAgentEnd?.();
         break;
       }
 
       case "prompt_error":
         addNotice({ type: "error", message: (event.errorMessage as string | undefined) ?? "Command failed" });
+        // The SDK emits prompt_error then prompt_done. If prompt_done is
+        // dropped, reset here too so the UI never stays stuck at "thinking".
+        agentRunningRef.current = false;
+        setAgentRunning(false);
+        setAgentPhase(null);
+        setRetryInfo(null);
+        dispatch({ type: "end" });
+        optimisticUserMessageKeyRef.current = null;
+        promptRunIdRef.current = 0;
+        if (sessionIdRef.current) loadSession(sessionIdRef.current);
+        onAgentEnd?.();
         break;
 
       case "message_start":
@@ -637,6 +670,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // ─── Send Message ──────────────────────────────────────
 
   const handleSend = useCallback(async (message: string, images?: AttachedImage[]) => {
+    console.log("[handleSend] called, message=", message, "agentRunning=", agentRunningRef.current);
     const trimmedMessage = message.trim();
     if (!trimmedMessage && !images?.length) return;
     if (agentRunningRef.current) return;
@@ -692,7 +726,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             setPendingModel(selectedModel);
             await sendAgentCommand(sid, { type: "set_model", provider: selectedModel.provider, modelId: selectedModel.modelId });
           }
-          connectEvents(sid);
+          await connectEvents(sid);
           await sendAgentCommand(sid, {
             type: "prompt",
             message,
@@ -701,12 +735,33 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           promoteNewSession(1, message);
         }
       } else if (session) {
-        connectEvents(session.id);
+        await connectEvents(session.id);
         await sendAgentCommand(session.id, {
           type: "prompt",
           message,
           ...(piImages?.length ? { images: piImages } : {}),
         });
+      }
+
+      // Fallback: verify agent state in case terminal events were missed.
+      // If the agent already finished but we never received agent_settled,
+      // reset the UI so it doesn't stay stuck at "thinking".
+      const verifySid = sessionIdRef.current;
+      if (verifySid && agentRunningRef.current) {
+        try {
+          const state = await chatGetState(verifySid);
+          if (!state.running) {
+            agentRunningRef.current = false;
+            setAgentRunning(false);
+            setAgentPhase(null);
+            setRetryInfo(null);
+            dispatch({ type: "end" });
+            await loadSession(verifySid);
+            onAgentEnd?.();
+          }
+        } catch {
+          // ignore state check errors
+        }
       }
     } catch (e) {
       console.error("Failed to send message:", e);
@@ -726,7 +781,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       closeEvents();
       if (message) opts.chatInputRef?.current?.insertIfEmpty(message);
     }
-  }, [isNew, newSessionCwd, newSessionModel, session, ensureNewSession, connectEvents, promoteNewSession, addNotice, closeEvents, loadSession, opts.chatInputRef]);
+  }, [isNew, newSessionCwd, newSessionModel, session, ensureNewSession, connectEvents, promoteNewSession, addNotice, closeEvents, loadSession, onAgentEnd, opts.chatInputRef]);
 
   // ─── Abort ─────────────────────────────────────────────
 
@@ -983,6 +1038,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       loadSession(session.id, true).then(() => {
         if (agentRunningRef.current) {
           connectEvents(session.id);
+        } else {
+          // Agent not running — close any stale listener from a previous session.
+          closeEvents();
         }
       });
     } else {
@@ -992,11 +1050,18 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setMessages([]);
       setEntryIds([]);
       setError(null);
-    }
-    return () => {
       closeEvents();
-    };
+    }
+    // NOTE: no closeEvents() in cleanup — that would close a listener
+    // just registered by handleSend for a newly created session, causing
+    // agent_settled / prompt_done events to be missed and leaving the UI
+    // stuck at "thinking". Unmount cleanup is handled separately below.
   }, [session?.id, loadSession, connectEvents, closeEvents]);
+
+  // Close event listener on unmount only
+  useEffect(() => {
+    return () => closeEvents();
+  }, [closeEvents]);
 
   // Load models - also reload when session changes to ensure we get the correct models for the session's cwd
   useEffect(() => {
@@ -1032,6 +1097,71 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       messagesEndRef.current.scrollIntoView({ behavior: agentRunning ? "smooth" : "auto" });
     }
   }, [messages.length, agentRunning]);
+
+  // ─── Polling Fallback ─────────────────────────────────
+  // If the event system fails (e.g. listener not registered in time,
+  // Tauri emit dropped, bridge stderr crash), the UI would stay stuck
+  // at "thinking" forever. This poller checks chatGetState every 2s
+  // while agentRunning is true. If the agent has finished, it reloads
+  // the session and resets the UI — ensuring the user always sees the
+  // response.
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!agentRunning) {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      return;
+    }
+
+    pollIntervalRef.current = setInterval(async () => {
+      const sid = sessionIdRef.current;
+      if (!sid || !agentRunningRef.current) return;
+      try {
+        const state = await chatGetState(sid);
+        // `state.running` reflects session.isAlive(), which stays true for up
+        // to 10 min after a response completes — so it cannot detect "agent
+        // finished" on its own. Detect active generation via the SDK flags.
+        const s = state.state;
+        const activelyRunning =
+          s?.isStreaming === true ||
+          s?.isPromptRunning === true ||
+          s?.isBashRunning === true ||
+          s?.isCompacting === true;
+        if (!activelyRunning) {
+          // SDK reports no active generation => the agent has finished (even
+          // though the session is still alive). Reset the UI so we never stay
+          // stuck at "thinking" if the terminal event was missed.
+          agentRunningRef.current = false;
+          setAgentRunning(false);
+          setAgentPhase(null);
+          setRetryInfo(null);
+          dispatch({ type: "end" });
+          await loadSession(sid);
+          onAgentEnd?.();
+        } else if (s?.isStreaming) {
+          // Agent is streaming — fetch latest messages for display
+          // (fallback when streaming events don't arrive).
+          const d = await chatGetSession(sid);
+          if (d && sessionIdRef.current === sid) {
+            setMessages(d.context.messages);
+            setEntryIds(d.context.entryIds ?? []);
+          }
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }, 2000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [agentRunning, loadSession, onAgentEnd]);
 
   return {
     // State

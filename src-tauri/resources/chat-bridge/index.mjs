@@ -38,6 +38,10 @@ function toClientEvent(event) {
 }
 
 function writeResponse(msg) {
+  if (msg.method === 'event') {
+    const eventType = msg.params?.event?.type ?? 'unknown';
+    process.stderr.write(`[bridge-emit] event type=${eventType} session=${msg.params?.sessionId ?? 'unknown'}\n`);
+  }
   process.stdout.write(JSON.stringify(msg) + '\n');
 }
 
@@ -62,6 +66,8 @@ async function handleRequest(req) {
     const mgr = agentSessionManager;
     let result;
 
+    process.stderr.write(`[bridge] handling ${method} (id=${id})\n`);
+
     switch (method) {
       case 'list_sessions': {
         if (mgr) {
@@ -82,12 +88,15 @@ async function handleRequest(req) {
 
       case 'start_session': {
         const { cwd, options = {} } = params;
+        process.stderr.write(`[bridge] start_session: cwd=${cwd}, options=${JSON.stringify(options)}\n`);
         const tempKey = `__new__${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        process.stderr.write(`[bridge] start_session: calling startRpcSession...\n`);
         const { session, realSessionId } = await mgr.startRpcSession(tempKey, '', cwd, {
           ...(options.toolNames ? { toolNames: options.toolNames } : {}),
           ...(options.provider && options.modelId ? { initialModel: { provider: options.provider, modelId: options.modelId } } : {}),
           ...(options.thinkingLevel ? { thinkingLevel: options.thinkingLevel } : {}),
         });
+        process.stderr.write(`[bridge] start_session: session created, realSessionId=${realSessionId}\n`);
 
         const unsubscribe = session.onEvent((event) => {
           try {
@@ -101,7 +110,9 @@ async function handleRequest(req) {
         });
         sessionListeners.set(realSessionId, unsubscribe);
 
+        process.stderr.write(`[bridge] start_session: calling get_state...\n`);
         const state = await session.send({ type: 'get_state' });
+        process.stderr.write(`[bridge] start_session: get_state done\n`);
         result = {
           session_id: realSessionId,
           model: state.model ? { provider: state.model.provider, model_id: state.model.id } : null,
@@ -112,6 +123,7 @@ async function handleRequest(req) {
 
       case 'send_command': {
         const { sessionId, command } = params;
+        process.stderr.write(`[bridge] send_command: sessionId=${sessionId}, command.type=${command?.type}\n`);
         let session = mgr.getRpcSession(sessionId);
 
         if (!session || !session.isAlive()) {
@@ -132,7 +144,9 @@ async function handleRequest(req) {
           sessionListeners.set(sessionId, unsubscribe);
         }
 
+        process.stderr.write(`[bridge] send_command: calling session.send...\n`);
         const cmdResult = await session.send(command);
+        process.stderr.write(`[bridge] send_command: done, result=${JSON.stringify(cmdResult)?.slice(0, 200)}\n`);
         result = { success: true, data: cmdResult };
         break;
       }

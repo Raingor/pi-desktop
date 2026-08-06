@@ -63,34 +63,62 @@ function Card({
   icon: Icon,
   title,
   desc,
+  kicker,
   children,
+  index,
 }: {
   icon: typeof Palette;
   title: string;
   desc?: string;
+  kicker?: string;
+  index?: number;
   children: React.ReactNode;
 }) {
   return (
     <section className="theme-card rise overflow-hidden">
-      <div className="hairline flex items-center gap-3 border-b px-6 py-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ backgroundColor: "var(--accent-soft)", color: "var(--accent)" }}>
-          <Icon className="h-4 w-4" />
+      <div
+        className="flex items-center gap-3 px-6 py-4"
+        style={{ borderBottom: "1px solid var(--card-border)" }}
+      >
+        <div
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"
+          style={{ backgroundColor: "var(--accent-soft)", color: "var(--accent)" }}
+        >
+          <Icon className="h-[18px] w-[18px]" strokeWidth={1.7} />
         </div>
-        <div>
-          <h2 className="text-sm font-semibold tracking-tight" style={{ color: "var(--page-text)" }}>{title}</h2>
-          {desc && <p className="text-xs" style={{ color: "var(--subtle-text)" }}>{desc}</p>}
+        <div className="min-w-0 flex-1">
+          {kicker && (
+            <div className="label mb-0.5 truncate" style={{ color: "var(--accent)" }}>
+              {kicker}
+            </div>
+          )}
+          <h2 className="truncate text-[15px] font-semibold tracking-tight" style={{ color: "var(--page-text)" }}>
+            {title}
+          </h2>
+          {desc && <p className="mt-0.5 truncate text-xs" style={{ color: "var(--muted-text)" }}>{desc}</p>}
         </div>
+        {index !== undefined && (
+          <span className="num text-xs font-medium" style={{ color: "var(--subtle-text)" }}>
+            {String(index).padStart(2, "0")}
+          </span>
+        )}
       </div>
       <div className="p-6">{children}</div>
     </section>
   );
 }
 
-function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
+function SettingRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-gray-800/60 py-3 last:border-b-0 last:pb-0 first:pt-0">
-      <span className="text-sm text-gray-400">{label}</span>
-      {children}
+    <div
+      className="flex items-center justify-between gap-6 py-3.5 first:pt-0 last:pb-0"
+      style={{ borderBottom: "1px solid var(--card-border)" }}
+    >
+      <div className="min-w-0">
+        <span className="block text-sm font-medium" style={{ color: "var(--page-text)" }}>{label}</span>
+        {hint && <span className="label mt-0.5 block" style={{ color: "var(--subtle-text)" }}>{hint}</span>}
+      </div>
+      <div className="flex shrink-0 items-center">{children}</div>
     </div>
   );
 }
@@ -285,68 +313,102 @@ export function SettingsPage() {
     "rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* ── Back to chat ──────────────────────────────────── */}
       <button
         onClick={() => navigate("/chat")}
-        className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-[var(--sidebar-hover-bg)]"
+        className="group flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
         style={{ color: "var(--sidebar-text)" }}
       >
-        <ArrowLeft className="h-4 w-4" />
+        <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
         {t("chat.back_to_chat")}
       </button>
 
       {/* ── Hero ─────────────────────────────────────────── */}
       <header>
-        <div className="mono text-[10px] font-semibold uppercase" style={{ color: "var(--accent)", letterSpacing: "0.16em" }}>
-          pi · workspace
+        <div className="label" style={{ color: "var(--accent)", letterSpacing: "0.18em" }}>
+          pi · workspace · configuration
         </div>
-        <h1 className="mt-1 text-[26px] font-semibold tracking-tight" style={{ color: "var(--page-text)" }}>{t("settings.title")}</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--muted-text)" }}>{t("settings.subtitle")}</p>
-        <div className="mt-4 grid max-w-lg grid-cols-3 gap-3">
-          <div className="theme-card px-4 py-3">
-            <div className="num text-xl font-semibold" style={{ color: "var(--page-text)" }}>{allProviders.length}</div>
-            <div className="label mt-0.5">{t("settings.stat_providers")}</div>
-          </div>
-          <div className="theme-card px-4 py-3">
-            <div className="num text-xl font-semibold" style={{ color: "var(--page-text)" }}>
-              {enabledModels.length}
-              <small className="ml-0.5 text-xs font-normal" style={{ color: "var(--subtle-text)" }}>/ {allModels.length}</small>
+        <h1 className="mt-1.5 text-[28px] font-semibold tracking-tight" style={{ color: "var(--page-text)" }}>
+          {t("settings.title")}
+        </h1>
+        <p className="mt-1.5 max-w-xl text-sm" style={{ color: "var(--muted-text)" }}>{t("settings.subtitle")}</p>
+
+        {/* Instrument readouts */}
+        <div
+          className="mt-5 grid max-w-2xl grid-cols-3 overflow-hidden rounded-2xl"
+          style={{ border: "1px solid var(--card-border)", backgroundColor: "var(--card-bg)" }}
+        >
+          {[
+            { v: String(allProviders.length), l: t("settings.stat_providers") },
+            { v: `${enabledModels.length}/${allModels.length}`, l: t("settings.stat_enabled") },
+            { v: t(themeLabelKey[settings?.theme ?? "light/dark"] ?? "settings.system"), l: t("settings.stat_theme") },
+          ].map((s, i) => (
+            <div
+              key={s.l}
+              className="px-5 py-4"
+              style={{ borderLeft: i === 0 ? "none" : "1px solid var(--card-border)" }}
+            >
+              <div className="num text-2xl font-semibold leading-none tracking-tight" style={{ color: "var(--page-text)" }}>
+                {s.v}
+              </div>
+              <div className="label mt-1.5">{s.l}</div>
             </div>
-            <div className="label mt-0.5">{t("settings.stat_enabled")}</div>
-          </div>
-          <div className="theme-card px-4 py-3">
-            <div className="num pt-0.5 text-sm font-semibold" style={{ color: "var(--page-text)" }}>
-              {t(themeLabelKey[settings?.theme ?? "light/dark"] ?? "settings.system")}
-            </div>
-            <div className="label mt-0.5">{t("settings.stat_theme")}</div>
-          </div>
+          ))}
         </div>
       </header>
 
-      {/* ── Settings panel: left item list + right content ── */}
+      {/* ── Settings panel: left index rail + right content ── */}
       <div className="flex gap-10">
-        {/* Left: settings item list */}
-        <nav className="w-56 shrink-0 space-y-0.5">
-          {tabs.map(({ key, icon: Icon, label }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className="flex h-8 w-full items-center gap-2.5 rounded-full px-3 text-sm transition-colors hover:bg-[var(--sidebar-hover-bg)]"
-              style={{
-                backgroundColor: activeTab === key ? "var(--sidebar-active-bg)" : "transparent",
-                color: activeTab === key ? "var(--sidebar-active-text)" : "var(--sidebar-text)",
-                fontWeight: activeTab === key ? 500 : 400,
-              }}
-            >
-              <Icon size={15} strokeWidth={1.8} className="shrink-0" />
-              <span className="leading-none">{label}</span>
-            </button>
-          ))}
+        {/* Left: indexed rail */}
+        <nav className="w-60 shrink-0">
+          <div className="label mb-3 px-3" style={{ color: "var(--subtle-text)" }}>// sections</div>
+          <div
+            className="overflow-hidden rounded-2xl"
+            style={{ border: "1px solid var(--card-border)", backgroundColor: "var(--card-bg)" }}
+          >
+            {tabs.map(({ key, icon: Icon, label }, i) => {
+              const active = activeTab === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className="group relative flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
+                  style={{
+                    borderTop: i === 0 ? "none" : "1px solid var(--card-border)",
+                    backgroundColor: active ? "var(--accent-soft)" : "transparent",
+                    color: active ? "var(--accent)" : "var(--sidebar-text)",
+                  }}
+                >
+                  {active && (
+                    <span
+                      className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r"
+                      style={{ backgroundColor: "var(--accent)" }}
+                    />
+                  )}
+                  <span className="num w-6 shrink-0 text-[11px] font-medium opacity-70">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <Icon size={16} strokeWidth={1.8} className="shrink-0" />
+                  <span className="flex-1 text-sm font-medium leading-none">{label}</span>
+                  {active && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "var(--accent)" }} />}
+                </button>
+              );
+            })}
+          </div>
         </nav>
 
         {/* Right: content */}
         <div className="min-w-0 flex-1 space-y-6">
+          {/* Breadcrumb / section subhead */}
+          <div className="flex items-baseline gap-2">
+            <span className="label" style={{ color: "var(--subtle-text)" }}>settings</span>
+            <span style={{ color: "var(--subtle-text)" }}>/</span>
+            <span className="text-sm font-medium" style={{ color: "var(--page-text)" }}>
+              {tabs.find((x) => x.key === activeTab)?.label}
+            </span>
+          </div>
+
           {/* ── Dashboard ─────────────────────────────────────── */}
           {activeTab === "dashboard" && (
             <DashboardPage />
@@ -365,7 +427,7 @@ export function SettingsPage() {
       {/* ── General ───────────────────────────────────────── */}
       {activeTab === "general" && (
         <div className="space-y-6">
-          <Card icon={Palette} title={t("settings.theme")} desc={t("settings.theme_desc")}>
+          <Card icon={Palette} title={t("settings.theme")} desc={t("settings.theme_desc")} kicker="// appearance">
             <div className="grid grid-cols-3 gap-3 max-w-xl">
               {THEME_SWATCHES.map((s) => {
                 const active = (settings?.theme ?? "light/dark") === s.value;
@@ -374,7 +436,7 @@ export function SettingsPage() {
                     key={s.value}
                     onClick={() => setTheme(s.value)}
                     className={cn(
-                      "overflow-hidden rounded-xl border text-left transition-all",
+                      "group overflow-hidden rounded-xl border text-left transition-all",
                       active ? "border-blue-500 ring-1 ring-blue-500/40" : "border-gray-700 hover:border-gray-600"
                     )}
                   >
@@ -409,7 +471,7 @@ export function SettingsPage() {
             </div>
           </Card>
 
-          <Card icon={Type} title={t("settings.font_size")} desc={t("settings.font_size_desc")}>
+          <Card icon={Type} title={t("settings.font_size")} desc={t("settings.font_size_desc")} kicker="// typography">
             <div className="flex max-w-xl items-center gap-4">
               <input
                 type="range"
@@ -426,7 +488,7 @@ export function SettingsPage() {
             </div>
           </Card>
 
-          <Card icon={ZoomIn} title={t("settings.ui_zoom")} desc={t("settings.ui_zoom_desc")}>
+          <Card icon={ZoomIn} title={t("settings.ui_zoom")} desc={t("settings.ui_zoom_desc")} kicker="// layout">
             <div className="flex max-w-xl items-center gap-4">
               <input
                 type="range"
@@ -454,8 +516,8 @@ export function SettingsPage() {
       {/* ── Models ───────────────────────────────────────── */}
       {activeTab === "models" && (
         <div className="space-y-6">
-          <Card icon={SettingsIcon} title={t("settings.defaults")}>
-            <SettingRow label={t("settings.default_provider")}>
+          <Card icon={SettingsIcon} title={t("settings.defaults")} kicker="// defaults">
+            <SettingRow label={t("settings.default_provider")} hint="provider namespace">
               <select
                 value={settings?.defaultProvider ?? ""}
                 onChange={(e) => handleDefaultProviderChange(e.target.value)}
@@ -467,7 +529,7 @@ export function SettingsPage() {
                 ))}
               </select>
             </SettingRow>
-            <SettingRow label={t("settings.default_model")}>
+            <SettingRow label={t("settings.default_model")} hint="model identifier">
               <select
                 value={selectedModelValue}
                 onChange={(e) => handleDefaultModelChange(e.target.value)}
@@ -485,7 +547,7 @@ export function SettingsPage() {
                 ))}
               </select>
             </SettingRow>
-            <SettingRow label={t("settings.default_thinking")}>
+            <SettingRow label={t("settings.default_thinking")} hint="reasoning depth">
               <select
                 value={settings?.defaultThinkingLevel ?? "medium"}
                 onChange={(e) => updateSettings({ defaultThinkingLevel: e.target.value })}
@@ -496,7 +558,7 @@ export function SettingsPage() {
                 ))}
               </select>
             </SettingRow>
-            <SettingRow label={t("settings.project_trust")}>
+            <SettingRow label={t("settings.project_trust")} hint="auto-approve scope">
               <select
                 value={settings?.defaultProjectTrust ?? "prompt"}
                 onChange={(e) => updateSettings({ defaultProjectTrust: e.target.value })}
@@ -524,7 +586,7 @@ export function SettingsPage() {
       {/* ── About / Updates ───────────────────────────────── */}
       {activeTab === "about" && (
         <div className="space-y-6">
-          <Card icon={CloudDownload} title={t("settings.updates_title")} desc={t("settings.updates_desc")}>
+          <Card icon={CloudDownload} title={t("settings.updates_title")} desc={t("settings.updates_desc")} kicker="// updates">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={handleCheckUpdates}
@@ -612,7 +674,7 @@ export function SettingsPage() {
             })()}
           </Card>
 
-          <Card icon={Package} title={t("settings.packages")}>
+          <Card icon={Package} title={t("settings.packages")} kicker="// extensions">
             {(settings?.packages ?? []).length > 0 && (
               <div className="mb-4 flex flex-wrap gap-1.5">
                 {(settings?.packages ?? []).map((pkg) => (
@@ -663,7 +725,7 @@ export function SettingsPage() {
             </div>
           </Card>
 
-          <Card icon={Download} title={t("settings.import_export")}>
+          <Card icon={Download} title={t("settings.import_export")} kicker="// data">
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={handleExport}
@@ -755,22 +817,29 @@ function ProvidersTab() {
   return (
     <div className="space-y-6">
       {/* Built-in Providers */}
-      <Card icon={Plug} title={t("settings.builtin_providers")} desc={t("settings.builtin_providers_desc")}>
+      <Card icon={Plug} title={t("settings.builtin_providers")} desc={t("settings.builtin_providers_desc")} kicker="// built-in">
         <div className="space-y-2">
           {builtinProviders.map((p) => (
-            <div key={p.id} className="flex items-center justify-between rounded-lg border px-4 py-3" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}>
+            <div
+              key={p.id}
+              className="flex items-center justify-between rounded-xl border px-4 py-3 transition-colors hover:border-[var(--accent)]"
+              style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}
+            >
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg flex items-center justify-center text-xs font-bold" style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent)' }}>
+                <div
+                  className="flex h-9 w-9 items-center justify-center rounded-[11px] text-sm font-bold"
+                  style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent)' }}
+                >
                   {p.name?.charAt(0) || p.id.charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <div className="text-sm font-medium" style={{ color: 'var(--page-text)' }}>{p.name || p.id}</div>
-                  <div className="text-xs" style={{ color: 'var(--muted-text)' }}>{p.baseUrl || p.api || 'Built-in'}</div>
+                  <div className="label mt-0.5">{p.baseUrl || p.api || 'Built-in'}</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 {testResults[p.id] && (
-                  <span className={`text-xs ${testResults[p.id].success ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <span className="label text-xs" style={{ color: testResults[p.id].success ? 'var(--ok)' : 'var(--danger)' }}>
                     {testResults[p.id].success ? '✓' : '✗'} {testResults[p.id].message || ''}
                   </span>
                 )}
@@ -778,14 +847,14 @@ function ProvidersTab() {
                   <button
                     onClick={() => handleTest(p.id, p.baseUrl!, undefined)}
                     disabled={testing === p.id}
-                    className="rounded-md border px-2 py-1 text-xs"
+                    className="rounded-md border px-2.5 py-1 text-xs font-medium transition-colors"
                     style={{ borderColor: 'var(--card-border)', color: 'var(--muted-text)' }}
                   >
                     {testing === p.id ? '...' : t("settings.test")}
                   </button>
                 )}
                 {p.hasAuth && (
-                  <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-400">Auth</span>
+                  <span className="rounded px-1.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: 'color-mix(in srgb, var(--ok) 14%, transparent)', color: 'var(--ok)' }}>Auth</span>
                 )}
               </div>
             </div>
@@ -794,27 +863,31 @@ function ProvidersTab() {
       </Card>
 
       {/* Custom Providers */}
-      <Card icon={Plug} title={t("settings.custom_providers")} desc={t("settings.custom_providers_desc")}>
+      <Card icon={Plug} title={t("settings.custom_providers")} desc={t("settings.custom_providers_desc")} kicker="// custom">
         {allProviders.filter((p) => p.type === 'custom').length === 0 ? (
           <p className="text-sm" style={{ color: 'var(--muted-text)' }}>{t("settings.no_custom_providers")}</p>
         ) : (
           <div className="space-y-2">
             {allProviders.filter((p) => p.type === 'custom').map((p) => (
-              <div key={p.id} className="flex items-center justify-between rounded-lg border px-4 py-3" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}>
+              <div
+                key={p.id}
+                className="flex items-center justify-between rounded-xl border px-4 py-3 transition-colors hover:border-[var(--accent)]"
+                style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}
+              >
                 <div>
                   <div className="text-sm font-medium" style={{ color: 'var(--page-text)' }}>{p.name || p.id}</div>
-                  <div className="text-xs" style={{ color: 'var(--muted-text)' }}>{p.baseUrl}</div>
+                  <div className="label mt-0.5">{p.baseUrl}</div>
                 </div>
                 <div className="flex items-center gap-2">
                   {testResults[p.id] && (
-                    <span className={`text-xs ${testResults[p.id].success ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className="label text-xs" style={{ color: testResults[p.id].success ? 'var(--ok)' : 'var(--danger)' }}>
                       {testResults[p.id].success ? '✓' : '✗'}
                     </span>
                   )}
                   <button
                     onClick={() => handleTest(p.id, p.baseUrl || '', p.apiKey)}
                     disabled={testing === p.id}
-                    className="rounded-md border px-2 py-1 text-xs"
+                    className="rounded-md border px-2.5 py-1 text-xs font-medium transition-colors"
                     style={{ borderColor: 'var(--card-border)', color: 'var(--muted-text)' }}
                   >
                     {testing === p.id ? '...' : t("settings.test")}
@@ -849,7 +922,7 @@ function SubagentsTab() {
   return (
     <div className="space-y-6">
       {/* Agents */}
-      <Card icon={Users} title={t("settings.agents")} desc={t("settings.agents_desc")}>
+      <Card icon={Users} title={t("settings.agents")} desc={t("settings.agents_desc")} kicker="// agents">
         {loading ? (
           <p className="text-sm" style={{ color: 'var(--muted-text)' }}>Loading...</p>
         ) : data?.agents.length === 0 ? (
@@ -857,10 +930,14 @@ function SubagentsTab() {
         ) : (
           <div className="space-y-2">
             {data?.agents.map((agent) => (
-              <div key={agent.name} className="rounded-lg border px-4 py-3" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}>
+              <div
+                key={agent.name}
+                className="rounded-xl border px-4 py-3 transition-colors hover:border-[var(--accent)]"
+                style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}
+              >
                 <div className="text-sm font-medium" style={{ color: 'var(--page-text)' }}>{agent.name}</div>
                 {agent.description && <div className="text-xs mt-1" style={{ color: 'var(--muted-text)' }}>{agent.description}</div>}
-                <div className="text-xs mt-1 font-mono" style={{ color: 'var(--subtle-text)' }}>{agent.file_name}</div>
+                <div className="label mt-1.5">{agent.file_name}</div>
               </div>
             ))}
           </div>
@@ -868,7 +945,7 @@ function SubagentsTab() {
       </Card>
 
       {/* Chains */}
-      <Card icon={Users} title={t("settings.chains")} desc={t("settings.chains_desc")}>
+      <Card icon={Users} title={t("settings.chains")} desc={t("settings.chains_desc")} kicker="// chains">
         {loading ? (
           <p className="text-sm" style={{ color: 'var(--muted-text)' }}>Loading...</p>
         ) : data?.chains.length === 0 ? (
@@ -876,13 +953,21 @@ function SubagentsTab() {
         ) : (
           <div className="space-y-2">
             {data?.chains.map((chain) => (
-              <div key={chain.name} className="rounded-lg border px-4 py-3" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}>
+              <div
+                key={chain.name}
+                className="rounded-xl border px-4 py-3 transition-colors hover:border-[var(--accent)]"
+                style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg)' }}
+              >
                 <div className="text-sm font-medium" style={{ color: 'var(--page-text)' }}>{chain.name}</div>
                 {chain.description && <div className="text-xs mt-1" style={{ color: 'var(--muted-text)' }}>{chain.description}</div>}
                 {chain.steps.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="flex flex-wrap gap-1.5 mt-2.5">
                     {chain.steps.map((step, i) => (
-                      <span key={i} className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] text-blue-400">
+                      <span
+                        key={i}
+                        className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                        style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent)' }}
+                      >
                         {step.agent}
                       </span>
                     ))}

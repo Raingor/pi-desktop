@@ -323,6 +323,7 @@ interface AgentState {
   running: boolean;
   state?: {
     isStreaming?: boolean;
+    isPromptRunning?: boolean;
     isBashRunning?: boolean;
     isCompacting?: boolean;
     contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null };
