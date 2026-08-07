@@ -125,6 +125,12 @@
 }
 
 /* ─── Base ─────────────────────────────────────────────── */
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
 body {
   font-family: var(--font-sans);
   background-color: var(--page-bg);
@@ -178,14 +184,24 @@ body {
 }
 
 /* ─── Scrollbar ───────────────────────────────────────── */
+/* Default: invisible scrollbar (still scrollable via wheel/trackpad) */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 0;
+  height: 0;
+}
+/* Show thin scrollbar on hover over scrollable areas */
+*:hover::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+*:hover::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   border-radius: 999px;
   border: 2px solid transparent;
