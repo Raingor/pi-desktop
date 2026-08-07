@@ -18,8 +18,10 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex h-screen w-64 shrink-0 flex-col overflow-hidden border-r"
+      className="grid h-screen w-64 shrink-0 border-r"
       style={{
+        gridTemplateRows: "auto auto minmax(0, 1fr) auto",
+        minHeight: 0,
         backgroundColor: "var(--sidebar-bg)",
         borderColor: "var(--sidebar-border)",
       }}
@@ -48,9 +50,9 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Session list slot — scrollable, so the bottom section stays visible */}
+      {/* Session list slot — outer row strictly shrinks to 1fr; scrolling happens inside ChatSessionList */}
       <div
-        className="mt-2 flex min-h-0 flex-1 flex-col overflow-y-auto border-t pt-2"
+        className="mt-2 flex min-h-0 flex-col overflow-hidden border-t pt-2"
         style={{ borderColor: "var(--sidebar-border)" }}
       >
         <span className="label shrink-0 px-4 pb-1.5">{t("chat.sessions")}</span>

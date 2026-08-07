@@ -129,7 +129,7 @@ export function ChatWindow({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
       {/* Notices */}
       {notices.length > 0 && (
         <div style={{
@@ -226,6 +226,7 @@ export function ChatWindow({
             ref={scrollContainerRef}
             style={{
               flex: 1,
+              minHeight: 0,
               overflowY: "auto",
               overflowX: "hidden",
               padding: "16px 16px 0 16px",
@@ -294,8 +295,8 @@ export function ChatWindow({
             </div>
           </div>
 
-          {/* Input area */}
-          <div>
+          {/* Input area — must not shrink so the bottom controls stay visible */}
+          <div style={{ flexShrink: 0 }}>
             <ChatInput
               ref={chatInputRef}
               onSend={handleSend}

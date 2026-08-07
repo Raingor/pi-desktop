@@ -36,7 +36,7 @@ export function ChatPage() {
   const contextTokens = contextLimit * (contextPercent / 100);
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       {showChat ? (
         <>
           {/* Top bar: session name + model selector */}
@@ -82,8 +82,8 @@ export function ChatPage() {
             />
           )}
 
-          {/* Chat messages */}
-          <div className="relative flex-1 overflow-hidden">
+          {/* Chat messages — min-h-0 lets the flex child shrink so the bottom input area is never clipped */}
+          <div className="relative flex-1 min-h-0 overflow-hidden">
             <ChatWindow
               session={selectedSession}
               newSessionCwd={newSessionCwd}
