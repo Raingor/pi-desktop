@@ -18,7 +18,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex h-screen w-64 flex-col border-r"
+      className="flex h-screen w-64 shrink-0 flex-col overflow-hidden border-r"
       style={{
         backgroundColor: "var(--sidebar-bg)",
         borderColor: "var(--sidebar-border)",
@@ -26,7 +26,7 @@ export function Sidebar() {
     >
       {/* Top: brand row */}
       <div
-        className="rise flex items-center gap-3 border-b px-4 py-4"
+        className="rise flex shrink-0 items-center gap-3 border-b px-4 py-4"
         style={{ borderColor: "var(--sidebar-border)" }}
       >
         <img src="/pi.svg" alt="pi-desktop" className="h-8 w-8 rounded-[10px]" />
@@ -37,7 +37,7 @@ export function Sidebar() {
       </div>
 
       {/* Top action: New Chat */}
-      <div className="rise px-3 pt-3 pb-1" style={{ ["--d" as string]: "40ms" }}>
+      <div className="rise shrink-0 px-3 pt-3 pb-1" style={{ ["--d" as string]: "40ms" }}>
         <button
           onClick={() => void pickCwd()}
           className={cn(ROW_CLASS, "font-medium")}
@@ -48,17 +48,17 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Session list slot (Cindy cc-agent sidebar slot) */}
+      {/* Session list slot — scrollable, so the bottom section stays visible */}
       <div
-        className="mt-2 flex min-h-0 flex-1 flex-col border-t pt-2"
+        className="mt-2 flex min-h-0 flex-1 flex-col overflow-y-auto border-t pt-2"
         style={{ borderColor: "var(--sidebar-border)" }}
       >
-        <span className="label px-4 pb-1.5">{t("chat.sessions")}</span>
+        <span className="label shrink-0 px-4 pb-1.5">{t("chat.sessions")}</span>
         <ChatSessionList />
       </div>
 
       {/* Bottom: settings + language + version (Cindy UserInfoSection position) */}
-      <div className="border-t px-3 py-3" style={{ borderColor: "var(--sidebar-border)" }}>
+      <div className="shrink-0 border-t px-3 py-3" style={{ borderColor: "var(--sidebar-border)" }}>
         <button
           onClick={() => navigate("/settings")}
           className={cn(ROW_CLASS)}
