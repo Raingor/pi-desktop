@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <!-- Brand blue diagonal gradient -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6ba6fb"/>
+      <stop offset="0.5" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#1e40af"/>
+    </linearGradient>
+    <!-- Soft top gloss for a tactile, premium feel -->
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Subtle vertical shading on the pi glyph -->
+    <linearGradient id="piGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d9e6ff"/>
+    </linearGradient>
+    <!-- Toggle knob highlight -->
+    <radialGradient id="knob" cx="0.35" cy="0.3" r="0.85">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#cdd9f2"/>
+    </radialGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="7" stdDeviation="11" flood-color="#0a2a6b" flood-opacity="0.38"/>
+    </filter>
+    <filter id="knobShadow" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0a2a6b" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle background -->
+  <rect x="0" y="0" width="512" height="512" rx="115" fill="url(#bg)"/>
+  <!-- Top gloss highlight -->
+  <rect x="0" y="0" width="512" height="250" rx="115" fill="url(#gloss)"/>
+
+  <!-- Toggle switch track (behind the pi) -->
+  <rect x="92" y="217" width="328" height="78" rx="39" fill="#ffffff" opacity="0.20"/>
+  <rect x="92" y="217" width="328" height="78" rx="39" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="2"/>
+  <!-- Toggle knob in the "on" position -->
+  <circle cx="378" cy="256" r="30" fill="url(#knob)" filter="url(#knobShadow)"/>
+
+  <!-- Pi glyph -->
+  <text x="256" y="256" text-anchor="middle" dominant-baseline="central"
+        font-family="-apple-system, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="258" font-weight="700" fill="url(#piGrad)" filter="url(#softShadow)">π</text>
+</svg>

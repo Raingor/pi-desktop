@@ -1,0 +1,10 @@
+# Build output & deps
+node_modules/
+dist/
+
+# Marketing assets (not needed by the package at runtime)
+promote/
+
+# Misc
+.DS_Store
+*.log
