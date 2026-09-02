@@ -126,6 +126,18 @@ function mergeProviders(
   return [...builtins, ...customs.filter((c) => !builtinIds.has(c.id) || standaloneIds.has(c.id))];
 }
 
+// Carry `_disabledProviders` through every models.json write. Several actions
+// rebuilt the payload as a plain { providers: … } object, which silently
+// dropped all disabled providers from disk on the next save.
+function carryDisabled(
+  modelsJson: PiModelsJson,
+  providers: PiModelsJson["providers"]
+): PiModelsJson {
+  return modelsJson._disabledProviders && Object.keys(modelsJson._disabledProviders).length > 0
+    ? { providers, _disabledProviders: modelsJson._disabledProviders }
+    : { providers };
+}
+
 // ─── State Types ─────────────────────────────────────────
 
 interface UsageData {
@@ -464,7 +476,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     const { modelsJson } = get();
     if (!modelsJson) return false;
     const newProviders = { ...modelsJson.providers, [id]: cfg };
-    const updated = { providers: newProviders };
+    const updated = carryDisabled(modelsJson, newProviders);
     const ok = await apiPost("/models", updated);
     if (ok) {
       set({ modelsJson: updated });
@@ -478,12 +490,30 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     const { modelsJson } = get();
     if (!modelsJson) return false;
     const existing = modelsJson.providers[id];
-    if (!existing) return false;
+    // Disabled providers keep their config under `_disabledProviders` — updates
+    // (e.g. key-pool changes from a still-open detail panel) must land there
+    // instead of failing because `providers[id]` no longer exists.
+    if (!existing) {
+      const disabledEntry = modelsJson._disabledProviders?.[id];
+      if (!disabledEntry) return false;
+      const newDisabled = {
+        ...modelsJson._disabledProviders,
+        [id]: { ...disabledEntry, ...cfg },
+      };
+      const updated = { providers: modelsJson.providers, _disabledProviders: newDisabled };
+      const ok = await apiPost("/models", updated);
+      if (ok) {
+        set({ modelsJson: updated });
+        const { auth, builtinProviders } = get();
+        set({ allProviders: mergeProviders(builtinProviders, auth ?? {}, updated) });
+      }
+      return ok;
+    }
     const newProviders = {
       ...modelsJson.providers,
       [id]: { ...existing, ...cfg },
     };
-    const updated = { providers: newProviders };
+    const updated = carryDisabled(modelsJson, newProviders);
     const ok = await apiPost("/models", updated);
     if (ok) {
       set({ modelsJson: updated });
@@ -503,7 +533,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     for (const [k, v] of Object.entries(modelsJson.providers)) {
       newProviders[k === oldId ? newId : k] = k === oldId ? { ...existing, ...cfg } : v;
     }
-    const updated = { providers: newProviders };
+    const updated = carryDisabled(modelsJson, newProviders);
     const ok = await apiPost("/models", updated);
     if (!ok) return false;
     set({ modelsJson: updated });
@@ -537,7 +567,13 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     const { modelsJson } = get();
     if (!modelsJson) return false;
     const { [id]: _, ...rest } = modelsJson.providers;
-    const updated = { providers: rest };
+    // Deleting an enabled provider must not wipe the disabled ones either.
+    const disabled = { ...(modelsJson._disabledProviders ?? {}) };
+    delete disabled[id];
+    const updated =
+      Object.keys(disabled).length > 0
+        ? { providers: rest, _disabledProviders: disabled }
+        : { providers: rest };
     const ok = await apiPost("/models", updated);
     if (ok) {
       set({ modelsJson: updated });
