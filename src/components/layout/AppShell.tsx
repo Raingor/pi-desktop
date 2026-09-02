@@ -12,11 +12,7 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
-      <div className="app-atmosphere" aria-hidden="true">
-        <span className="app-orbit app-orbit-one" />
-        <span className="app-orbit app-orbit-two" />
-        <span className="app-scanline" />
-      </div>
+      <div className="app-atmosphere" aria-hidden="true" />
 
       <Sidebar
         mobileOpen={mobileNavOpen}
