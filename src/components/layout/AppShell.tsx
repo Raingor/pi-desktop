@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { Menu, RadioTower } from "lucide-react";
+import { Menu, Terminal } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { HelpButton } from "@/components/help/HelpButton";
 
@@ -42,8 +42,8 @@ export function AppShell() {
             <Menu className="h-5 w-5" />
           </button>
           <div className="mobile-brand">
-            <RadioTower className="h-4 w-4" />
-            <span>PI // CONTROL</span>
+            <Terminal className="h-4 w-4" />
+            <span>pi&nbsp;agent</span>
           </div>
           <span className="system-pulse" aria-hidden="true" />
         </header>

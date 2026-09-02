@@ -107,14 +107,14 @@ type SortDir = "asc" | "desc";
 
 const RANGE_KEYS: RangeKey[] = ["today", "7d", "30d", "custom"];
 
-const COLORS = ["#00d8ff", "#9ef01a", "#ffb84d", "#9f8cff", "#ff5c7a"];
+const COLORS = ["#3f6fd8", "#9dc47a", "#e0a94e", "#a89af0", "#e87a7a"];
 
 const CHART_LINE_COLORS: Record<string, string> = {
-  input: "#00d8ff",
-  output: "#9ef01a",
-  cacheRead: "#9f8cff",
-  cacheWrite: "#ffb84d",
-  cost: "#ff5c7a",
+  input: "#3f6fd8",
+  output: "#9dc47a",
+  cacheRead: "#a89af0",
+  cacheWrite: "#e0a94e",
+  cost: "#e87a7a",
 };
 
 const LOG_PAGE_SIZE = 20;
