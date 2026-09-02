@@ -31,3 +31,5 @@
 - [~] 曾按用户要求把聊天模型菜单改为仅 pi 内置模型；随后用户表示搞错了要求恢复 → git checkout 还原 ChatPage.tsx，重新打包运行（模型菜单恢复显示全部 provider，含 AgentRouter-a1/b.ai/justwoker）
 - [x] fcf5df5 修复：导入/删除/改名提供商时丢弃 `_disabledProviders`（禁用提供商被从磁盘抹掉）+ updateCustomProvider 找不到已禁用条目导致加 key 报「保存失败」；端到端验证通过（模拟 provider 导入）
 - [~] 曾按用户要求把聊天模型菜单改为仅 pi 内置模型；用户澄清搞错了 → 已还原
+- [x] 78cee4f 目录菜单新增「在此目录发起对话」（/chat?project= 种子 + 手动改选清参数）
+- [x] 4bcbe4a 侧栏与对话面板间可拖拽分隔条（200–480px，持久化，双击复位）
