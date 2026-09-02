@@ -1,6 +1,6 @@
 // Electron main process
 // Use process.mainModule.require to access electron module within Electron
-const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, shell } = (process as any).mainModule?.require('electron') || require('electron');
+const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, shell, screen } = (process as any).mainModule?.require('electron') || require('electron');
 // Type-only import (erased at compile time) — does not affect the runtime require workaround above.
 import type { BrowserWindow as BrowserWindowType, Tray as TrayType, IpcMainInvokeEvent } from 'electron';
 import path from 'path';
@@ -77,11 +77,19 @@ function createTrayIcon() {
 // ─── Windows ─────────────────────────────────────────────
 
 function createMainWindow() {
+  // Size to the display instead of a fixed 1280x800: on a 2560x1440 desktop
+  // that fixed box only covered a third of the screen. Take ~82% of the work
+  // area, clamped so it stays reasonable on both small and very large screens.
+  const { width: areaWidth, height: areaHeight } = screen.getPrimaryDisplay().workAreaSize;
+  const width = Math.min(1800, Math.max(1180, Math.round(areaWidth * 0.82)));
+  const height = Math.min(1200, Math.max(760, Math.round(areaHeight * 0.86)));
+
   const win = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 800,
-    minHeight: 600,
+    width,
+    height,
+    minWidth: 900,
+    minHeight: 640,
+    center: true,
     title: 'pi-desktop',
     icon: resolveAppIcon() ?? undefined,
     webPreferences: {
