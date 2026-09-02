@@ -10,10 +10,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Settings is a standalone page with its own navigation. */}
+        <Route path="/settings" element={<SettingsWorkspace />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<ChatPage />} />
           <Route path="/chat" element={<ChatPage />} />
-          <Route path="/settings" element={<SettingsWorkspace />} />
           {/* Legacy basic-mode routes now land in the settings workspace. */}
           <Route path="/sessions" element={<Navigate to="/settings" replace />} />
           <Route path="/memory" element={<Navigate to="/settings" replace />} />

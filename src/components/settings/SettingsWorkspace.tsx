@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Activity, Brain, Gauge, LayoutDashboard, Plug, Settings2, SlidersHorizontal, Users } from "lucide-react";
+import { Activity, ArrowLeft, Brain, Gauge, LayoutDashboard, Plug, Settings2, SlidersHorizontal, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
 import { SessionsPage } from "@/components/sessions/SessionsPage";
@@ -20,9 +21,47 @@ const sections: { key: Section; label: string; icon: typeof Settings2; group: st
   { key: "memory", label: "记忆", icon: Brain, group: "数据" },
 ];
 
+/**
+ * Standalone settings page: its own full-screen layout with the settings
+ * navigation on the left — no chat sidebar. Reached via /settings.
+ */
 export function SettingsWorkspace() {
   const [active, setActive] = useState<Section>("general");
   const content: Record<Section, React.ReactNode> = { general: <SettingsPage />, overview: <DashboardPage />, providers: <ProvidersModelsPage />, subagents: <SubagentsPage />, sessions: <SessionsPage />, memory: <MemoryPage />, speed: <ModelSpeedTestPage /> };
   let lastGroup = "";
-  return <div className="codex-settings-workspace"><aside className="codex-settings-nav"><header><div className="codex-settings-icon"><SlidersHorizontal className="h-5 w-5" /></div><div><h1>设置</h1><p>Pi 本地工作区</p></div></header><nav>{sections.map(({ key, label, icon: Icon, group }) => { const groupLabel = group !== lastGroup ? group : ""; lastGroup = group; return <div key={key}>{groupLabel && <p className="codex-settings-group">{groupLabel}</p>}<button onClick={() => setActive(key)} className={cn(active === key && "is-active")}><Icon className="h-4 w-4" />{label}</button></div>; })}</nav></aside><section className="codex-settings-content">{content[active]}</section></div>;
+  return (
+    <div className="settings-page">
+      <aside className="settings-page-nav">
+        <header>
+          <div className="codex-settings-icon"><SlidersHorizontal className="h-5 w-5" /></div>
+          <div>
+            <h1>设置</h1>
+            <p>Pi 本地工作区</p>
+          </div>
+        </header>
+        <nav>
+          {sections.map(({ key, label, icon: Icon, group }) => {
+            const groupLabel = group !== lastGroup ? group : "";
+            lastGroup = group;
+            return (
+              <div key={key}>
+                {groupLabel && <p className="codex-settings-group">{groupLabel}</p>}
+                <button onClick={() => setActive(key)} className={cn(active === key && "is-active")}>
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              </div>
+            );
+          })}
+        </nav>
+        <Link to="/" className="settings-page-back">
+          <ArrowLeft className="h-4 w-4" />
+          <span>返回对话</span>
+        </Link>
+      </aside>
+      <section className="settings-page-content">
+        <div className="settings-page-inner">{content[active]}</div>
+      </section>
+    </div>
+  );
 }
