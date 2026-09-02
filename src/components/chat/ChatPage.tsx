@@ -134,6 +134,14 @@ export function ChatPage() {
   const [projectPath, setProjectPath] = useState("");
   const [customProject, setCustomProject] = useState(false);
   const [choosingDirectory, setChoosingDirectory] = useState(false);
+  // "在此目录发起对话" links land on /chat?project=<abs path>: seed the
+  // working directory from the URL so the next prompt runs in that project.
+  const requestedProjectPath = searchParams.get("project") ?? "";
+  useEffect(() => {
+    if (!requestedProjectPath) return;
+    setProjectPath(requestedProjectPath);
+    setCustomProject(false);
+  }, [requestedProjectPath]);
   const [selectedModel, setSelectedModel] = useState(
     () => window.localStorage.getItem("pi-web-switch:chat-model") ?? "",
   );
@@ -608,6 +616,14 @@ export function ChatPage() {
                     const value = event.target.value;
                     setCustomProject(value === "__custom__");
                     setProjectPath(value === "__custom__" ? "" : value);
+                    // The URL's ?project= seed only applies on arrival; once
+                    // the user picks manually, drop it so a reload can't
+                    // resurrect the old directory.
+                    if (searchParams.has("project")) {
+                      const next = new URLSearchParams(searchParams);
+                      next.delete("project");
+                      setSearchParams(next, { replace: true });
+                    }
                   }}
                 >
                   <option value="">当前项目（pi-web-switch）</option>

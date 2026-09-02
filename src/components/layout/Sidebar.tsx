@@ -419,6 +419,17 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                 )}
                 {menuProjectPath === group.projectPath && (
                   <div className="conversation-menu project-menu">
+                    <Link
+                      to={`/chat?project=${encodeURIComponent(group.projectPath)}`}
+                      onClick={() => {
+                        setMenuProjectPath(null);
+                        setMenuSessionPath(null);
+                        onClose?.();
+                      }}
+                    >
+                      <MessageSquarePlus className="h-3.5 w-3.5" />
+                      在此目录发起对话
+                    </Link>
                     <button
                       className="conversation-menu-danger"
                       disabled={removing}
