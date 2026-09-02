@@ -627,33 +627,6 @@ table { border-collapse: collapse; }
   .official-usage-cards { grid-template-columns: 1fr; }
 }
 
-/* ─── Help floating action button ───────────────────────── */
-.help-fab {
-  position: fixed;
-  right: 22px;
-  bottom: 22px;
-  z-index: 55;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--signal-cyan) 40%, var(--card-border));
-  background: var(--card-bg-solid);
-  color: var(--signal-cyan);
-  box-shadow: 0 10px 30px rgba(0,0,0,.28), 0 0 24px color-mix(in srgb, var(--signal-cyan) 14%, transparent);
-  cursor: pointer;
-  transition: transform 160ms ease, box-shadow 160ms ease, color 160ms ease;
-}
-.help-fab:hover {
-  transform: translateY(-2px);
-  color: var(--signal-cyan-bright);
-  box-shadow: 0 14px 38px rgba(0,0,0,.34), 0 0 34px color-mix(in srgb, var(--signal-cyan) 22%, transparent);
-}
-@media (max-width: 768px) {
-  .help-fab { right: 14px; bottom: 14px; width: 40px; height: 40px; }
-}
 
 /* ─── Sidebar Telegram join button ──────────────────────── */
 .sidebar-telegram {
