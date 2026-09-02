@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const PI_DESKTOP_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // Matches server.port in vite.config.ts
-const DEFAULT_PORT = 5176;
+const DEFAULT_PORT = 5179;
 
 let serverProcess: ChildProcess | null = null;
 
