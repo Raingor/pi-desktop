@@ -9,6 +9,28 @@ import App from "@/App";
 import "@/index.css";
 
 // ─── Theme Sync ─────────────────────────────────────────
+/**
+ * Push the resolved page background to the Electron window so the frameless
+ * title-bar strip matches the theme instead of flashing white.
+ */
+/**
+ * Mark the document when running inside the Electron shell so CSS can reserve
+ * room for the floating traffic lights and make the top strip draggable.
+ */
+function markDesktopShell() {
+  if ((window as unknown as { piAPI?: unknown }).piAPI) {
+    document.documentElement.classList.add("is-desktop-shell");
+  }
+}
+markDesktopShell();
+
+function syncWindowChrome() {
+  const api = (window as unknown as { piAPI?: { setWindowBackground?: (color: string) => void } }).piAPI;
+  if (!api?.setWindowBackground) return;
+  const value = getComputedStyle(document.documentElement).getPropertyValue("--page-bg").trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(value)) api.setWindowBackground(value);
+}
+
 function useThemeSync(initialized: boolean) {
   const theme = useConfigStore((s) => s.settings?.theme);
 
@@ -26,6 +48,7 @@ function useThemeSync(initialized: boolean) {
       } else {
         root.classList.add(mediaQuery.matches ? "dark" : "light");
       }
+      syncWindowChrome();
     }
     applyTheme();
 

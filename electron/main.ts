@@ -1,6 +1,6 @@
 // Electron main process
 // Use process.mainModule.require to access electron module within Electron
-const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, shell, screen } = (process as any).mainModule?.require('electron') || require('electron');
+const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, nativeTheme, shell, screen } = (process as any).mainModule?.require('electron') || require('electron');
 // Type-only import (erased at compile time) — does not affect the runtime require workaround above.
 import type { BrowserWindow as BrowserWindowType, Tray as TrayType, IpcMainInvokeEvent } from 'electron';
 import path from 'path';
@@ -76,6 +76,23 @@ function createTrayIcon() {
 
 // ─── Windows ─────────────────────────────────────────────
 
+// ─── Theme-aware window chrome ───────────────────────────
+// The frameless/inset title bar shows the window's backgroundColor, so it has
+// to match the renderer's --page-bg or the top edge flashes white.
+const THEME_BG = { light: '#f7f6f3', dark: '#161615' } as const;
+
+function resolveBackgroundColor(): string {
+  let preference: string | undefined;
+  try {
+    preference = (piReader.readSettings() as { theme?: string } | null)?.theme;
+  } catch {
+    /* settings unreadable — fall back to the system preference */
+  }
+  if (preference === 'light') return THEME_BG.light;
+  if (preference === 'dark') return THEME_BG.dark;
+  return nativeTheme.shouldUseDarkColors ? THEME_BG.dark : THEME_BG.light;
+}
+
 function createMainWindow() {
   // Size to the display instead of a fixed 1280x800: on a 2560x1440 desktop
   // that fixed box only covered a third of the screen. Take ~82% of the work
@@ -91,6 +108,10 @@ function createMainWindow() {
     minHeight: 640,
     center: true,
     title: 'pi-desktop',
+    // Immersive top edge: no separate title strip, traffic lights float over
+    // the sidebar (which reserves room for them via the .is-desktop class).
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    backgroundColor: resolveBackgroundColor(),
     icon: resolveAppIcon() ?? undefined,
     webPreferences: {
       preload: resolvePreload(),
@@ -382,13 +403,19 @@ function computeUsageSummary() {
 }
 
 function setupIPC() {
+  // Window chrome: renderer reports its resolved theme background so the
+  // frameless title bar area never shows a stale (white) colour.
+  ipcMain.handle('pi:window:background', (_e: IpcMainInvokeEvent, color: string) => {
+    if (typeof color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(color)) return false;
+    mainWindow?.setBackgroundColor(color);
+    return true;
+  });
+
   // Settings
   ipcMain.handle('pi:settings:get', () => piReader.readSettings());
   ipcMain.handle('pi:settings:set', (_e: IpcMainInvokeEvent, data: any) => piReader.writeSettings(data));
-
   // Auth
-  ipcMain.handle('pi:auth:get', () => piReader.readAuth());
-  ipcMain.handle('pi:auth:set', (_e: IpcMainInvokeEvent, data: any) => piReader.writeAuth(data));
+  ipcMain.handle('pi:auth:get', () => piReader.readAuth());  ipcMain.handle('pi:auth:set', (_e: IpcMainInvokeEvent, data: any) => piReader.writeAuth(data));
 
   // Models
   ipcMain.handle('pi:models:get', () => piReader.readModels());

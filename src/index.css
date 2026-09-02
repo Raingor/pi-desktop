@@ -219,6 +219,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* ─── Chat-first / Codex-inspired workspace ───────────── */
 .codex-sidebar { z-index: 30; display: flex; width: 264px; min-width: 264px; height: 100vh; flex-direction: column; overflow: hidden; border-right: 1px solid color-mix(in srgb, var(--sidebar-border) 86%, transparent); background: color-mix(in srgb, var(--sidebar-bg) 96%, var(--page-bg)); }
 .codex-sidebar-top { display: flex; align-items: center; justify-content: space-between; padding: 14px 13px 8px; }
+
+/* ─── Desktop shell chrome (Electron, hiddenInset title bar) ─── */
+/* No native title strip: reserve room for the traffic lights and let the top
+   edge of both shells act as the window drag handle. */
+.is-desktop-shell .codex-sidebar-top { padding-top: 38px; -webkit-app-region: drag; }
+.is-desktop-shell .codex-sidebar-top a,
+.is-desktop-shell .codex-sidebar-top button { -webkit-app-region: no-drag; }
+.is-desktop-shell .settings-page-nav { padding-top: 42px; }
+.is-desktop-shell .settings-page-nav header { -webkit-app-region: drag; }
+.is-desktop-shell .settings-page-content { padding-top: 22px; }
+.is-desktop-shell .codex-chat { padding-top: 30px; }
 .codex-brand { display: inline-flex; align-items: center; gap: 8px; color: var(--page-text); font-family: var(--font-mono); font-size: 14px; font-weight: 700; letter-spacing: -.01em; text-decoration: none; }
 .codex-brand img { width: 25px; height: 25px; border-radius: 7px; }
 .codex-brand small { margin-left: 1px; color: var(--subtle-text); font-family: var(--font-mono); font-size: 8px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }

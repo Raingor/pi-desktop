@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('piAPI', {
+  // Window chrome — keep the frameless title bar in sync with the UI theme
+  setWindowBackground: (color: string) => ipcRenderer.invoke('pi:window:background', color),
+
   // Settings
   getSettings: () => ipcRenderer.invoke('pi:settings:get'),
   setSettings: (data: any) => ipcRenderer.invoke('pi:settings:set', data),
