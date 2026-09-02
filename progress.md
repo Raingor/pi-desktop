@@ -19,3 +19,13 @@
 - 验证：`npm run check` ✅；`npm test` 3/3 ✅；真实验收 `pi -e ./extensions/pi-usage-summary.js -p "/pi-usage"` 输出真实今日/近 7 日与模型聚合 ✅。
 - 交付报告已写入 `/Users/mac-2312-r/workspace/wwwroot/my-notes/香港集策/工作日志/pi-web-switch/2026-09-02-pi-desktop-usage-summary-交付报告.md`。
 - 待办：产品文件尚未 git commit（由用户决定提交时机）。
+
+## 2026-09-02 下午（续）
+- [x] e05e1d4 修复语言菜单被项目对话列表遮挡（z-index 层叠）
+- [x] f08af7b 窗口尺寸按屏幕自适应（82%/86% 工作区，最小 900×640）
+- [x] 570a956 沉浸式顶栏：hiddenInset + 主题色窗口底色 + setWindowBackground IPC 同步
+- [x] 5bcd0b2 使用统计滚动卡顿修复（去 6 处 backdrop-filter，125ms→16.6ms/帧）
+- [x] 20309a7 全局隐藏滚动条
+- [x] a493f75 按钮配色修复：bg-blue 子串选择器误伤 tab（黑字蓝底）→ 白字主题 token；全站硬编码状态色 token 化；双主题对比度审计清零
+- 备注：审计曾误报两处（32bpp BMP 误读、切主题瞬间采样竞态），均以直接元素探针证伪
+- [~] 曾按用户要求把聊天模型菜单改为仅 pi 内置模型；随后用户表示搞错了要求恢复 → git checkout 还原 ChatPage.tsx，重新打包运行（模型菜单恢复显示全部 provider，含 AgentRouter-a1/b.ai/justwoker）
