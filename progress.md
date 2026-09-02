@@ -29,3 +29,5 @@
 - [x] a493f75 按钮配色修复：bg-blue 子串选择器误伤 tab（黑字蓝底）→ 白字主题 token；全站硬编码状态色 token 化；双主题对比度审计清零
 - 备注：审计曾误报两处（32bpp BMP 误读、切主题瞬间采样竞态），均以直接元素探针证伪
 - [~] 曾按用户要求把聊天模型菜单改为仅 pi 内置模型；随后用户表示搞错了要求恢复 → git checkout 还原 ChatPage.tsx，重新打包运行（模型菜单恢复显示全部 provider，含 AgentRouter-a1/b.ai/justwoker）
+- [x] fcf5df5 修复：导入/删除/改名提供商时丢弃 `_disabledProviders`（禁用提供商被从磁盘抹掉）+ updateCustomProvider 找不到已禁用条目导致加 key 报「保存失败」；端到端验证通过（模拟 provider 导入）
+- [~] 曾按用户要求把聊天模型菜单改为仅 pi 内置模型；用户澄清搞错了 → 已还原
