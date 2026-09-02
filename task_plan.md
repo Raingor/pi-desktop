@@ -73,21 +73,23 @@
 ## 第三轮：Electron Mac 桌面应用
 
 ### 阶段 10：共享 API 路由模块抽取
-- [ ] vite.config.ts 的 38 条路由抽到 server/api-routes.ts（Vite 中间件与 Electron 共用）
-- [ ] dev server 回归验证（API 不变）
+- [x] vite.config.ts 的 38 条路由抽到 server/api-routes.ts
+- [x] dev server 回归验证通过
 
-### 阶段 11：恢复 Electron 外壳（自 pi-web-switch a74132）
-- [ ] 复制 electron/、scripts/、vite.electron/preload.config.ts、build/ 图标
-- [ ] 适配 main.ts（合并用量函数、品牌改名）+ 新写 api-server.ts（静态服务+委托共享路由）
-- [ ] vite build 增加 popup 入口；package.json 加 electron 脚本/依赖/builder 配置
+### 阶段 11：恢复 Electron 外壳
+- [x] 复制 electron/、scripts/、构建配置、图标（自 a74132）
+- [x] main.ts 适配 + 新 api-server.ts + popup 入口 + package.json electron 配置
 
 ### 阶段 12：构建与验收
-- [ ] tsc + vite build + electron 构建
-- [ ] electron:preview 运行验证（本地 api-server + 窗口）
-- [ ] electron-builder 打 DMG，启动 .app 实测
+- [x] tsc ✅ vite build ✅ electron 构建 ✅
+- [x] electron:preview 验证（api-server + 全端点）✅
+- [x] DMG 打包 + .app 实测运行 ✅
 
 ### 阶段 13：交付
-- [ ] git commit + 报告存入「我的开发日记」
+- [x] commit c261b7a；报告存「我的开发日记」
+
+## 完成状态
+- Mac 应用版已交付：release/pi-desktop-0.8.3.dmg（未签名，x64）；主窗口+托盘模式；启动即开窗。
 
 ## 当前决策
 - MVP 已确定为 Pi package 中的 `/pi-usage` 会话用量摘要命令。

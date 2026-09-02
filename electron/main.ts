@@ -11,6 +11,14 @@ import { startApiServer } from './api-server';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Persist startup diagnostics to a log file (GUI launches have no stdout).
+const LOG_FILE = '/tmp/pi-desktop-app.log';
+function log(...args: unknown[]) {
+  const line = `[${new Date().toISOString()}] ${args.map(String).join(' ')}\n`;
+  try { fs.appendFileSync(LOG_FILE, line); } catch { /* best effort */ }
+  console.log(...args);
+}
+
 // Keep global references to prevent garbage collection
 let mainWindow: BrowserWindowType | null = null;
 let popupWindow: BrowserWindowType | null = null;
@@ -83,6 +91,17 @@ function createMainWindow() {
     },
   });
   mainWindow = win;
+
+  // Surface renderer failures to the persistent log file.
+  win.webContents.on('did-fail-load', (_e: unknown, code: number, desc: string, url: string) => {
+    log(`[did-fail-load] ${code} ${desc} ${url}`);
+  });
+  win.webContents.on('render-process-gone', (_e: unknown, details: { reason: string }) => {
+    log('[render-process-gone]', details.reason);
+  });
+  win.webContents.on('did-finish-load', () => {
+    log('[did-finish-load]', win.webContents.getURL());
+  });
 
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL);
@@ -424,6 +443,12 @@ function setDockIcon() {
 }
 
 // ─── App lifecycle ───────────────────────────────────────
+
+// Some macOS/GPU combinations (notably newer Electron on Intel Macs) fail to
+// composite the window to screen while the renderer itself is healthy — the
+// window stays white even though the page rendered (capturePage is fine).
+// Software rendering fixes it and the UI is light enough not to need GPU.
+app.disableHardwareAcceleration();
 
 app.whenReady().then(async () => {
   try {
