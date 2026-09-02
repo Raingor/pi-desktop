@@ -232,7 +232,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .version-strip { display: flex; justify-content: space-between; padding: 10px 20px 13px; color: var(--subtle-text); border-top: 1px solid var(--sidebar-border); font-family: var(--font-mono); font-size: 7px; letter-spacing: .08em; }
 
 /* ─── Chat-first / Codex-inspired workspace ───────────── */
-.codex-sidebar { z-index: 30; display: flex; width: 264px; min-width: 264px; height: 100vh; flex-direction: column; overflow: hidden; border-right: 1px solid color-mix(in srgb, var(--sidebar-border) 86%, transparent); background: color-mix(in srgb, var(--sidebar-bg) 96%, var(--page-bg)); }
+.codex-sidebar { z-index: 30; display: flex; width: var(--sidebar-w, 264px); min-width: var(--sidebar-w, 264px); height: 100vh; flex-direction: column; overflow: hidden; border-right: 1px solid color-mix(in srgb, var(--sidebar-border) 86%, transparent); background: color-mix(in srgb, var(--sidebar-bg) 96%, var(--page-bg)); }
+
+/* ─── Sidebar / chat pane divider ───────────────────── */
+/* Draggable splitter between the conversation list and the chat pane.
+   It overlaps the sidebar's right border by 3px on each side so the hit
+   area is generous while the visible grip is a thin 2px strip. */
+.sidebar-resizer { position: relative; z-index: 31; flex: 0 0 7px; margin: 0 -3px; cursor: col-resize; touch-action: none; }
+.sidebar-resizer::after { content: ""; position: absolute; inset: 0 2px; border-radius: 3px; background: transparent; transition: background 120ms ease; }
+.sidebar-resizer:hover::after,
+.sidebar-resizer.is-dragging::after { background: color-mix(in srgb, var(--signal-cyan) 55%, transparent); }
+body.is-resizing { cursor: col-resize; user-select: none; }
+@media (max-width: 820px) { .sidebar-resizer { display: none; } }
 .codex-sidebar-top { display: flex; align-items: center; justify-content: space-between; padding: 14px 13px 8px; }
 
 /* ─── Desktop shell chrome (Electron, hiddenInset title bar) ─── */
