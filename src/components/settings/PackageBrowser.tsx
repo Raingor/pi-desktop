@@ -62,7 +62,7 @@ function PackageRow({
       </div>
       {installed ? (
         <span className="flex shrink-0 items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium"
-          style={{ borderColor: "rgba(16,185,129,0.4)", color: "#10b981" }}>
+          style={{ borderColor: "color-mix(in srgb, var(--success-text) 45%, transparent)", color: "var(--success-text)" }}>
           <Check className="h-3.5 w-3.5" />
           {t("settings.installed")}
         </span>

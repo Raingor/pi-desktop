@@ -432,7 +432,7 @@ export function ModelSpeedTestPage() {
                       onClick={runAll}
                       disabled={running || fetching || models.length === 0}
                       className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                      style={{ backgroundColor: "#3b82f6" }}
+                      style={{ backgroundColor: "var(--accent-solid)" }}
                     >
                       {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                       {running ? t("speed_test.testing") : t("speed_test.run_all")}

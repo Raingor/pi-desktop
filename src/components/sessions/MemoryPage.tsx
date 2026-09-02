@@ -40,9 +40,9 @@ const FILE_ICONS: Record<string, typeof Brain> = {
 };
 
 const FILE_COLORS: Record<string, string> = {
-  "MEMORY.md": "#3b82f6",
-  "USER.md": "#10b981",
-  "failures.md": "#ef4444",
+  "MEMORY.md": "var(--signal-cyan)",
+  "USER.md": "var(--success-text)",
+  "failures.md": "var(--danger-text)",
 };
 
 const FILE_LABEL_KEYS: Record<string, string> = {
@@ -168,7 +168,7 @@ function renderInline(text: string, q: string): ReactNode {
           target="_blank"
           rel="noreferrer"
           className="underline underline-offset-2"
-          style={{ color: "#3b82f6" }}
+          style={{ color: "var(--signal-cyan)" }}
         >
           {highlight(link[1] ?? "", q)}
         </a>
@@ -228,7 +228,7 @@ function EntryCard({
         <button
           onClick={handleCopy}
           className="rounded p-1 transition-colors hover:bg-black/10"
-          style={{ color: copied ? "#10b981" : "var(--muted-text)" }}
+          style={{ color: copied ? "var(--success-text)" : "var(--muted-text)" }}
           title={copied ? t("memory.copied") : t("memory.copy")}
         >
           {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -236,7 +236,7 @@ function EntryCard({
         <button
           onClick={onDelete}
           className="rounded p-1 transition-colors hover:bg-black/10"
-          style={{ color: "#ef4444" }}
+          style={{ color: "var(--danger-text)" }}
           title={t("memory.delete")}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -629,13 +629,13 @@ export function MemoryPage() {
             {status.map((s) => {
               const pct = s.limit > 0 ? Math.min(100, Math.round((s.chars / s.limit) * 100)) : 0;
               const over = s.chars > s.limit;
-              const barColor = over ? "#ef4444" : pct > 80 ? "#f59e0b" : "#10b981";
+              const barColor = over ? "var(--danger-text)" : pct > 80 ? "var(--warn-text)" : "var(--success-text)";
               const label = FILE_LABEL_KEYS[s.filename] ? t(FILE_LABEL_KEYS[s.filename]!) : s.filename;
               return (
                 <div key={s.filename}>
                   <div className="mb-1 flex items-center justify-between text-[11px]" style={{ color: "var(--muted-text)" }}>
                     <span>{label} <span style={{ color: "var(--subtle-text)" }}>· {s.filename}</span></span>
-                    <span style={{ color: over ? "#ef4444" : "var(--muted-text)" }}>
+                    <span style={{ color: over ? "var(--danger-text)" : "var(--muted-text)" }}>
                       {s.chars} / {s.limit} ({pct}%)
                     </span>
                   </div>
@@ -655,7 +655,7 @@ export function MemoryPage() {
             </div>
           )}
           {!optimizing && optimizeMsg && (
-            <div className="text-xs" style={{ color: optimizeMsg.ok ? "#10b981" : "#ef4444" }}>
+            <div className="text-xs" style={{ color: optimizeMsg.ok ? "var(--success-text)" : "var(--danger-text)" }}>
               {optimizeMsg.text}
             </div>
           )}
@@ -827,7 +827,7 @@ export function MemoryPage() {
           </div>
           <div className="flex items-center justify-end gap-3">
             {cfgMsg && (
-              <span className="text-xs" style={{ color: cfgMsg.ok ? "#10b981" : "#ef4444" }}>{cfgMsg.text}</span>
+              <span className="text-xs" style={{ color: cfgMsg.ok ? "var(--success-text)" : "var(--danger-text)" }}>{cfgMsg.text}</span>
             )}
             <button
               onClick={() => setShowConfig(false)}
@@ -841,7 +841,7 @@ export function MemoryPage() {
               onClick={handleSaveConfig}
               disabled={cfgSaving}
               className="rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              style={{ backgroundColor: "#2563eb" }}
+              style={{ backgroundColor: "var(--accent-solid)" }}
             >
               {cfgSaving ? t("memory.config_saving") : t("memory.config_save")}
             </button>

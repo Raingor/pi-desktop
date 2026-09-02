@@ -255,7 +255,7 @@ function StatCard({
         <div className="mt-2 h-1.5 w-full rounded-full" style={{ backgroundColor: "var(--card-border)" }}>
           <div
             className="h-full rounded-full transition-all"
-            style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: progress > 90 ? "#10b981" : "#3b82f6" }}
+            style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: progress > 90 ? "var(--success-text)" : "var(--signal-cyan)" }}
           />
         </div>
       )}
@@ -587,8 +587,8 @@ export function DashboardPage() {
             <p
               className="mt-1 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs"
               style={{
-                borderColor: data.notice === "no-config" ? "#f59e0b" : "#ef4444",
-                color: data.notice === "no-config" ? "#f59e0b" : "#f87171",
+                borderColor: data.notice === "no-config" ? "var(--warn-text)" : "var(--danger-text)",
+                color: data.notice === "no-config" ? "var(--warn-text)" : "#f87171",
                 backgroundColor: data.notice === "no-config" ? "#f59e0b11" : "#ef444411",
               }}
             >
@@ -621,12 +621,12 @@ export function DashboardPage() {
               className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
               style={{
                 borderColor: "var(--card-border)",
-                color: autoRefresh ? "#10b981" : "var(--muted-text)",
+                color: autoRefresh ? "var(--success-text)" : "var(--muted-text)",
                 backgroundColor: "var(--card-bg)",
               }}
             >
               <span className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: autoRefresh ? "#10b981" : "var(--subtle-text)" }} />
+                style={{ backgroundColor: autoRefresh ? "var(--success-text)" : "var(--subtle-text)" }} />
               {autoRefresh ? `${refreshInterval}s` : t("dashboard.off")}
             </button>
             {showIntervalPicker && (
@@ -657,7 +657,7 @@ export function DashboardPage() {
                   >
                     <span className={refreshInterval === s && autoRefresh ? "font-medium" : ""}>{s}s</span>
                     {refreshInterval === s && autoRefresh && (
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth={3}>
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="var(--success-text)" strokeWidth={3}>
                         <path d="M20 6L9 17l-5-5" />
                       </svg>
                     )}
@@ -677,7 +677,7 @@ export function DashboardPage() {
                   ? "text-white"
                   : "hover:bg-gray-800/30"
               )}
-              style={range === key ? { backgroundColor: "#3b82f6", color: "#fff" } : { color: "var(--muted-text)" }}
+              style={range === key ? { backgroundColor: "var(--accent-solid)", color: "#fff" } : { color: "var(--muted-text)" }}
             >
               {t("dashboard.range." + key)}
             </button>
@@ -736,7 +736,7 @@ export function DashboardPage() {
             value={customFrom || today}
             onChange={(e) => setCustomFrom(e.target.value)}
             className="rounded-lg border px-3 py-1.5 text-xs"
-            style={{ backgroundColor: "var(--input-bg)", borderColor: customInvalid ? "#ef4444" : "var(--input-border)", color: "var(--input-text)" }}
+            style={{ backgroundColor: "var(--input-bg)", borderColor: customInvalid ? "var(--danger-text)" : "var(--input-border)", color: "var(--input-text)" }}
           />
           <span className="text-xs" style={{ color: "var(--muted-text)" }}>{t("dashboard.to")}</span>
           <input
@@ -744,7 +744,7 @@ export function DashboardPage() {
             value={customTo || today}
             onChange={(e) => setCustomTo(e.target.value)}
             className="rounded-lg border px-3 py-1.5 text-xs"
-            style={{ backgroundColor: "var(--input-bg)", borderColor: customInvalid ? "#ef4444" : "var(--input-border)", color: "var(--input-text)" }}
+            style={{ backgroundColor: "var(--input-bg)", borderColor: customInvalid ? "var(--danger-text)" : "var(--input-border)", color: "var(--input-text)" }}
           />
           {customInvalid && <span className="text-xs text-red-400">{t("dashboard.invalid_range")}</span>}
         </div>
@@ -764,30 +764,30 @@ export function DashboardPage() {
             <StatCard
               title={t("dashboard.total_tokens")}
               value={data.totalTokens.toLocaleString("en-US")}
-              icon={<Activity className="h-4 w-4" style={{ color: "#3b82f6" }} />}
+              icon={<Activity className="h-4 w-4" style={{ color: "var(--signal-cyan)" }} />}
               subtitle={`≈ ${formatTokensShort(data.totalTokens, lang)}`}
               trend={tokenTrend}
               trendLabel={tokenTrend !== undefined ? t("dashboard.vs_prev") : undefined}
             >
               <div className="mt-3 space-y-0.5 border-t pt-3" style={{ borderColor: "var(--card-border)" }}>
-                <BreakdownRow label={t("dashboard.input")} value={data.totalInput} total={data.totalTokens} color="#3b82f6" lang={lang} />
-                <BreakdownRow label={t("dashboard.output")} value={data.totalOutput} total={data.totalTokens} color="#10b981" lang={lang} />
-                <BreakdownRow label={t("dashboard.cache_create")} value={data.totalCacheWrite} total={data.totalTokens} color="#f59e0b" lang={lang} />
-                <BreakdownRow label={t("dashboard.cache_hit")} value={data.totalCacheRead} total={data.totalTokens} color="#8b5cf6" lang={lang} />
+                <BreakdownRow label={t("dashboard.input")} value={data.totalInput} total={data.totalTokens} color="var(--signal-cyan)" lang={lang} />
+                <BreakdownRow label={t("dashboard.output")} value={data.totalOutput} total={data.totalTokens} color="var(--success-text)" lang={lang} />
+                <BreakdownRow label={t("dashboard.cache_create")} value={data.totalCacheWrite} total={data.totalTokens} color="var(--warn-text)" lang={lang} />
+                <BreakdownRow label={t("dashboard.cache_hit")} value={data.totalCacheRead} total={data.totalTokens} color="var(--signal-violet)" lang={lang} />
               </div>
             </StatCard>
 
             <StatCard
               title={t("dashboard.total_requests")}
               value={formatNumber(data.totalRequests)}
-              icon={<BarChart3 className="h-4 w-4" style={{ color: "#10b981" }} />}
+              icon={<BarChart3 className="h-4 w-4" style={{ color: "var(--success-text)" }} />}
               subtitle={t("dashboard.api_calls")}
             />
 
             <StatCard
               title={t("dashboard.total_cost")}
               value={formatCost(data.totalCost, currency)}
-              icon={<DollarSign className="h-4 w-4" style={{ color: "#f59e0b" }} />}
+              icon={<DollarSign className="h-4 w-4" style={{ color: "var(--warn-text)" }} />}
               subtitle={`${currency === "CNY" ? `¥${(data.totalCost * USD_TO_CNY).toFixed(4)}` : `$${data.totalCost.toFixed(4)}`} ${currency}`}
               trend={costTrend}
               trendLabel={costTrend !== undefined ? t("dashboard.vs_prev") : undefined}
@@ -796,7 +796,7 @@ export function DashboardPage() {
             <StatCard
               title={t("dashboard.cache_hit_rate")}
               value={`${data.cacheHitRate}%`}
-              icon={<Database className="h-4 w-4" style={{ color: "#8b5cf6" }} />}
+              icon={<Database className="h-4 w-4" style={{ color: "var(--signal-violet)" }} />}
               progress={data.cacheHitRate}
             />
           </div>
@@ -1148,7 +1148,7 @@ export function DashboardPage() {
                             <td className="px-4 py-2.5">
                               <div className="flex items-center gap-2">
                                 <div className="h-1.5 flex-1 rounded-full" style={{ backgroundColor: "var(--card-border)" }}>
-                                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: COLORS[i % COLORS.length] ?? "#3b82f6" }} />
+                                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: COLORS[i % COLORS.length] ?? "var(--signal-cyan)" }} />
                                 </div>
                                 <span className="text-xs w-11 text-right" style={{ color: "var(--subtle-text)" }}>{pct.toFixed(1)}%</span>
                               </div>

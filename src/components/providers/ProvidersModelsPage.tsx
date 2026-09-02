@@ -493,7 +493,7 @@ export function ProvidersModelsPage() {
             <button
               onClick={handleDeleteProvider}
               className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white"
-              style={{ backgroundColor: "#dc2626" }}
+              style={{ backgroundColor: "var(--danger-solid)" }}
             >
               <Trash2 className="h-4 w-4" />
               {t("providers.delete_provider")}
@@ -1293,7 +1293,7 @@ function ProviderDetail({ provider, onDelete, onDuplicate, onRenamed, modelsJson
             onClick={handleSave}
             disabled={saveState === "saving" || urlInvalid}
             className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
-            style={{ backgroundColor: "#3b82f6", color: "#ffffff" }}
+            style={{ backgroundColor: "var(--accent-solid)", color: "#ffffff" }}
           >
             {saveState === "saving" && <Loader2 className="h-4 w-4 animate-spin" />}
             {t("models.save")}
@@ -1497,7 +1497,7 @@ function ProviderDetail({ provider, onDelete, onDuplicate, onRenamed, modelsJson
               onClick={handleQuickAdd}
               disabled={!quickId.trim()}
               className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
-              style={{ backgroundColor: "#10b981" }}
+              style={{ backgroundColor: "var(--success-solid)" }}
             >
               <Plus className="h-4 w-4" />
               {t("models.quick_add")}
@@ -1589,7 +1589,7 @@ function ProviderDetail({ provider, onDelete, onDuplicate, onRenamed, modelsJson
                 ) : filteredAvailableModels.map((m) => (
                   <div key={m.id} className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-gray-800 cursor-pointer" onClick={() => toggleSelect(m.id)}>
                     <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded border"
-                      style={{ backgroundColor: isSelected(m.id) ? "#3b82f6" : "transparent", borderColor: isSelected(m.id) ? "#3b82f6" : "#4b5563" }}
+                      style={{ backgroundColor: isSelected(m.id) ? "var(--accent-solid)" : "transparent", borderColor: isSelected(m.id) ? "var(--accent-solid)" : "#4b5563" }}
                     >
                       {isSelected(m.id) && <SquareCheck className="h-4 w-4 text-white" />}
                     </div>
@@ -1631,7 +1631,7 @@ function ProviderDetail({ provider, onDelete, onDuplicate, onRenamed, modelsJson
             </button>
             <button onClick={handleImportFetched} disabled={fetching || fetchSelected.size === 0}
               className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
-              style={{ backgroundColor: "#3b82f6", color: "#ffffff" }}>
+              style={{ backgroundColor: "var(--accent-solid)", color: "#ffffff" }}>
               {t("providers_models.confirm_import")}
             </button>
           </div>
@@ -1707,7 +1707,7 @@ function ProviderDetail({ provider, onDelete, onDuplicate, onRenamed, modelsJson
                 }
               }}
               className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white"
-              style={{ backgroundColor: "#dc2626" }}
+              style={{ backgroundColor: "var(--danger-solid)" }}
             >
               <Trash2 className="h-4 w-4" />
               {t("models.delete_model")}
@@ -2096,7 +2096,7 @@ function ModelForm({ initial, onSubmit, onCancel }: ModelFormProps) {
           onClick={() => onSubmit(form)}
           disabled={!form.id}
           className="rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
-          style={{ backgroundColor: "#3b82f6", color: "#ffffff" }}
+          style={{ backgroundColor: "var(--accent-solid)", color: "#ffffff" }}
         >
           {isEdit ? t("models.save") : t("models.add_model")}
         </button>
@@ -2270,7 +2270,7 @@ function AddProviderForm({
           onClick={handleSubmit}
           disabled={!id || !baseUrl || idExists || urlInvalid || submitting}
           className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
-          style={{ backgroundColor: "#3b82f6", color: "#ffffff" }}
+          style={{ backgroundColor: "var(--accent-solid)", color: "#ffffff" }}
         >
           {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
           {t("providers.add_provider")}
@@ -2732,7 +2732,7 @@ function ImportProviderModal({
             onClick={handleImport}
             disabled={!canSubmit}
             className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
-            style={{ backgroundColor: "#3b82f6", color: "#ffffff" }}
+            style={{ backgroundColor: "var(--accent-solid)", color: "#ffffff" }}
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
             {t("providers_models.import")}

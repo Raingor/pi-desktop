@@ -31,6 +31,16 @@
   --sidebar-hover-text: #1f1e1b;
   --signal-cyan: #3f6fd8;
   --signal-cyan-bright: #5d87e8;
+  /* Solid accent for filled buttons — dark enough for white label text (AA). */
+  --accent-solid: #4a72d4;
+  --accent-solid-deep: #2f56ad;
+  /* Status colours: -solid for filled buttons (AA with white label),
+     -text for labels/icons on tints (AA on light backgrounds). */
+  --success-solid: #12805c;
+  --danger-solid: #dc2626;
+  --success-text: #4a7a00;
+  --danger-text: #b3261e;
+  --warn-text: #8a5200;
   --signal-lime: #5a8a3c;
   --signal-amber: #c07f00;
   --signal-red: #c94f4f;
@@ -80,6 +90,11 @@
   --sidebar-hover-text: #e9e8e3;
   --signal-cyan: #6d92ec;
   --signal-cyan-bright: #93b0f2;
+  --accent-solid: #4a72d4;
+  --accent-solid-deep: #31599f;
+  --success-text: var(--signal-lime);
+  --danger-text: var(--signal-red);
+  --warn-text: var(--signal-amber);
   --signal-lime: #9dc47a;
   --signal-amber: #e0a94e;
   --signal-red: #e87a7a;
@@ -335,11 +350,20 @@ input, select, textarea {
   box-shadow: 0 1px 0 color-mix(in srgb, white 5%, transparent) inset;
 }
 input:focus, select:focus, textarea:focus { border-color: color-mix(in srgb, var(--signal-cyan) 65%, var(--input-border)) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal-cyan) 9%, transparent); }
+/* Accent buttons: the theme paints every blue Tailwind button as a solid
+   accent pill, so the label must be white. It used to be near-black (#001014),
+   which is what made 外观/模型/高级 and every other blue button unreadable. */
 button[class*="bg-blue-600"], button[class*="bg-blue-500"] {
-  color: #001014 !important;
-  background: linear-gradient(135deg, var(--signal-cyan-bright), var(--signal-cyan)) !important;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--signal-cyan) 18%, transparent);
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--accent-solid), var(--accent-solid-deep)) !important;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent-solid-deep) 22%, transparent);
 }
+button[class*="bg-blue-600"] svg, button[class*="bg-blue-500"] svg { color: #fff; }
+/* Same for buttons painted via inline style tokens (providers/speedtest/…). */
+button[style*="--accent-solid"], button[style*="--success-solid"], button[style*="--danger-solid"] { color: #fff !important; }
+button[style*="--accent-solid"] svg, button[style*="--success-solid"] svg, button[style*="--danger-solid"] svg { color: #fff; }
+/* Keep the pill outline on-theme instead of Tailwind's raw blue. */
+button[class*="border-blue-500"], button[class*="border-blue-600"] { border-color: var(--accent-solid-deep) !important; }
 button[class*="bg-blue-600"]:hover, button[class*="bg-blue-500"]:hover { transform: translateY(-1px); filter: brightness(1.06); }
 table { border-collapse: collapse; }
 .font-mono { font-family: var(--font-mono) !important; font-variant-numeric: tabular-nums; }
@@ -398,13 +422,13 @@ table { border-collapse: collapse; }
 .light .bg-black\/60 { background-color: rgba(12, 30, 35, .52); }
 .light .border-gray-800, .light .border-gray-800\/50, .light .border-gray-700, .light .border-gray-600 { border-color: var(--card-border); }
 .light .text-blue-400 { color: var(--signal-cyan); }
-.light .bg-blue-600 { background-color: var(--signal-cyan); }
+.light .bg-blue-600 { background-color: var(--accent-solid); }
 .light .bg-blue-500\/10, .light .bg-blue-600\/10 { background-color: var(--accent-bg); }
-.light .text-emerald-400 { color: #558d00; }
-.light .text-amber-400 { color: #b46b00; }
+.light .text-emerald-400 { color: var(--success-text); }
+.light .text-amber-400 { color: var(--warn-text); }
 .light .text-purple-400 { color: var(--signal-violet); }
-.light .text-red-400 { color: #d73558; }
-.light .bg-red-600 { background-color: #d73558; }
+.light .text-red-400 { color: var(--danger-text); }
+.light .bg-red-600 { background-color: var(--danger-solid); }
 .light .bg-red-950\/20 { background-color: rgba(215,53,88,.07); }
 .light .border-red-700, .light .border-red-900\/30 { border-color: rgba(215,53,88,.3); }
 .light .bg-emerald-500\/10 { background-color: rgba(85,141,0,.08); }
@@ -666,7 +690,7 @@ table { border-collapse: collapse; }
 .official-usage-field small { color: var(--subtle-text); font-size: 10px; }
 .official-usage-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding-top: 17px; }
 .official-usage-primary, .official-usage-refresh { display: inline-flex; align-items: center; gap: 7px; border: 1px solid color-mix(in srgb, var(--signal-cyan) 40%, var(--card-border)); border-radius: 7px; }
-.official-usage-primary { padding: 10px 15px; color: #001014; background: linear-gradient(135deg, var(--signal-cyan-bright), var(--signal-cyan)); font-size: 12px; font-weight: 700; text-shadow: 0 1px 0 rgba(255,255,255,0.35); }
+.official-usage-primary { padding: 10px 15px; color: #fff; background: linear-gradient(135deg, var(--accent-solid), var(--accent-solid-deep)); font-size: 12px; font-weight: 700; }
 .official-usage-primary:disabled { cursor: not-allowed; opacity: .45; }
 .official-usage-primary svg, .official-usage-refresh svg { width: 15px; height: 15px; }
 .official-usage-saved { display: inline-flex; align-items: center; gap: 5px; color: var(--signal-lime); font-size: 11px; }
