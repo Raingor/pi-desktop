@@ -467,6 +467,11 @@ function warmUsageCache() {
 
 function setDockIcon() {
   if (process.platform !== 'darwin' || !app.dock) return;
+  // Packaged builds ship a proper icon.icns in Info.plist. Calling
+  // app.dock.setIcon() here with a raw PNG made the running app's dock icon
+  // render at a different size than the loading one (macOS normalises
+  // Info.plist icons onto its icon grid, but not runtime-set PNGs).
+  if (app.isPackaged) return;
   const iconPath = resolveAppIcon();
   if (iconPath && fs.existsSync(iconPath)) {
     try {
