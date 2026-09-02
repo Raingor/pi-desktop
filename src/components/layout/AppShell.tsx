@@ -2,19 +2,14 @@ import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Menu, RadioTower } from "lucide-react";
 import { Sidebar } from "./Sidebar";
-import { BasicSidebar } from "./BasicSidebar";
 import { HelpButton } from "@/components/help/HelpButton";
-import { useUiMode } from "@/lib/ui-mode";
 
 export function AppShell() {
   const location = useLocation();
-  const { mode } = useUiMode();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  // Basic mode keeps every page inside the scrollable canvas, like the
-  // pre-chat layout. Chat mode gives the chat and dashboard full height.
+  // The chat and dashboard pages get the full canvas height.
   const isFullHeightPage =
-    mode === "chat" &&
-    (location.pathname === "/" || location.pathname.startsWith("/chat"));
+    location.pathname === "/" || location.pathname.startsWith("/chat");
 
   return (
     <div className="app-shell">
@@ -24,17 +19,10 @@ export function AppShell() {
         <span className="app-scanline" />
       </div>
 
-      {mode === "chat" ? (
-        <Sidebar
-          mobileOpen={mobileNavOpen}
-          onClose={() => setMobileNavOpen(false)}
-        />
-      ) : (
-        <BasicSidebar
-          mobileOpen={mobileNavOpen}
-          onClose={() => setMobileNavOpen(false)}
-        />
-      )}
+      <Sidebar
+        mobileOpen={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+      />
 
       {mobileNavOpen && (
         <button

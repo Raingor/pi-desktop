@@ -17,7 +17,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useTranslation, LANGUAGES } from "@/lib/i18n";
 import { ChangelogButton } from "@/components/help/ChangelogButton";
-import { UiModeSwitch } from "./UiModeSwitch";
 
 const TELEGRAM_GROUP_URL = "https://t.me/+ODpy7_7NlOE4NzA1";
 interface Session {
@@ -528,7 +527,6 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         )}
       </nav>
       <div className="codex-sidebar-bottom">
-        <UiModeSwitch />
         <Link
           to="/settings"
           onClick={onClose}
