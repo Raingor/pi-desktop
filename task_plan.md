@@ -50,24 +50,44 @@
 ## 第二轮：codex/web-pi-chat 分支功能搬迁
 
 ### 阶段 6：源码搬迁
-- [ ] 复制分支产品源码到 pi-desktop（排除 .git/node_modules/dist/对方 planning 文件）
-- [ ] package.json 更名并接入 extensions/pi-usage-summary.js
-- **验证：** 文件清单完整，git status 可见新增
+- [x] 复制分支产品源码到 pi-desktop（排除 .git/node_modules/dist/对方 planning 文件）
+- [x] package.json 更名并接入 extensions/pi-usage-summary.js；重写 pi-package/index.ts 为当前 API
+- **验证：** 70 文件 +35250 行，commit 51cd39d
 
 ### 阶段 7：安装与构建验证
-- [ ] npm install
-- [ ] npm run check / test / build（适用项）
-- **验证：** 命令成功
+- [x] npm install（Node 22.23.1）
+- [x] npm run check ✅；node --test 3/3 ✅；vitest 60/60 ✅；build ✅（2519 模块）
 
 ### 阶段 8：运行时验收
-- [ ] 启动 dev server，验证 API 端点
-- [ ] 验证 /pi-usage 扩展仍可用
-- **验证：** 端点返回正常 JSON
+- [x] dev server API 冒烟：8 端点全部 200；session-history/session-usage 真实数据正确；chat/stop 校验生效
+- [x] Chat 端到端：SSE→spawn pi→会话落盘→done；模型 402（账号额度）为外部因素
+- [x] /pi-usage ✅；/pi-switch status/start ✅（已重写为当前 API）
 
 ### 阶段 9：交付记录
-- [ ] git commit
-- [ ] 更新工作报告与工作日志
-- **验证：** 记录已保存
+- [x] git commit 51cd39d
+- [x] 交付报告已存 工作日志/pi-web-switch/2026-09-02-pi-desktop-分支功能搬迁交付报告.md
+
+## 完成状态
+- 两轮（Web 版）已交付。
+
+## 第三轮：Electron Mac 桌面应用
+
+### 阶段 10：共享 API 路由模块抽取
+- [ ] vite.config.ts 的 38 条路由抽到 server/api-routes.ts（Vite 中间件与 Electron 共用）
+- [ ] dev server 回归验证（API 不变）
+
+### 阶段 11：恢复 Electron 外壳（自 pi-web-switch a74132）
+- [ ] 复制 electron/、scripts/、vite.electron/preload.config.ts、build/ 图标
+- [ ] 适配 main.ts（合并用量函数、品牌改名）+ 新写 api-server.ts（静态服务+委托共享路由）
+- [ ] vite build 增加 popup 入口；package.json 加 electron 脚本/依赖/builder 配置
+
+### 阶段 12：构建与验收
+- [ ] tsc + vite build + electron 构建
+- [ ] electron:preview 运行验证（本地 api-server + 窗口）
+- [ ] electron-builder 打 DMG，启动 .app 实测
+
+### 阶段 13：交付
+- [ ] git commit + 报告存入「我的开发日记」
 
 ## 当前决策
 - MVP 已确定为 Pi package 中的 `/pi-usage` 会话用量摘要命令。

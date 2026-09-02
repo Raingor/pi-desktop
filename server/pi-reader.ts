@@ -165,7 +165,7 @@ function officialUsagePath(): string {
 function normalizeOfficialUsageConfig(value: any): OfficialUsageConfig {
   const endpoint = typeof value?.endpoint === "string" ? value.endpoint.trim() : "";
   const apiKeys = Array.isArray(value?.apiKeys)
-    ? value.apiKeys.filter((key: unknown): key is string => typeof key === "string").map((key) => key.trim()).filter(Boolean)
+    ? value.apiKeys.filter((key: unknown): key is string => typeof key === "string").map((key: string) => key.trim()).filter(Boolean)
     : typeof value?.apiKey === "string" && value.apiKey.trim()
       ? [value.apiKey.trim()]
       : [];
@@ -1845,7 +1845,7 @@ export function updateSessionUserMessage(sessionId: string, messageId: string, t
     });
     if (index < 0) return false;
 
-    const entry = JSON.parse(lines[index]);
+    const entry = JSON.parse(lines[index]!);
     const content = entry.message.content;
     if (typeof content === "string") {
       entry.message.content = nextText;
