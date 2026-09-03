@@ -1068,7 +1068,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 
-.app-stage { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.app-stage { position: relative; display: flex; min-width: 0; flex: 1; flex-direction: column; }
 .app-main { min-width: 0; flex: 1; overflow-y: auto; overflow-x: hidden; }
 .app-main-full { overflow: hidden; background: var(--page-bg); }
 .app-canvas { width: min(100%, 1720px); margin: 0 auto; padding: 34px 20px 48px; animation: canvas-enter 480ms cubic-bezier(.22,.8,.25,1) both; }
@@ -1776,6 +1776,9 @@ table { border-collapse: collapse; }
    --tools-w, its own drag handle, and it never shrinks the chat below usable
    width because the stage keeps min-width: 0. */
 
+/* Anchored to the stage, not the window: .app-stage is position: relative so
+   the button rides the chat area's right edge and slides left when the tool
+   panel opens instead of sitting on top of it. */
 .tools-toggle {
   position: absolute;
   top: 10px;
