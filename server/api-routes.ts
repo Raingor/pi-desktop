@@ -3,6 +3,7 @@
 // (electron/api-routes.ts). Node-only module; keep it free of browser code.
 
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { homedir } from "node:os";
 import * as pi from "./pi-reader";
 import * as builtins from "../src/data/builtin-providers";
 import * as tools from "./workspace-tools";
@@ -243,8 +244,10 @@ export function createPiApiMiddleware(): PiApiMiddleware {
     "GET /api/pi/chat/default-directory"(_, res) {
       // What a prompt without an explicit project directory actually runs in.
       const path = pi.resolveDefaultChatCwd();
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ path, name: path.split("/").filter(Boolean).pop() ?? path }));
+      // Home reads better as "~" than as the account's folder name.
+      const home = homedir();
+      const name = path === home ? "~" : (path.split("/").filter(Boolean).pop() ?? path);
+      json(res, { path, name });
     },
     "GET /api/pi/memory"(_, res) {
       const memory = pi.readMemoryFiles();

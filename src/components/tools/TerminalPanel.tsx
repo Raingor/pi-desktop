@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CircleStop, CornerDownLeft, ExternalLink, Loader2, Trash2 } from "lucide-react";
-import { useWorkspace } from "@/lib/workspace";
+import { useWorkspace, toolErrorText } from "@/lib/workspace";
 import type { TaskSummary } from "./TasksPanel";
 
 const POLL_MS = 500;
@@ -144,7 +144,7 @@ export function TerminalPanel({
           setCommand("");
           setHistoryIndex(-1);
         } else {
-          setOutput(`无法执行：${data.error ?? "未知错误"}\n`);
+          setOutput(`无法执行：${data.error ? toolErrorText(data.error) : "未知错误"}\n`);
         }
       })
       .catch((e: unknown) => setOutput(`无法执行：${e instanceof Error ? e.message : "请求失败"}\n`))

@@ -2543,22 +2543,16 @@ export function chooseChatDirectory(): Promise<string | null> {
 }
 
 // ─── Default chat working directory ─────────────────────────────
-// A GUI app launched from Finder inherits cwd "/", so process.cwd() is useless
-// as a project directory: a prompt sent without an explicit choice would run
-// pi against the filesystem root. Fall back to the most recently active local
-// session's project instead, then the home directory.
+// The home directory. A GUI launch inherits cwd "/", so process.cwd() would
+// point a prompt at the filesystem root, and in the dev server it would point
+// at whatever directory the server happened to start in — neither is a
+// meaningful default for the user. Home is predictable and always exists.
+// An explicit project choice in the chat UI still overrides this.
 export function resolveDefaultChatCwd(): string {
-  const cwd = resolve(process.cwd());
-  const usable = cwd !== sep && existsSync(cwd) && statSync(cwd).isDirectory();
-  if (usable) return cwd;
-
-  const recent = listSessions()
-    .flatMap((group) => group.sessions)
-    .filter((session) => session.projectPath)
-    .sort((a, b) => (b.lastActive || b.timestamp || "").localeCompare(a.lastActive || a.timestamp || ""))[0]?.projectPath;
-  if (recent && existsSync(recent) && statSync(recent).isDirectory()) return resolve(recent);
-
-  return homedir();
+  const home = homedir();
+  if (home && existsSync(home) && statSync(home).isDirectory()) return resolve(home);
+  // Practically unreachable; keep a valid directory rather than returning "".
+  return resolve(sep);
 }
 
 /** Execute one non-interactive local pi turn, preserving its project session. */

@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, GitBranch, Loader2, RefreshCw } from "lucide-react";
-import { useWorkspace } from "@/lib/workspace";
+import { useWorkspace, toolErrorText } from "@/lib/workspace";
 
 interface GitFileChange {
   path: string;
@@ -109,7 +109,7 @@ export function ReviewPanel() {
             <Loader2 className="h-4 w-4 animate-spin" /> 正在读取差异…
           </div>
         ) : diff.error ? (
-          <div className="tool-panel-empty">{diff.error}</div>
+          <div className="tool-panel-empty">{toolErrorText(diff.error)}</div>
         ) : (
           <pre className="tool-diff-view">
             {diff.diff.split("\n").map((line, i) => (
@@ -146,7 +146,7 @@ export function ReviewPanel() {
       </div>
 
       {review?.error ? (
-        <div className="tool-panel-empty">{review.error}</div>
+        <div className="tool-panel-empty">{toolErrorText(review.error)}</div>
       ) : review && review.files.length === 0 ? (
         <div className="tool-panel-empty">工作区干净，没有待审查的改动</div>
       ) : (

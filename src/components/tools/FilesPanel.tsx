@@ -9,7 +9,7 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
-import { useWorkspace } from "@/lib/workspace";
+import { useWorkspace, toolErrorText } from "@/lib/workspace";
 
 interface DirEntry {
   name: string;
@@ -103,7 +103,7 @@ export function FilesPanel() {
           <span className="tool-panel-bar-meta">{formatSize(preview.size)}</span>
         </div>
         {preview.error ? (
-          <div className="tool-panel-empty">{preview.error}</div>
+          <div className="tool-panel-empty">{toolErrorText(preview.error)}</div>
         ) : preview.binary ? (
           <div className="tool-panel-empty">二进制文件，无法预览</div>
         ) : (
@@ -146,7 +146,7 @@ export function FilesPanel() {
       </div>
 
       {listing?.error ? (
-        <div className="tool-panel-empty">{listing.error}</div>
+        <div className="tool-panel-empty">{toolErrorText(listing.error)}</div>
       ) : listing && listing.entries.length === 0 ? (
         <div className="tool-panel-empty">空目录</div>
       ) : (
