@@ -516,7 +516,20 @@ function setDockIcon() {
 // Software rendering fixes it and the UI is light enough not to need GPU.
 app.disableHardwareAcceleration();
 
+// Only one instance may run: a second one would start its own HTTP server and
+// two processes would race on the same ~/.pi/agent config files. Focus the
+// existing window instead.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    showMainWindow();
+  });
+}
+
 app.whenReady().then(async () => {
+  // The lock loser is already quitting; do not build a second tray/server.
+  if (!app.hasSingleInstanceLock()) return;
   try {
     setDockIcon();
     createMenu();

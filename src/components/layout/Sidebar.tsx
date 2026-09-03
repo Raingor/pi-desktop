@@ -666,7 +666,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           )}
         </div>
         <div className="codex-sidebar-version">
-          <span>pi-switch</span>
+          <span>pi-desktop</span>
           <ChangelogButton />
           <PanelLeftClose className="h-3.5 w-3.5" />
         </div>
