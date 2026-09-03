@@ -657,6 +657,362 @@ html[data-style="pixel"] input,
 html[data-style="pixel"] select,
 html[data-style="pixel"] textarea { border-radius: 2px !important; }
 
+/* VS Code — Dark Modern (#1f1f1f editor, #181818 sidebar, #0078D4 button, #4daafc link) and Light Modern (#ffffff editor, #f3f3f3 sidebar, #005fb8 accent). */
+html[data-style="vscode"] {
+  --page-bg: #ffffff;
+  --page-bg-deep: #f3f3f3;
+  --page-text: #3b3b3b;
+  --card-bg: rgba(248, 248, 248, .95);
+  --card-bg-solid: #f8f8f8;
+  --card-border: rgba(0, 0, 0, .16);
+  --card-header-border: rgba(0, 0, 0, .1);
+  --card-header-text: #1f1f1f;
+  --input-bg: #ffffff;
+  --input-border: #cecece;
+  --input-text: #3b3b3b;
+  --muted-text: #616161;
+  --subtle-text: #8b8b8b;
+  --accent-bg: rgba(0, 95, 184, .08);
+  --hover-bg: rgba(0, 0, 0, .05);
+  --sidebar-bg: rgba(243, 243, 243, .97);
+  --sidebar-border: rgba(0, 0, 0, .13);
+  --sidebar-logo: #005fb8;
+  --sidebar-active-bg: rgba(0, 95, 184, .1);
+  --sidebar-active-text: #005fb8;
+  --sidebar-text: #616161;
+  --sidebar-hover-bg: rgba(0, 0, 0, .06);
+  --sidebar-hover-text: #1f1f1f;
+  --signal-cyan: #005fb8;
+  --signal-cyan-bright: #0078d4;
+  --signal-violet: #800080;
+  --signal-lime: #1a7f37;
+  --signal-amber: #8a5a00;
+  --signal-red: #c72e0f;
+  --accent-solid: #005fb8;
+  --accent-solid-deep: #004a91;
+  --success-text: #1a7f37;
+  --danger-text: #c72e0f;
+  --warn-text: #8a5a00;
+  --grid-line: rgba(0, 0, 0, .04);
+}
+html.dark[data-style="vscode"] {
+  --page-bg: #1f1f1f;
+  --page-bg-deep: #181818;
+  --page-text: #cccccc;
+  --card-bg: rgba(32, 32, 32, .95);
+  --card-bg-solid: #202020;
+  --card-border: #2b2b2b;
+  --card-header-border: #2b2b2b;
+  --card-header-text: #ffffff;
+  --input-bg: #313131;
+  --input-border: #3c3c3c;
+  --input-text: #cccccc;
+  --muted-text: #9d9d9d;
+  --subtle-text: #6e7681;
+  --accent-bg: rgba(0, 120, 212, .16);
+  --hover-bg: rgba(241, 241, 241, .12);
+  --sidebar-bg: rgba(24, 24, 24, .97);
+  --sidebar-border: #2b2b2b;
+  --sidebar-logo: #4daafc;
+  --sidebar-active-bg: rgba(0, 120, 212, .2);
+  --sidebar-active-text: #4daafc;
+  --sidebar-text: #9d9d9d;
+  --sidebar-hover-bg: rgba(241, 241, 241, .08);
+  --sidebar-hover-text: #ffffff;
+  --signal-cyan: #4daafc;
+  --signal-cyan-bright: #85b6ff;
+  --signal-violet: #c586c0;
+  --signal-lime: #2ea043;
+  --signal-amber: #e2c08d;
+  --signal-red: #f85149;
+  --accent-solid: #0078d4;
+  --accent-solid-deep: #026ec1;
+  --success-text: #3fb950;
+  --danger-text: #f85149;
+  --warn-text: #e2c08d;
+  --grid-line: rgba(255, 255, 255, .035);
+}
+/* Claude — Anthropic brand cream #faf9f5 / charcoal #141413 / clay #d97757. Filled buttons use a deepened clay (#b25334) since the brand clay is 3.1:1 against white. */
+html[data-style="claude"] {
+  --page-bg: #faf9f5;
+  --page-bg-deep: #f0eee6;
+  --page-text: #141413;
+  --card-bg: rgba(255, 255, 255, .96);
+  --card-bg-solid: #ffffff;
+  --card-border: rgba(20, 20, 19, .14);
+  --card-header-border: rgba(20, 20, 19, .1);
+  --card-header-text: #30302e;
+  --input-bg: #ffffff;
+  --input-border: rgba(20, 20, 19, .2);
+  --input-text: #141413;
+  --muted-text: #5e5d59;
+  --subtle-text: #918f88;
+  --accent-bg: rgba(217, 119, 87, .1);
+  --hover-bg: rgba(217, 119, 87, .07);
+  --sidebar-bg: rgba(240, 238, 230, .96);
+  --sidebar-border: rgba(20, 20, 19, .12);
+  --sidebar-logo: #c15f3c;
+  --sidebar-active-bg: rgba(217, 119, 87, .13);
+  --sidebar-active-text: #a94a2c;
+  --sidebar-text: #5e5d59;
+  --sidebar-hover-bg: rgba(20, 20, 19, .05);
+  --sidebar-hover-text: #141413;
+  --signal-cyan: #b25334;
+  --signal-cyan-bright: #d97757;
+  --signal-violet: #8a6ba8;
+  --signal-lime: #5a7d3f;
+  --signal-amber: #8a5a12;
+  --signal-red: #a13d2e;
+  --accent-solid: #b25334;
+  --accent-solid-deep: #9e4526;
+  --success-text: #4f6f38;
+  --danger-text: #a13d2e;
+  --warn-text: #8a5a12;
+  --grid-line: rgba(20, 20, 19, .04);
+}
+html.dark[data-style="claude"] {
+  --page-bg: #141413;
+  --page-bg-deep: #0f0f0e;
+  --page-text: #faf9f5;
+  --card-bg: rgba(31, 30, 29, .92);
+  --card-bg-solid: #1f1e1d;
+  --card-border: rgba(250, 249, 245, .14);
+  --card-header-border: rgba(250, 249, 245, .1);
+  --card-header-text: #e8e6dc;
+  --input-bg: rgba(48, 48, 46, .95);
+  --input-border: rgba(250, 249, 245, .18);
+  --input-text: #faf9f5;
+  --muted-text: #b0aea5;
+  --subtle-text: #7d7b74;
+  --accent-bg: rgba(217, 119, 87, .15);
+  --hover-bg: rgba(217, 119, 87, .11);
+  --sidebar-bg: rgba(25, 24, 23, .97);
+  --sidebar-border: rgba(250, 249, 245, .11);
+  --sidebar-logo: #d97757;
+  --sidebar-active-bg: rgba(217, 119, 87, .18);
+  --sidebar-active-text: #e89a7a;
+  --sidebar-text: #b0aea5;
+  --sidebar-hover-bg: rgba(250, 249, 245, .06);
+  --sidebar-hover-text: #faf9f5;
+  --signal-cyan: #d97757;
+  --signal-cyan-bright: #e89a7a;
+  --signal-violet: #cbcadb;
+  --signal-lime: #bcd1ca;
+  --signal-amber: #e0b070;
+  --signal-red: #e08a7a;
+  --accent-solid: #b25334;
+  --accent-solid-deep: #9e4526;
+  --success-text: #a3c48a;
+  --danger-text: #e08a7a;
+  --warn-text: #e0b070;
+  --grid-line: rgba(250, 249, 245, .035);
+}
+/* Gemini — Google Material surfaces (#f0f4f9 / #131314) with the brand ramp #4285f4 → #9b72cb → #d96570; accents follow Material's #0b57d0 (light) and #8ab4f8 (dark). */
+html[data-style="gemini"] {
+  --page-bg: #f8fafd;
+  --page-bg-deep: #f0f4f9;
+  --page-text: #1f1f1f;
+  --card-bg: rgba(255, 255, 255, .96);
+  --card-bg-solid: #ffffff;
+  --card-border: rgba(31, 31, 31, .13);
+  --card-header-border: rgba(31, 31, 31, .09);
+  --card-header-text: #3c4043;
+  --input-bg: #ffffff;
+  --input-border: rgba(31, 31, 31, .18);
+  --input-text: #1f1f1f;
+  --muted-text: #5f6368;
+  --subtle-text: #80868b;
+  --accent-bg: rgba(11, 87, 208, .08);
+  --hover-bg: rgba(11, 87, 208, .06);
+  --sidebar-bg: rgba(240, 244, 249, .97);
+  --sidebar-border: rgba(31, 31, 31, .11);
+  --sidebar-logo: #4285f4;
+  --sidebar-active-bg: rgba(11, 87, 208, .1);
+  --sidebar-active-text: #0b57d0;
+  --sidebar-text: #5f6368;
+  --sidebar-hover-bg: rgba(31, 31, 31, .05);
+  --sidebar-hover-text: #1f1f1f;
+  --signal-cyan: #0b57d0;
+  --signal-cyan-bright: #1a73e8;
+  --signal-violet: #9168c0;
+  --signal-lime: #188038;
+  --signal-amber: #a05a00;
+  --signal-red: #c5221f;
+  --accent-solid: #0b57d0;
+  --accent-solid-deep: #185abc;
+  --success-text: #188038;
+  --danger-text: #c5221f;
+  --warn-text: #a05a00;
+  --grid-line: rgba(66, 133, 244, .05);
+}
+html.dark[data-style="gemini"] {
+  --page-bg: #131314;
+  --page-bg-deep: #0e0e0f;
+  --page-text: #e3e3e3;
+  --card-bg: rgba(30, 31, 32, .94);
+  --card-bg-solid: #1e1f20;
+  --card-border: rgba(227, 227, 227, .14);
+  --card-header-border: rgba(227, 227, 227, .1);
+  --card-header-text: #d0d0d0;
+  --input-bg: rgba(40, 41, 42, .95);
+  --input-border: rgba(227, 227, 227, .18);
+  --input-text: #e3e3e3;
+  --muted-text: #9aa0a6;
+  --subtle-text: #70757a;
+  --accent-bg: rgba(138, 180, 248, .15);
+  --hover-bg: rgba(138, 180, 248, .11);
+  --sidebar-bg: rgba(27, 28, 29, .97);
+  --sidebar-border: rgba(227, 227, 227, .11);
+  --sidebar-logo: #8ab4f8;
+  --sidebar-active-bg: rgba(138, 180, 248, .18);
+  --sidebar-active-text: #aecbfa;
+  --sidebar-text: #9aa0a6;
+  --sidebar-hover-bg: rgba(227, 227, 227, .06);
+  --sidebar-hover-text: #e3e3e3;
+  --signal-cyan: #8ab4f8;
+  --signal-cyan-bright: #aecbfa;
+  --signal-violet: #c58af9;
+  --signal-lime: #81c995;
+  --signal-amber: #fdd663;
+  --signal-red: #f28b82;
+  --accent-solid: #0b57d0;
+  --accent-solid-deep: #185abc;
+  --success-text: #81c995;
+  --danger-text: #f28b82;
+  --warn-text: #fdd663;
+  --grid-line: rgba(138, 180, 248, .05);
+}
+/* Grok — xAI monochrome: pure #000000 canvas, #1a1a1a / #222222 surface ramp, white as the accent. Always dark (xAI has no light surface), so the light-mode Tailwind remaps are re-darkened. */
+html[data-style="grok"],
+html.dark[data-style="grok"] {
+  --color-scheme: dark;
+  --page-bg: #000000;
+  --page-bg-deep: #050505;
+  --page-text: #f5f5f5;
+  --card-bg: rgba(20, 20, 20, .94);
+  --card-bg-solid: #141414;
+  --card-border: rgba(255, 255, 255, .18);
+  --card-header-border: rgba(255, 255, 255, .12);
+  --card-header-text: #e0e0e0;
+  --input-bg: rgba(34, 34, 34, .96);
+  --input-border: rgba(255, 255, 255, .24);
+  --input-text: #f5f5f5;
+  --muted-text: #a1a1a1;
+  --subtle-text: #6f6f6f;
+  --accent-bg: rgba(255, 255, 255, .1);
+  --hover-bg: rgba(255, 255, 255, .07);
+  --sidebar-bg: rgba(10, 10, 10, .97);
+  --sidebar-border: rgba(255, 255, 255, .14);
+  --sidebar-logo: #ffffff;
+  --sidebar-active-bg: rgba(255, 255, 255, .12);
+  --sidebar-active-text: #ffffff;
+  --sidebar-text: #a1a1a1;
+  --sidebar-hover-bg: rgba(255, 255, 255, .07);
+  --sidebar-hover-text: #ffffff;
+  --signal-cyan: #ffffff;
+  --signal-cyan-bright: #ffffff;
+  --signal-violet: #b9a4e8;
+  --signal-lime: #79d17e;
+  --signal-amber: #e8b64c;
+  --signal-red: #f2777a;
+  --accent-solid: #2f2f2f;
+  --accent-solid-deep: #1a1a1a;
+  --success-text: #79d17e;
+  --danger-text: #f2777a;
+  --warn-text: #e8b64c;
+  --grid-line: rgba(255, 255, 255, .045);
+}
+html[data-style="grok"].light .text-gray-200,
+html[data-style="grok"].light .text-gray-300 { color: #d4d4d4; }
+html[data-style="grok"].light .bg-gray-950,
+html[data-style="grok"].light .bg-gray-900 { background-color: var(--card-bg-solid); }
+html[data-style="grok"].light .bg-gray-800,
+html[data-style="grok"].light .bg-gray-800\/30,
+html[data-style="grok"].light .bg-gray-800\/50,
+html[data-style="grok"].light .bg-gray-800\/20 { background-color: rgba(34, 34, 34, .9); }
+html[data-style="grok"].light .bg-black\/60 { background-color: rgba(0, 0, 0, .74); }
+html[data-style="grok"].light .hover\:bg-gray-700:hover { background-color: rgba(48, 48, 48, .92); }
+html[data-style="grok"].light .bg-red-950\/20 { background-color: rgba(242, 119, 122, .12); }
+html[data-style="grok"].light .border-red-700,
+html[data-style="grok"].light .border-red-900\/30 { border-color: rgba(242, 119, 122, .38); }
+html[data-style="grok"].light .bg-emerald-500\/10 { background-color: rgba(121, 209, 126, .12); }
+html[data-style="grok"].light .bg-amber-500\/10 { background-color: rgba(232, 182, 76, .12); }
+/* Codex — OpenAI's pure black/white brand palette with the Codex TUI's ANSI role colours (cyan hints, green success, red error, magenta agent). */
+html[data-style="codex"] {
+  --page-bg: #ffffff;
+  --page-bg-deep: #f7f7f8;
+  --page-text: #0d0d0d;
+  --card-bg: rgba(250, 250, 250, .96);
+  --card-bg-solid: #fafafa;
+  --card-border: rgba(13, 13, 13, .14);
+  --card-header-border: rgba(13, 13, 13, .1);
+  --card-header-text: #0d0d0d;
+  --input-bg: #ffffff;
+  --input-border: rgba(13, 13, 13, .2);
+  --input-text: #0d0d0d;
+  --muted-text: #5d5d5d;
+  --subtle-text: #8f8f8f;
+  --accent-bg: rgba(13, 13, 13, .06);
+  --hover-bg: rgba(13, 13, 13, .045);
+  --sidebar-bg: rgba(244, 244, 244, .97);
+  --sidebar-border: rgba(13, 13, 13, .12);
+  --sidebar-logo: #0d0d0d;
+  --sidebar-active-bg: rgba(13, 13, 13, .08);
+  --sidebar-active-text: #0d0d0d;
+  --sidebar-text: #5d5d5d;
+  --sidebar-hover-bg: rgba(13, 13, 13, .05);
+  --sidebar-hover-text: #0d0d0d;
+  --signal-cyan: #0d0d0d;
+  --signal-cyan-bright: #3d3d3d;
+  --signal-violet: #8b2f8b;
+  --signal-lime: #1a7f4b;
+  --signal-amber: #8a5a12;
+  --signal-red: #b42318;
+  --accent-solid: #0d0d0d;
+  --accent-solid-deep: #000000;
+  --success-text: #1a7f4b;
+  --danger-text: #b42318;
+  --warn-text: #8a5a12;
+  --grid-line: rgba(13, 13, 13, .04);
+}
+html.dark[data-style="codex"] {
+  --page-bg: #0d0d0d;
+  --page-bg-deep: #080808;
+  --page-text: #ededed;
+  --card-bg: rgba(23, 23, 23, .95);
+  --card-bg-solid: #171717;
+  --card-border: rgba(237, 237, 237, .16);
+  --card-header-border: rgba(237, 237, 237, .11);
+  --card-header-text: #dcdcdc;
+  --input-bg: rgba(33, 33, 33, .96);
+  --input-border: rgba(237, 237, 237, .2);
+  --input-text: #ededed;
+  --muted-text: #a0a0a0;
+  --subtle-text: #6e6e6e;
+  --accent-bg: rgba(103, 232, 249, .13);
+  --hover-bg: rgba(237, 237, 237, .08);
+  --sidebar-bg: rgba(8, 8, 8, .97);
+  --sidebar-border: rgba(237, 237, 237, .12);
+  --sidebar-logo: #67e8f9;
+  --sidebar-active-bg: rgba(103, 232, 249, .15);
+  --sidebar-active-text: #a5f3fc;
+  --sidebar-text: #a0a0a0;
+  --sidebar-hover-bg: rgba(237, 237, 237, .07);
+  --sidebar-hover-text: #ededed;
+  --signal-cyan: #67e8f9;
+  --signal-cyan-bright: #a5f3fc;
+  --signal-violet: #e879f9;
+  --signal-lime: #4ade80;
+  --signal-amber: #fbbf24;
+  --signal-red: #f87171;
+  --accent-solid: #2a2a2a;
+  --accent-solid-deep: #171717;
+  --success-text: #4ade80;
+  --danger-text: #f87171;
+  --warn-text: #fbbf24;
+  --grid-line: rgba(237, 237, 237, .04);
+}
+
 :root { color-scheme: var(--color-scheme, dark); }
 
 * { box-sizing: border-box; }

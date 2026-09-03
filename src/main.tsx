@@ -139,18 +139,8 @@ applySavedUiStyle();
 applySavedZoom();
 function applySavedUiStyle() {
   const style = window.localStorage.getItem("pi-ui-style");
-  if (style && [
-      "graphite",
-      "cyber",
-      "kiro",
-      "pixel",
-      "kawaii",
-      "elegant",
-      "plain",
-      "terminal",
-      "amber",
-      "violet",
-    ].includes(style)) {
+  const known = ["graphite","terminal","cyber","pixel","kawaii","elegant","plain","amber","violet","vscode","kiro","claude","codex","gemini","grok"];
+  if (style && known.includes(style)) {
     document.documentElement.dataset.style = style;
   }
 }

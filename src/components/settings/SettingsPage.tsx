@@ -57,17 +57,31 @@ const THEME_SWATCHES: {
   { value: "light/dark", labelKey: "settings.system", bg: "linear-gradient(105deg, #0a0a0f 49.5%, #f1f2f6 50.5%)", dots: ["#00d4aa", "#7c5cfc", "#9aa0ab"] },
 ];
 
-const UI_STYLES: { id: string; name: string; desc: string; bg: string; dots: string[] }[] = [
-  { id: "graphite", name: "石墨仪器", desc: "暖纸灰 · 信号蓝（默认）", bg: "linear-gradient(145deg, #f7f6f3, #e2dfd6)", dots: ["#3f6fd8", "#2f56ad", "#b9b3a4"] },
-  { id: "cyber", name: "赛博霓虹", desc: "纯黑 · 洋红霓虹（恒暗）", bg: "linear-gradient(145deg, #000000, #2a0838)", dots: ["#e879f9", "#a78bfa", "#2dd4bf"] },
-  { id: "kiro", name: "Kiro", desc: "Kiro IDE 官方紫灰", bg: "linear-gradient(145deg, #19161d, #28242e 55%, #7138cc)", dots: ["#b080ff", "#e2d3fe", "#80ffb5"] },
-  { id: "pixel", name: "像素游戏", desc: "GB 绿 · 方角等宽", bg: "linear-gradient(145deg, #16210f, #3f5e14)", dots: ["#9bbc0f", "#c2e04a", "#306230"] },
-  { id: "kawaii", name: "可爱软糖", desc: "奶油粉 · 樱花红", bg: "linear-gradient(145deg, #fff5f7, #ffd6e4)", dots: ["#db2777", "#f9a8d4", "#c4b5fd"] },
-  { id: "elegant", name: "文雅书卷", desc: "象牙纸 · 墨青蓝", bg: "linear-gradient(145deg, #f7f4ee, #e4ddcc)", dots: ["#0f4c5c", "#6b5b95", "#a89f8c"] },
-  { id: "plain", name: "素雅灰白", desc: "极简中性灰", bg: "linear-gradient(145deg, #f8f8f7, #dededd)", dots: ["#4b5563", "#94949c", "#c8c8c6"] },
-  { id: "terminal", name: "信号终端", desc: "深海青 · 荧光青", bg: "linear-gradient(145deg, #041a1e, #0a3d42)", dots: ["#00d4aa", "#2fe8c0", "#0f766e"] },
-  { id: "amber", name: "暖琥珀", desc: "米黄纸 · 琥珀橙", bg: "linear-gradient(145deg, #faf5ec, #e8d8b8)", dots: ["#b45309", "#d97706", "#c8b394"] },
-  { id: "violet", name: "星紫", desc: "雾紫白 · 电光紫", bg: "linear-gradient(145deg, #f6f4fa, #dcd4ee)", dots: ["#6d28d9", "#a89af0", "#c4bfe4"] },
+type UiStyle = { id: string; name: string; desc: string; group: string; bg: string; dots: string[] };
+
+const UI_STYLES: UiStyle[] = [
+  // Pi's own looks
+  { id: "graphite", name: "石墨仪器", desc: "暖纸灰 · 信号蓝（默认）", group: "pi", bg: "linear-gradient(145deg, #f7f6f3, #e2dfd6)", dots: ["#3f6fd8", "#2f56ad", "#b9b3a4"] },
+  { id: "terminal", name: "信号终端", desc: "深海青 · 荧光青", group: "pi", bg: "linear-gradient(145deg, #041a1e, #0a3d42)", dots: ["#00d4aa", "#2fe8c0", "#0f766e"] },
+  { id: "cyber", name: "赛博霓虹", desc: "纯黑 · 洋红霓虹（恒暗）", group: "pi", bg: "linear-gradient(145deg, #000000, #2a0838)", dots: ["#e879f9", "#a78bfa", "#2dd4bf"] },
+  { id: "pixel", name: "像素游戏", desc: "GB 绿 · 方角等宽", group: "pi", bg: "linear-gradient(145deg, #16210f, #3f5e14)", dots: ["#9bbc0f", "#c2e04a", "#306230"] },
+  { id: "kawaii", name: "可爱软糖", desc: "奶油粉 · 樱花红", group: "pi", bg: "linear-gradient(145deg, #fff5f7, #ffd6e4)", dots: ["#db2777", "#f9a8d4", "#c4b5fd"] },
+  { id: "elegant", name: "文雅书卷", desc: "象牙纸 · 墨青蓝", group: "pi", bg: "linear-gradient(145deg, #f7f4ee, #e4ddcc)", dots: ["#0f4c5c", "#6b5b95", "#a89f8c"] },
+  { id: "plain", name: "素雅灰白", desc: "极简中性灰", group: "pi", bg: "linear-gradient(145deg, #f8f8f7, #dededd)", dots: ["#4b5563", "#94949c", "#c8c8c6"] },
+  { id: "amber", name: "暖琥珀", desc: "米黄纸 · 琥珀橙", group: "pi", bg: "linear-gradient(145deg, #faf5ec, #e8d8b8)", dots: ["#b45309", "#d97706", "#c8b394"] },
+  { id: "violet", name: "星紫", desc: "雾紫白 · 电光紫", group: "pi", bg: "linear-gradient(145deg, #f6f4fa, #dcd4ee)", dots: ["#6d28d9", "#a89af0", "#c4bfe4"] },
+  // Editors / assistants, using each product's published palette
+  { id: "vscode", name: "VS Code", desc: "Dark Modern 官方色", group: "editor", bg: "linear-gradient(145deg, #181818, #1f1f1f 55%, #0078d4)", dots: ["#4daafc", "#c586c0", "#2ea043"] },
+  { id: "kiro", name: "Kiro", desc: "Kiro IDE 官方紫灰", group: "editor", bg: "linear-gradient(145deg, #19161d, #28242e 55%, #7138cc)", dots: ["#b080ff", "#e2d3fe", "#80ffb5"] },
+  { id: "claude", name: "Claude", desc: "Anthropic 米白 · 陶土", group: "editor", bg: "linear-gradient(145deg, #faf9f5, #f0eee6 55%, #d97757)", dots: ["#d97757", "#141413", "#bcd1ca"] },
+  { id: "codex", name: "Codex", desc: "OpenAI 黑白 · 终端青", group: "editor", bg: "linear-gradient(145deg, #0d0d0d, #171717 60%, #67e8f9)", dots: ["#67e8f9", "#e879f9", "#4ade80"] },
+  { id: "gemini", name: "Gemini", desc: "Google 蓝紫珊瑚渐变", group: "editor", bg: "linear-gradient(145deg, #4285f4, #9b72cb 55%, #d96570)", dots: ["#4285f4", "#9b72cb", "#d96570"] },
+  { id: "grok", name: "Grok", desc: "xAI 纯黑单色（恒暗）", group: "editor", bg: "linear-gradient(145deg, #000000, #222222)", dots: ["#ffffff", "#a1a1a1", "#2f2f2f"] },
+];
+
+const STYLE_GROUPS: { key: string; label: string }[] = [
+  { key: "pi", label: "Pi 原创" },
+  { key: "editor", label: "编辑器 / 助手" },
 ];
 
 const FONT_SIZE_KEY = "pi-font-size";
@@ -417,8 +431,11 @@ export function SettingsPage() {
           </Card>
 
           <Card icon={Sparkles} title="界面风格" desc="整体界面的配色风格，点击卡片即时切换。">
+            {STYLE_GROUPS.map((group) => (
+            <div key={group.key} className="mb-4 last:mb-0">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-500">{group.label}</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {UI_STYLES.map((s) => {
+              {UI_STYLES.filter((s) => s.group === group.key).map((s) => {
                 const active = uiStyle === s.id;
                 return (
                   <button
@@ -450,6 +467,8 @@ export function SettingsPage() {
                 );
               })}
             </div>
+            </div>
+            ))}
           </Card>
 
           <Card icon={Type} title={t("settings.font_size")} desc={t("settings.font_size_desc")}>
