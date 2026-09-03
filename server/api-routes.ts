@@ -62,6 +62,14 @@ export function createPiApiMiddleware(): PiApiMiddleware {
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify(data));
     },
+    "GET /api/pi/skills"(_, res) {
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ skills: pi.listLocalSkills() }));
+    },
+    "GET /api/pi/commands"(_, res) {
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ commands: pi.listPiBuiltinCommands() }));
+    },
     "GET /api/pi/chat/active"(_, res) {
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ sessionIds: pi.listActiveWebChats() }));

@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, existsSync, statSync, unlinkSync, writeFileSync, mkdirSync, renameSync, chmodSync } from "fs";
+import { readFileSync, readdirSync, existsSync, statSync, unlinkSync, writeFileSync, mkdirSync, renameSync, chmodSync, realpathSync } from "fs";
 import { homedir, platform } from "os";
 import { join, resolve, dirname, relative, sep, delimiter } from "path";
 import { spawnSync, spawn } from "child_process";
@@ -1769,6 +1769,96 @@ function lookupContextWindow(providerId?: string, modelId?: string): number | un
   }
   const builtin = readBuiltinCatalog()?.find((p) => p.id === providerId);
   return builtin?.models.find((m) => m.id === modelId)?.contextWindow;
+}
+
+// ─── Available Skills ────────────────────────────────────
+
+export interface LocalSkill {
+  name: string;
+  description: string;
+  source: "Pi" | "Agents" | "Codex";
+}
+
+/** Read the public frontmatter from locally installed skill manifests. */
+export function listLocalSkills(): LocalSkill[] {
+  const roots: { path: string; source: LocalSkill["source"] }[] = [
+    { path: join(PI_DIR, "skills"), source: "Pi" },
+    { path: join(homedir(), ".agents", "skills"), source: "Agents" },
+    { path: join(CODEX_DIR, "skills"), source: "Codex" },
+  ];
+  const skills: LocalSkill[] = [];
+  const seen = new Set<string>();
+
+  const visit = (dir: string, source: LocalSkill["source"], depth: number) => {
+    if (depth > 3 || !existsSync(dir)) return;
+    try {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const entryPath = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          visit(entryPath, source, depth + 1);
+          continue;
+        }
+        if (!entry.isFile() || entry.name !== "SKILL.md") continue;
+        const text = readFileSync(entryPath, "utf-8").slice(0, 12_000);
+        const name = text.match(/^name:\s*["']?([^\n"']+)["']?\s*$/m)?.[1]?.trim() || dirname(entryPath).split(sep).pop() || "Untitled skill";
+        const descriptionLine = text.match(/^description:\s*(.*)$/m);
+        let description = descriptionLine?.[1]?.trim().replace(/^["']|["']$/g, "") ?? "";
+        if (/^[>|][+-]?$/.test(description) && descriptionLine?.index !== undefined) {
+          const block = text.slice(descriptionLine.index + descriptionLine[0].length)
+            .split("\n")
+            .slice(0, 20)
+            .filter((line) => /^\s+\S/.test(line))
+            .map((line) => line.trim());
+          description = block.join(" ");
+        }
+        if (!description) description = "No description provided.";
+        const key = `${source}\u0000${name}\u0000${description}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          skills.push({ name, description, source });
+        }
+      }
+    } catch {
+      // A protected or malformed directory should not hide other skills.
+    }
+  };
+
+  roots.forEach(({ path, source }) => visit(path, source, 0));
+  return skills.sort((a, b) => a.name.localeCompare(b.name, "zh-CN") || a.source.localeCompare(b.source));
+}
+
+export interface PiBuiltinCommand {
+  name: string;
+  description: string;
+  argumentHint?: string;
+}
+
+/** Read the slash-command registry shipped by the active local Pi install. */
+export function listPiBuiltinCommands(): PiBuiltinCommand[] {
+  const pi = resolvePiBinary();
+  if (!pi) return [];
+  try {
+    const cliPath = realpathSync(pi.bin);
+    const candidates = [
+      join(dirname(cliPath), "..", "core", "slash-commands.js"),
+      join(dirname(cliPath), "core", "slash-commands.js"),
+    ];
+    const registryPath = candidates.find((candidate) => existsSync(candidate));
+    if (!registryPath) return [];
+    const source = readFileSync(registryPath, "utf-8");
+    const commands: PiBuiltinCommand[] = [];
+    const commandPattern = /\{\s*name:\s*"([^"]+)",\s*description:\s*(?:"([^"]+)"|`([^`]+)`)(?:,\s*argumentHint:\s*"([^"]+)")?\s*\}/g;
+    for (const match of source.matchAll(commandPattern)) {
+      commands.push({
+        name: `/${match[1]}`,
+        description: (match[2] || match[3] || "").replace(/\$\{APP_NAME\}/g, "pi"),
+        argumentHint: match[4] || undefined,
+      });
+    }
+    return commands;
+  } catch {
+    return [];
+  }
 }
 
 // ─── Session Info (chat side panel) ──────────────────────

@@ -4,6 +4,12 @@ import { useTranslation } from "@/lib/i18n";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { formatTokens, cn, formatCost, USD_TO_CNY } from "@/lib/utils";
+import {
+  formatImportedApiKeys,
+  parseImportedApiKeys,
+  parseProviderImport,
+  type ImportedApiKey,
+} from "@/lib/provider-import";
 import { useCurrency } from "@/lib/currency";
 import type { ApiType, CustomProviderConfig, Model, PiModelsJson, Provider, ProviderApiKey } from "@/types";
 import { MODEL_CATALOG, searchCatalog, catalogToModel, catalogEntryId, findCatalogEntry, guessModelMeta } from "@/data/model-catalog";
@@ -138,73 +144,6 @@ function maskKey(key: string): string {
   if (key.startsWith("$")) return key; // env var reference — not a secret
   if (key.length <= 12) return `${key.slice(0, 3)}…`;
   return `${key.slice(0, 7)}…${key.slice(-4)}`;
-}
-
-// ─── Freeform Import Parser ───────────────────────────────
-// Recognizes pasted text like:
-//   tokenrouter baseurl：https://api.example.com/v1 key：sk-xxxx
-//   modelid：vendor/model-a, vendor/model-b
-// Labels accept half/full-width colons; unlabeled tokens fall back to
-// heuristics (URL → baseUrl, sk-… → apiKey, foo/bar → model id).
-
-interface ParsedImport {
-  name: string;
-  baseUrl: string;
-  apiKey: string;
-  modelIds: string[];
-}
-
-const IMPORT_LABEL_RE =
-  /(?<![\w/.\-])(apikey|api_key|api-key|keys?|token|secret|密钥|金鑰|baseurl|base_url|base-url|url|endpoint|地址|接口|provider|name|名称|名稱|供应商|供應商|model_ids?|modelids?|models?|模型)\s*[:：](?!\/\/)/gi;
-
-function importField(label: string): "name" | "baseUrl" | "apiKey" | "models" {
-  const l = label.toLowerCase();
-  if (/^(apikey|api_key|api-key|keys?|token|secret|密钥|金鑰)$/.test(l)) return "apiKey";
-  if (/^(baseurl|base_url|base-url|url|endpoint|地址|接口)$/.test(l)) return "baseUrl";
-  if (/^(provider|name|名称|名稱|供应商|供應商)$/.test(l)) return "name";
-  return "models";
-}
-
-function parseProviderImport(raw: string): ParsedImport {
-  const out: ParsedImport = { name: "", baseUrl: "", apiKey: "", modelIds: [] };
-  const pushModels = (value: string) => {
-    for (const part of value.split(/[\s,，;；]+/)) {
-      const v = part.trim();
-      if (v && !out.modelIds.includes(v)) out.modelIds.push(v);
-    }
-  };
-  const assignFree = (text: string) => {
-    for (const token of text.split(/\s+/)) {
-      const v = token.replace(/[,，;；]+$/, "");
-      if (!v) continue;
-      if (/^https?:\/\//i.test(v)) {
-        if (!out.baseUrl) out.baseUrl = v;
-      } else if (/^sk-\S{8,}$/i.test(v) || /^[A-Za-z0-9_-]{32,}$/.test(v)) {
-        if (!out.apiKey) out.apiKey = v;
-      } else if (v.includes("/")) {
-        pushModels(v);
-      } else if (!out.name) {
-        // A label line like "百灵：" keeps a trailing colon — strip it
-        out.name = v.replace(/[:：]\s*$/, "").trim();
-      }
-    }
-  };
-  for (const line of raw.split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    const matches = [...line.matchAll(IMPORT_LABEL_RE)];
-    const head = (matches.length ? line.slice(0, matches[0]!.index) : line).trim();
-    if (head) assignFree(head);
-    matches.forEach((m, i) => {
-      const start = m.index! + m[0].length;
-      const end = i + 1 < matches.length ? matches[i + 1]!.index! : line.length;
-      const value = line.slice(start, end).trim().replace(/[,，;；]+$/, "");
-      if (!value) return;
-      const field = importField(m[1] ?? "");
-      if (field === "models") pushModels(value);
-      else if (!out[field]) out[field] = value;
-    });
-  }
-  return out;
 }
 
 // ─── Enabled Models Panel (cross-provider) ────────────────
@@ -2326,7 +2265,8 @@ function ImportProviderModal({
   const [text, setText] = useState("");
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
+  const [apiKeys, setApiKeys] = useState<ImportedApiKey[]>([]);
+  const [apiKeysText, setApiKeysText] = useState("");
   const [api, setApi] = useState<ApiType>("openai-completions");
   const [modelIds, setModelIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -2345,15 +2285,22 @@ function ImportProviderModal({
     const parsed = parseProviderImport(value);
     setName(parsed.name);
     setBaseUrl(parsed.baseUrl);
-    setApiKey(parsed.apiKey);
+    setApiKeys(parsed.apiKeys);
+    setApiKeysText(formatImportedApiKeys(parsed.apiKeys));
     setModelIds(parsed.modelIds);
+  };
+
+  const handleApiKeysText = (value: string) => {
+    setApiKeysText(value);
+    setApiKeys(parseImportedApiKeys(value));
   };
 
   const reset = () => {
     setText("");
     setName("");
     setBaseUrl("");
-    setApiKey("");
+    setApiKeys([]);
+    setApiKeysText("");
     setApi("openai-completions");
     setModelIds([]);
     setSubmitting(false);
@@ -2371,7 +2318,7 @@ function ImportProviderModal({
   const mergeTarget = existing?.type === "custom" ? existing : null;
   const urlInvalid = baseUrl.trim() !== "" && !isValidHttpUrl(baseUrl.trim());
   const parsedEmpty =
-    text.trim() !== "" && !name && !baseUrl && !apiKey && modelIds.length === 0;
+    text.trim() !== "" && !name && !baseUrl && apiKeys.length === 0 && modelIds.length === 0;
   const canSubmit =
     !!id && (!!baseUrl.trim() || !!mergeTarget) && !urlInvalid && !builtinConflict && !submitting;
 
@@ -2389,7 +2336,7 @@ function ImportProviderModal({
       const res = await fetch("/api/pi/provider-models", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ baseUrl: baseUrl.trim(), apiKey, providerId: id || undefined }),
+        body: JSON.stringify({ baseUrl: baseUrl.trim(), apiKey: apiKeys[0]?.key ?? "", providerId: id || undefined }),
       });
       const data = await res.json();
       if (data.error) {
@@ -2476,11 +2423,15 @@ function ImportProviderModal({
       // An imported key joins the existing pool instead of replacing it; the
       // active key only changes when the provider had none.
       const pool = normalizeKeyPool(existingCfg?.apiKeys, existingCfg?.apiKey);
-      const incoming = apiKey.trim();
-      const nextPool =
-        incoming && !pool.some((k) => k.key === incoming)
-          ? [...pool, { id: newKeyId(), key: incoming }]
-          : pool;
+      const incoming = apiKeys.filter((entry) => !pool.some((key) => key.key === entry.key));
+      const nextPool = [
+        ...pool,
+        ...incoming.map((entry) => ({
+          id: newKeyId(),
+          key: entry.key,
+          ...(entry.label ? { label: entry.label } : {}),
+        })),
+      ];
       const activeId =
         nextPool.find((k) => k.id === existingCfg?.activeKeyId)?.id ?? nextPool[0]?.id;
       ok = await store.updateCustomProvider(id, {
@@ -2491,14 +2442,18 @@ function ImportProviderModal({
         models: merged,
       });
     } else {
-      const seedKey = apiKey.trim() ? { id: newKeyId(), key: apiKey.trim() } : null;
+      const seedKeys = apiKeys.map((entry) => ({
+        id: newKeyId(),
+        key: entry.key,
+        ...(entry.label ? { label: entry.label } : {}),
+      }));
       ok = await store.addCustomProvider(id, {
         name: name.trim() || undefined,
         baseUrl: baseUrl.trim(),
         api,
-        apiKey: seedKey?.key,
-        apiKeys: seedKey ? [seedKey] : undefined,
-        activeKeyId: seedKey?.id,
+        apiKey: seedKeys[0]?.key,
+        apiKeys: seedKeys.length > 0 ? seedKeys : undefined,
+        activeKeyId: seedKeys[0]?.id,
         models: newModels,
       });
     }
@@ -2604,16 +2559,25 @@ function ImportProviderModal({
             )}
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400">
-              {t("providers.api_key")}
+            <label className="flex items-center justify-between text-xs font-medium text-gray-400">
+              <span>{t("providers_models.import_keys")}</span>
+              {apiKeys.length > 0 && (
+                <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-300">
+                  {t("providers_models.import_key_count", String(apiKeys.length))}
+                </span>
+              )}
             </label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-... or $MY_API_KEY"
-              className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white"
+            <textarea
+              value={apiKeysText}
+              onChange={(e) => handleApiKeysText(e.target.value)}
+              rows={Math.max(2, Math.min(5, apiKeys.length || 2))}
+              placeholder={t("providers_models.import_keys_placeholder")}
+              spellCheck={false}
+              className="mt-1 w-full resize-y rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 font-mono text-sm text-white placeholder:text-gray-600"
             />
+            <p className="mt-1 text-[11px] leading-4 text-gray-500">
+              {t("providers_models.import_keys_hint")}
+            </p>
           </div>
         </div>
 

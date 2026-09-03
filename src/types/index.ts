@@ -113,19 +113,72 @@ export interface PiSettings {
   lastChangelogVersion?: string;
   defaultProvider?: string;
   defaultModel?: string;
-  defaultThinkingLevel?: string;
-  defaultProjectTrust?: string;
+  defaultThinkingLevel?: PiThinkingLevel;
+  modelThinkingLevels?: Record<string, PiThinkingLevel>;
+  defaultProjectTrust?: "ask" | "always" | "never";
   theme?: "light" | "dark" | "light/dark";
   hideThinkingBlock?: boolean;
   expandRunSteps?: boolean;
-  retry?: { enabled: boolean };
+  showCacheMissNotices?: boolean;
+  quietStartup?: boolean;
+  collapseChangelog?: boolean;
+  enableInstallTelemetry?: boolean;
+  enableSkillCommands?: boolean;
+  steeringMode?: "one-at-a-time" | "all";
+  followUpMode?: "one-at-a-time" | "all";
+  transport?: "sse" | "websocket" | "websocket-cached" | "auto";
+  httpIdleTimeoutMs?: number;
+  showHardwareCursor?: boolean;
+  editorPaddingX?: 0 | 1 | 2 | 3;
+  outputPad?: 0 | 1;
+  autocompleteMaxVisible?: 3 | 5 | 7 | 10 | 15 | 20;
+  tuiMode?: "regular" | "fullscreen";
+  fullscreenExitOutput?: "transcript" | "resume-hint";
+  fullscreenScrollbar?: "auto" | "always" | "hidden";
+  fullscreenCopyOnSelect?: boolean;
+  compaction?: {
+    enabled?: boolean;
+    reserveTokens?: number;
+    keepRecentTokens?: number;
+  };
+  retry?: {
+    enabled?: boolean;
+    maxRetries?: number;
+    baseDelayMs?: number;
+    provider?: {
+      timeoutMs?: number;
+      maxRetries?: number;
+      maxRetryDelayMs?: number;
+    };
+  };
   packages?: string[];
-  terminal?: { showTerminalProgress?: boolean };
-  warnings?: Record<string, boolean>;
-  treeFilterMode?: string;
-  doubleEscapeAction?: string;
+  terminal?: {
+    showImages?: boolean;
+    imageWidthCells?: number;
+    clearOnShrink?: boolean;
+    showTerminalProgress?: boolean;
+    images?: "kitty" | "iterm2" | false;
+    trueColor?: boolean;
+    hyperlinks?: boolean;
+  };
+  images?: {
+    autoResize?: boolean;
+    blockImages?: boolean;
+  };
+  markdown?: {
+    mermaid?: "off" | "final" | "streaming";
+    codeBlockIndent?: string;
+  };
+  warnings?: {
+    anthropicExtraUsage?: boolean;
+    [key: string]: boolean | undefined;
+  };
+  treeFilterMode?: "default" | "no-tools" | "user-only" | "labeled-only" | "all";
+  doubleEscapeAction?: "tree" | "fork" | "none";
   enabledModels?: string[];
 }
+
+export type PiThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 
 export interface PiAuth {
   [providerId: string]: ProviderAuth;
