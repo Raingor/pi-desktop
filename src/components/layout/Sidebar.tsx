@@ -544,10 +544,6 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                       }
                       className="codex-conversation"
                       title={sessionTitle(session)}
-                      onDoubleClick={(event) => {
-                        event.preventDefault();
-                        startRename(session);
-                      }}
                     >
                       {runningSessions.has(session.id) && (
                         <Loader2
