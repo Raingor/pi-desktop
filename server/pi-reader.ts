@@ -1771,6 +1771,45 @@ function lookupContextWindow(providerId?: string, modelId?: string): number | un
   return builtin?.models.find((m) => m.id === modelId)?.contextWindow;
 }
 
+// ─── Session Info (chat side panel) ──────────────────────
+// Lightweight lookup backing the chat window's session meta panel:
+// working directory + the pi-intercom addressable id for the session.
+export interface SessionInfo {
+  sessionId: string;
+  /** Working directory recorded in the session file's first line. */
+  cwd?: string;
+  /** Absolute path of the session JSONL file. */
+  filePath?: string;
+  /** Stable pi-intercom target id: config.stableId, else the session id. */
+  intercomId: string;
+}
+
+export function readSessionInfo(sessionId: string): SessionInfo | null {
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(sessionId)) return null;
+  const session = listSessions()
+    .flatMap((group) => group.sessions)
+    .find((item) => item.id === sessionId);
+  // pi-intercom resolves the addressable id as: PI_INTERCOM_STABLE_ID env
+  // (runtime-only, unknowable from files) → intercom/config.json stableId →
+  // the pi session id itself.
+  let stableId: string | undefined;
+  try {
+    const intercomConfig = readJson<any>("intercom/config.json");
+    stableId =
+      typeof intercomConfig?.stableId === "string" && intercomConfig.stableId.trim()
+        ? intercomConfig.stableId.trim()
+        : undefined;
+  } catch {
+    /* no intercom config — the session id is the addressable id */
+  }
+  return {
+    sessionId,
+    cwd: session?.projectPath,
+    filePath: session?.filePath,
+    intercomId: stableId || sessionId,
+  };
+}
+
 export function readSessionUsage(sessionId: string): SessionUsageSummary | null {
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(sessionId)) return null;
   const session = listSessions().flatMap((group) => group.sessions).find((item) => item.id === sessionId);

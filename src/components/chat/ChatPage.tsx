@@ -72,6 +72,13 @@ interface SessionUsage {
   cacheHitRate: number;
 }
 
+interface SessionInfo {
+  sessionId: string;
+  cwd?: string;
+  filePath?: string;
+  intercomId: string;
+}
+
 function formatTokens(value: number): string {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
@@ -165,7 +172,20 @@ export function ChatPage() {
   } | null>(null);
   // Session usage panel (floating, right side): tokens, cache, context share.
   const [sessionUsage, setSessionUsage] = useState<SessionUsage | null>(null);
+  // Session meta panel (below the usage panel): ids + working directory.
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [usageOpen, setUsageOpen] = useState(true);
+  const hasFinderApi = typeof window !== "undefined" && !!window.piAPI?.openInFinder;
+  const copyField = async (field: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      window.setTimeout(() => setCopiedField(null), 1400);
+    } catch {
+      /* clipboard unavailable — ignore */
+    }
+  };
   // Live steps for the in-flight turn (thinking / tool calls / tool results).
   const [runSteps, setRunSteps] = useState<RunStep[]>([]);
   const [runStepOpenOverrides, setRunStepOpenOverrides] = useState<Record<number, boolean>>({});
@@ -395,6 +415,7 @@ export function ChatPage() {
   useEffect(() => {
     if (!sessionId) {
       setSessionUsage(null);
+      setSessionInfo(null);
       return;
     }
     let cancelled = false;
@@ -405,6 +426,12 @@ export function ChatPage() {
           if (!cancelled) setSessionUsage(data && data.sessionId ? data : null);
         })
         .catch(() => { if (!cancelled) setSessionUsage(null); });
+      fetch(`/api/pi/session-info?session=${encodeURIComponent(sessionId)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: SessionInfo | null) => {
+          if (!cancelled) setSessionInfo(data && data.sessionId ? data : null);
+        })
+        .catch(() => { if (!cancelled) setSessionInfo(null); });
     };
     load();
     if (!running) return () => { cancelled = true; };
@@ -841,10 +868,12 @@ export function ChatPage() {
           </button>
         )}
         </div>
-        {sessionUsage && (
-          <aside
-            className={cn("codex-usage-panel", !usageOpen && "is-collapsed")}
-          >
+        {(sessionUsage || sessionInfo) && (
+          <div className="codex-side-panels">
+            {sessionUsage && (
+              <aside
+                className={cn("codex-usage-panel", !usageOpen && "is-collapsed")}
+              >
             <button
               type="button"
               className="codex-usage-toggle"
@@ -930,6 +959,74 @@ export function ChatPage() {
               </div>
             )}
           </aside>
+            )}
+            {sessionInfo && (
+              <aside className="codex-session-meta">
+                <div className="codex-meta-row">
+                  <span>session-id</span>
+                  <code title={sessionInfo.sessionId}>
+                    {sessionInfo.sessionId}
+                  </code>
+                  <button
+                    type="button"
+                    title="复制 session-id"
+                    onClick={() => copyField("session-id", sessionInfo.sessionId)}
+                  >
+                    {copiedField === "session-id" ? (
+                      <Check className="h-3 w-3" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </button>
+                </div>
+                <div className="codex-meta-row">
+                  <span>intercom-id</span>
+                  <code title={sessionInfo.intercomId}>
+                    {sessionInfo.intercomId}
+                  </code>
+                  <button
+                    type="button"
+                    title="复制 intercom-id"
+                    onClick={() => copyField("intercom-id", sessionInfo.intercomId)}
+                  >
+                    {copiedField === "intercom-id" ? (
+                      <Check className="h-3 w-3" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </button>
+                </div>
+                {(sessionInfo.cwd || projectPath.trim()) && (
+                  <div className="codex-meta-actions">
+                    <button
+                      type="button"
+                      title={sessionInfo.cwd || projectPath}
+                      onClick={() =>
+                        copyField("cwd", sessionInfo.cwd || projectPath.trim())
+                      }
+                    >
+                      <Folder className="h-3 w-3" />
+                      {copiedField === "cwd" ? "已复制" : "复制目录"}
+                    </button>
+                    {hasFinderApi && (
+                      <button
+                        type="button"
+                        title={sessionInfo.cwd || projectPath}
+                        onClick={() =>
+                          window.piAPI?.openInFinder?.(
+                            sessionInfo.cwd || projectPath.trim(),
+                          )
+                        }
+                      >
+                        <FolderOpen className="h-3 w-3" />
+                        Finder 打开
+                      </button>
+                    )}
+                  </div>
+                )}
+              </aside>
+            )}
+          </div>
         )}
       </div>
       <form onSubmit={submit} className="codex-composer">

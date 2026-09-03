@@ -56,6 +56,12 @@ export function createPiApiMiddleware(): PiApiMiddleware {
         res.end(JSON.stringify(status));
       });
     },
+    "GET /api/pi/session-info"(req, res) {
+      const sessionId = new URL(req.url ?? "", "http://localhost").searchParams.get("session") ?? "";
+      const data = pi.readSessionInfo(sessionId);
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(data));
+    },
     "GET /api/pi/chat/active"(_, res) {
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ sessionIds: pi.listActiveWebChats() }));

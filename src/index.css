@@ -797,12 +797,23 @@ table { border-collapse: collapse; }
 .codex-run-status { display: inline-flex; width: fit-content; align-items: center; gap: 7px; padding: 6px 12px; color: var(--muted-text); border: 1px solid var(--card-border); border-radius: 999px; background: color-mix(in srgb, var(--card-bg-solid) 70%, transparent); font-size: 12px; }
 .codex-run-status svg { color: var(--signal-cyan); }
 
-.codex-usage-panel { position: sticky; top: 20px; display: flex; width: 214px; flex-shrink: 0; align-self: flex-start; flex-direction: column; margin: 20px 0 0 18px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--signal-cyan) 26%, var(--card-border)); border-radius: 12px; background: color-mix(in srgb, var(--card-bg-solid) 94%, transparent); box-shadow: 0 10px 28px rgba(20, 55, 62, .14); }
+.codex-side-panels { position: sticky; top: 20px; display: flex; width: 214px; flex: 0 0 auto; flex-direction: column; gap: 10px; align-self: flex-start; margin: 20px 0 0 18px; }
+.codex-usage-panel { display: flex; flex-direction: column; overflow: hidden; border: 1px solid color-mix(in srgb, var(--signal-cyan) 26%, var(--card-border)); border-radius: 12px; background: color-mix(in srgb, var(--card-bg-solid) 94%, transparent); box-shadow: 0 10px 28px rgba(20, 55, 62, .14); }
 .codex-usage-panel.is-collapsed { width: auto; margin-left: 10px; }
 .codex-usage-toggle { display: flex; width: 100%; align-items: center; gap: 6px; padding: 8px 10px; color: var(--sidebar-text); border: 0; border-bottom: 1px solid var(--card-border); background: transparent; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .codex-usage-panel.is-collapsed .codex-usage-toggle { border-bottom: 0; padding: 8px; }
 .codex-usage-toggle svg { color: var(--signal-cyan); }
 .codex-usage-toggle:hover { color: var(--page-text); }
+/* ─── Session meta panel (below the usage panel) ──────── */
+.codex-session-meta { display: flex; flex-direction: column; gap: 5px; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--card-border) 86%, transparent); border-radius: 12px; background: var(--card-bg-solid); box-shadow: var(--panel-shadow); }
+.codex-meta-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.codex-meta-row > span { flex: 0 0 auto; color: var(--subtle-text); font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: .06em; }
+.codex-meta-row > code { flex: 1; min-width: 0; color: var(--page-text); font-family: var(--font-mono); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.codex-meta-row > button { display: grid; width: 22px; height: 22px; flex: 0 0 auto; place-items: center; color: var(--muted-text); border: 0; border-radius: 5px; background: transparent; }
+.codex-meta-row > button:hover { color: var(--signal-cyan); background: var(--hover-bg); }
+.codex-meta-actions { display: flex; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--card-border); }
+.codex-meta-actions > button { display: flex; flex: 1; min-width: 0; align-items: center; justify-content: center; gap: 5px; padding: 6px 4px; color: var(--muted-text); border: 1px solid var(--input-border); border-radius: 7px; background: var(--input-bg); font-size: 10px; white-space: nowrap; }
+.codex-meta-actions > button:hover { color: var(--page-text); border-color: color-mix(in srgb, var(--signal-cyan) 45%, var(--input-border)); }
 .codex-usage-body { display: flex; flex-direction: column; gap: 6px; padding: 10px; }
 .codex-usage-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 11px; }
 .codex-usage-row span { color: var(--muted-text); }
@@ -813,7 +824,8 @@ table { border-collapse: collapse; }
 .codex-usage-track { height: 4px; overflow: hidden; border-radius: 999px; background: var(--input-bg); }
 .codex-usage-track span { display: block; height: 100%; border-radius: 999px; background: var(--signal-cyan); transition: width .3s ease; }
 .codex-usage-context small { color: var(--subtle-text); font-family: var(--font-mono); font-size: 10px; }
-@media (max-width: 1200px) { .codex-usage-panel { display: none; } }
+@media (max-width: 1200px) { .codex-side-panels { display: none; }
+.codex-usage-panel { display: none; } }
 
 .codex-message-column { position: relative; display: flex; min-width: 0; min-height: 0; flex: 1; }
 

@@ -4,6 +4,9 @@ contextBridge.exposeInMainWorld('piAPI', {
   // Window chrome — keep the frameless title bar in sync with the UI theme
   setWindowBackground: (color: string) => ipcRenderer.invoke('pi:window:background', color),
 
+  // Open a folder in macOS Finder (chat session panel)
+  openInFinder: (path: string) => ipcRenderer.invoke('pi:open-in-finder', path),
+
   // Settings
   getSettings: () => ipcRenderer.invoke('pi:settings:get'),
   setSettings: (data: any) => ipcRenderer.invoke('pi:settings:set', data),

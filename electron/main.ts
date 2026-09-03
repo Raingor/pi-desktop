@@ -415,7 +415,21 @@ function setupIPC() {
   ipcMain.handle('pi:settings:get', () => piReader.readSettings());
   ipcMain.handle('pi:settings:set', (_e: IpcMainInvokeEvent, data: any) => piReader.writeSettings(data));
   // Auth
-  ipcMain.handle('pi:auth:get', () => piReader.readAuth());  ipcMain.handle('pi:auth:set', (_e: IpcMainInvokeEvent, data: any) => piReader.writeAuth(data));
+  ipcMain.handle('pi:auth:get', () => piReader.readAuth());
+
+  // Open a directory in Finder (chat session panel). Validates that the
+  // target exists and is a directory before handing it to the shell.
+  ipcMain.handle('pi:open-in-finder', (_e: IpcMainInvokeEvent, target: unknown) => {
+    if (typeof target !== 'string' || !target.trim()) return false;
+    try {
+      const resolved = path.resolve(target.trim());
+      if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) return false;
+      shell.openPath(resolved);
+      return true;
+    } catch {
+      return false;
+    }
+  });  ipcMain.handle('pi:auth:set', (_e: IpcMainInvokeEvent, data: any) => piReader.writeAuth(data));
 
   // Models
   ipcMain.handle('pi:models:get', () => piReader.readModels());
