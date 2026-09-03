@@ -203,6 +203,8 @@ const zhCN: Record<string, string> = {
   "subagents.no_chains_desc": "在 ~/.pi/agent/chains/ 目录下创建 .chain.md 文件即可添加流水线。",
   "subagents.no_history": "暂无运行记录",
   "subagents.no_history_desc": "运行子代理后，运行记录将显示在这里。",
+  "subagents.no_match": "没有匹配的结果",
+  "subagents.no_match_desc": "换个关键词，或清空搜索框查看全部。",
   "subagents.model": "模型",
   "subagents.edit": "编辑",
   "subagents.save": "保存",

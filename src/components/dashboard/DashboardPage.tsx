@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useConfigStore } from "@/store/config-store";
 import { useTranslation } from "@/lib/i18n";
 import { useCurrency } from "@/lib/currency";
+import { usePolling } from "@/hooks/usePolling";
 import { formatCost, formatNumber, cn, USD_TO_CNY } from "@/lib/utils";
 import {
   Activity, DollarSign, BarChart3, ArrowUp, ArrowDown, Database, DollarSignIcon, RefreshCw, Download,
@@ -147,21 +148,28 @@ function formatCostShort(n: number): string {
 }
 
 function formatDateShort(dateStr: string): string {
-  // Parse as a China-time (UTC+8) calendar date and format in that timezone.
+  // The date is already a calendar date in the reporting timezone, so read it
+  // back as UTC and format it as UTC — anything else re-shifts it by a day.
   const [y, m, dNum] = dateStr.split("-").map(Number);
   if (!y || !m || !dNum) return dateStr;
   const d = new Date(Date.UTC(y, m - 1, dNum));
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    timeZone: "Asia/Shanghai",
+    timeZone: "UTC",
   });
 }
 
-function cnTodayStr(): string {
-  // "YYYY-MM-DD" in China time (UTC+8), independent of system timezone.
+/**
+ * "YYYY-MM-DD" for today in the machine's timezone.
+ *
+ * Must agree with the server's bucketing (`reportDateParts` in
+ * server/pi-reader.ts), which also uses the machine's timezone. Both sides
+ * were pinned to Asia/Shanghai before, which put anyone outside UTC+8 in the
+ * wrong day.
+ */
+function todayStr(): string {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Shanghai",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -171,8 +179,8 @@ function cnTodayStr(): string {
 /** Previous period of equal length, for period-over-period trends. */
 function getPrevRange(range: RangeKey): { from: string; to: string } | null {
   const shift = (days: number) => {
-    // Start from China-time "today" and shift by whole days using UTC math.
-    const [y, m, dNum] = cnTodayStr().split("-").map(Number);
+    // Start from today's calendar date and shift by whole days using UTC math.
+    const [y, m, dNum] = todayStr().split("-").map(Number);
     const t = Date.UTC(y ?? 0, (m ?? 1) - 1, dNum ?? 1) - days * 86400000;
     const d = new Date(t);
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
@@ -342,14 +350,12 @@ function AnalyticsMetric({
 function DistributionRow({
   name,
   meta,
-  value,
   percentage,
   color,
   valueLabel,
 }: {
   name: string;
   meta: string;
-  value: number;
   percentage: number;
   color: string;
   valueLabel: string;
@@ -434,18 +440,12 @@ export function DashboardPage() {
 
   // Official Codex quotas use the locally logged-in OAuth session. The API
   // returns only a sanitized summary; OAuth credentials never reach the UI.
-  useEffect(() => {
-    let cancelled = false;
-    const load = () => {
-      fetch("/api/pi/codex-usage-status")
-        .then((r) => r.json())
-        .then((status: CodexUsageStatus) => { if (!cancelled) setCodexUsage(status); })
-        .catch(() => { if (!cancelled) setCodexUsage(null); });
-    };
-    load();
-    const id = window.setInterval(load, 30_000);
-    return () => { cancelled = true; window.clearInterval(id); };
-  }, [source]);
+  usePolling(() => {
+    fetch("/api/pi/codex-usage-status")
+      .then((r) => r.json())
+      .then((status: CodexUsageStatus) => setCodexUsage(status))
+      .catch(() => setCodexUsage(null));
+  }, 30_000);
 
   // Reset request-log pagination when the queried range or source changes
   useEffect(() => { setLogPage(1); }, [range, customFrom, customTo, source]);
@@ -454,13 +454,11 @@ export function DashboardPage() {
   useEffect(() => { setLoading(true); }, [source]);
 
   // Auto-refresh with configurable interval (seconds)
-  useEffect(() => {
-    if (!autoRefresh || refreshInterval <= 0) return;
-    const id = setInterval(fetchData, refreshInterval * 1000);
-    return () => clearInterval(id);
-  }, [autoRefresh, refreshInterval, fetchData]);
+  // The initial fetch is handled above; this only adds the repeat, so a hidden
+  // window does not keep re-scanning session files behind the user's back.
+  usePolling(fetchData, refreshInterval * 1000, autoRefresh && refreshInterval > 0);
 
-  const today = cnTodayStr();
+  const today = todayStr();
 
   // Chart data: hourly for "today", daily for 7d/30d/custom
   const rawBreakdown = range === "today" ? data?.hourlyBreakdown : data?.dailyBreakdown;
@@ -917,7 +915,6 @@ export function DashboardPage() {
                     key={provider.providerId}
                     name={provider.providerId}
                     meta={t("dashboard.provider_models", String(provider.modelCount))}
-                    value={provider.totalTokens}
                     percentage={analytics.providerTokenTotal > 0 ? (provider.totalTokens / analytics.providerTokenTotal) * 100 : 0}
                     valueLabel={formatTokensShort(provider.totalTokens, lang)}
                     color={COLORS[index % COLORS.length] ?? COLORS[0]!}

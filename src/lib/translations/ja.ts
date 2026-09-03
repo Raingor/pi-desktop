@@ -203,6 +203,8 @@ const ja: Record<string, string> = {
   "subagents.no_chains_desc": "~/.pi/agent/chains/ に .chain.md ファイルを作成してください。",
   "subagents.no_history": "実行履歴がありません",
   "subagents.no_history_desc": "エージェントを実行すると、履歴がここに表示されます。",
+  "subagents.no_match": "一致する結果がありません",
+  "subagents.no_match_desc": "キーワードを変えるか、検索欄を空にすると全件表示されます。",
   "subagents.model": "モデル",
   "subagents.edit": "編集",
   "subagents.save": "保存",

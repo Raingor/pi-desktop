@@ -16,6 +16,40 @@ import {
   type ReactNode,
 } from "react";
 
+/**
+ * Which directory the tool panel should point at for the current chat.
+ *
+ * Opening a conversation from the sidebar navigates to `/chat?session=<id>`
+ * only — it never fills the project picker — so the session's own recorded cwd
+ * is the sole signal of which project is on screen and has to win. The picker
+ * value is next (it is the cwd a prompt would use for a brand-new chat), and
+ * the server-resolved default is the last resort.
+ *
+ * Returns "" to mean "no answer yet, keep showing the current directory",
+ * which is what `setCwd` does with an empty value.
+ */
+export function resolveWorkspaceCwd({
+  sessionPending,
+  sessionCwd,
+  projectPath,
+  defaultCwd,
+}: {
+  /** An opened session whose recorded cwd has not been fetched yet. */
+  sessionPending?: boolean;
+  sessionCwd?: string;
+  projectPath?: string;
+  defaultCwd?: string;
+}): string {
+  const session = sessionCwd?.trim();
+  if (session) return session;
+  const picked = projectPath?.trim();
+  if (picked) return picked;
+  // Holding the previous directory for the one render it takes session-info to
+  // arrive beats flashing the home directory on every conversation switch.
+  if (sessionPending) return "";
+  return defaultCwd?.trim() ?? "";
+}
+
 interface WorkspaceValue {
   /** Absolute path the tool panels operate on, or "" while unknown. */
   cwd: string;
@@ -58,7 +92,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const setCwd = useCallback((path: string) => {
     const next = path.trim();
-    // An empty selection means "use the default", which is already seeded.
+    // An empty value means the caller has not resolved a directory yet (the
+    // default is still in flight), so keep whatever the panel is showing.
     if (next) setCwdState(next);
   }, []);
 

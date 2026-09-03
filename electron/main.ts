@@ -20,6 +20,19 @@ function log(...args: unknown[]) {
   console.log(...args);
 }
 
+// Last-resort guards. This process hosts the local API server, so an
+// unhandled throw or rejection anywhere in a route handler would otherwise
+// terminate the whole app — window, tray and all — with nothing on screen to
+// explain it. A renderer crash reloads; a main-process crash does not. The
+// handlers themselves catch their own errors (see server/api-routes.ts); these
+// exist so an escape stays a log line instead of a disappearing app.
+process.on('uncaughtException', (error: Error) => {
+  log('uncaughtException:', error.stack ?? error.message);
+});
+process.on('unhandledRejection', (reason: unknown) => {
+  log('unhandledRejection:', reason instanceof Error ? (reason.stack ?? reason.message) : String(reason));
+});
+
 // Keep global references to prevent garbage collection
 let mainWindow: BrowserWindowType | null = null;
 let popupWindow: BrowserWindowType | null = null;
@@ -345,17 +358,6 @@ function createMenu() {
 const SUMMARY_CACHE_TTL_MS = 25_000;
 let summaryCache: { data: unknown; at: number } | null = null;
 
-// pi-reader buckets dates in Asia/Shanghai (CN_TZ); the summary must use the
-// SAME timezone or the "today" bucket slips by a day around midnight UTC.
-function cnTodayStr(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Shanghai',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-}
-
 function computeUsageSummary() {
   const records = [
     ...piReader.readAllUsage(),
@@ -365,20 +367,17 @@ function computeUsageSummary() {
     ...piReader.readAtomcodeUsage(),
     ...piReader.readChatgptUsage(),
   ];
-  const today = cnTodayStr();
-  const now = new Date();
-  const sevenDaysAgo = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Shanghai',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000));
+  // Bucketing must match pi-reader's, or the "today" total slips by a day
+  // around midnight. Both sides now go through reportDateParts.
+  const now = Date.now();
+  const today = piReader.reportDateParts(now).date;
+  const sevenDaysAgo = piReader.reportDateParts(now - 6 * 24 * 60 * 60 * 1000).date;
 
   const todayRecords = records.filter((r) => r.date === today);
   const sevenDayRecords = records.filter((r) => r.date >= sevenDaysAgo);
 
   const sum = (recs: typeof records) => {
-    let tokens = 0, input = 0, output = 0, cacheRead = 0, cacheWrite = 0;
+    let input = 0, output = 0, cacheRead = 0, cacheWrite = 0;
     let cost = 0, requests = 0;
     for (const r of recs) {
       input += r.inputTokens;
@@ -388,7 +387,7 @@ function computeUsageSummary() {
       cost += r.cost;
       requests += r.requests;
     }
-    tokens = input + output + cacheRead + cacheWrite;
+    const tokens = input + output + cacheRead + cacheWrite;
     return { tokens, input, output, cacheRead, cacheWrite, cost, requests };
   };
 

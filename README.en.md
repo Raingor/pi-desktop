@@ -126,12 +126,17 @@ npm install
 
 npm run electron:dev      # Electron + Vite HMR (recommended)
 npm run dev               # web only, http://localhost:5179
-npm test                  # vitest (72 tests)
+npm run verify            # typecheck + lint + test — run this before committing
+npm test                  # 108 vitest cases + 3 node:test cases
+npm run lint              # eslint
+npm run typecheck         # tsc -b
 npm run build             # tsc -b && vite build
 npm run electron:build    # DMG + ZIP for x64 and arm64 into release/
 npm run electron:preview  # run the production build without packaging
 npm run tray:icon         # regenerate the menu-bar template icon
 ```
+
+CI (`.github/workflows/verify.yml`) runs typecheck + lint + test plus the three bundle builds on a macOS runner. Signing and DMG packaging are left out.
 
 **Dev and packaged builds run the same backend code**: `server/api-routes.ts` exports `createPiApiMiddleware()`, mounted as Vite middleware in dev and reused by the local HTTP server in `electron/api-server.ts` after packaging — so the frontend behaves identically in both modes.
 

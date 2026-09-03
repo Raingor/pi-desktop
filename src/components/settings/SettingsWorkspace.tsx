@@ -1,14 +1,20 @@
-import { useState } from "react";
+import { Suspense, lazy, useState, type ComponentType } from "react";
 import { Activity, ArrowLeft, Brain, Gauge, LayoutDashboard, Plug, Settings2, SlidersHorizontal, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { DashboardPage } from "@/components/dashboard/DashboardPage";
-import { SessionsPage } from "@/components/sessions/SessionsPage";
-import { MemoryPage } from "@/components/sessions/MemoryPage";
-import { ProvidersModelsPage } from "@/components/providers/ProvidersModelsPage";
-import { SubagentsPage } from "@/components/subagents/SubagentsPage";
-import { ModelSpeedTestPage } from "@/components/speedtest/ModelSpeedTestPage";
-import { SettingsPage } from "./SettingsPage";
+
+// Loaded on demand. Chat is the app's main surface; these seven pages are
+// visited occasionally but used to be bundled into the entry chunk, dragging
+// recharts and the 2700-line provider editor into the startup path with them.
+// One section is on screen at a time, so there is nothing to gain from having
+// the other six parsed up front.
+const SettingsPage = lazy(() => import("./SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const DashboardPage = lazy(() => import("@/components/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+const ProvidersModelsPage = lazy(() => import("@/components/providers/ProvidersModelsPage").then((m) => ({ default: m.ProvidersModelsPage })));
+const SubagentsPage = lazy(() => import("@/components/subagents/SubagentsPage").then((m) => ({ default: m.SubagentsPage })));
+const ModelSpeedTestPage = lazy(() => import("@/components/speedtest/ModelSpeedTestPage").then((m) => ({ default: m.ModelSpeedTestPage })));
+const SessionsPage = lazy(() => import("@/components/sessions/SessionsPage").then((m) => ({ default: m.SessionsPage })));
+const MemoryPage = lazy(() => import("@/components/sessions/MemoryPage").then((m) => ({ default: m.MemoryPage })));
 
 type Section = "general" | "overview" | "providers" | "subagents" | "sessions" | "memory" | "speed";
 const sections: { key: Section; label: string; icon: typeof Settings2; group: string }[] = [
@@ -21,13 +27,23 @@ const sections: { key: Section; label: string; icon: typeof Settings2; group: st
   { key: "memory", label: "记忆", icon: Brain, group: "数据" },
 ];
 
+const pages: Record<Section, ComponentType> = {
+  general: SettingsPage,
+  overview: DashboardPage,
+  providers: ProvidersModelsPage,
+  subagents: SubagentsPage,
+  sessions: SessionsPage,
+  memory: MemoryPage,
+  speed: ModelSpeedTestPage,
+};
+
 /**
  * Standalone settings page: its own full-screen layout with the settings
  * navigation on the left — no chat sidebar. Reached via /settings.
  */
 export function SettingsWorkspace() {
   const [active, setActive] = useState<Section>("general");
-  const content: Record<Section, React.ReactNode> = { general: <SettingsPage />, overview: <DashboardPage />, providers: <ProvidersModelsPage />, subagents: <SubagentsPage />, sessions: <SessionsPage />, memory: <MemoryPage />, speed: <ModelSpeedTestPage /> };
+  const ActivePage = pages[active];
   let lastGroup = "";
   return (
     <div className="settings-page">
@@ -60,7 +76,13 @@ export function SettingsWorkspace() {
         </Link>
       </aside>
       <section className="settings-page-content">
-        <div className="settings-page-inner">{content[active]}</div>
+        <div className="settings-page-inner">
+          {/* Chunks are served from the local API server, so the fallback is
+              only ever a frame or two — a spinner would just flash. */}
+          <Suspense fallback={<div className="settings-page-loading">载入中…</div>}>
+            <ActivePage />
+          </Suspense>
+        </div>
       </section>
     </div>
   );

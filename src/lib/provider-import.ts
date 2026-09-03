@@ -13,7 +13,7 @@ export interface ParsedProviderImport {
 
 const KEY_FIELD_RE = /^(apikey|api_key|api-key|keys?|token|secret)(?:\s*[-_]\s*\d+)?$/i;
 const IMPORT_LABEL_RE =
-  /(?<![\w/.\-])((?:apikey|api_key|api-key|keys?|token|secret)(?:\s*[-_]\s*\d+)?|baseurl|base_url|base-url|url|endpoint|地址|接口|provider|name|名称|名稱|供应商|供應商|model_ids?|modelids?|models?|模型)\s*[:：](?!\/\/)/gi;
+  /(?<![\w/.-])((?:apikey|api_key|api-key|keys?|token|secret)(?:\s*[-_]\s*\d+)?|baseurl|base_url|base-url|url|endpoint|地址|接口|provider|name|名称|名稱|供应商|供應商|model_ids?|modelids?|models?|模型)\s*[:：](?!\/\/)/gi;
 
 function normalizedKeyLabel(label: string): string {
   return label.trim().replace(/\s+/g, "");

@@ -376,28 +376,45 @@ function getSessionDirs(): string[] {
     .filter((dir) => statSync(dir).isDirectory());
 }
 
-// Usage stats are bucketed in China time (UTC+8) regardless of the machine's
-// system timezone, so daily totals stay consistent for a Beijing-based user.
-const CN_TZ = "Asia/Shanghai";
+// Timezone used to bucket usage into calendar days and hours.
+//
+// This was hardcoded to Asia/Shanghai, which put a user outside UTC+8 in a
+// permanently wrong "today": records were filed under Beijing dates while the
+// range endpoints asked for a Beijing date too, so the numbers agreed with each
+// other but not with the user's actual day. The machine's own timezone is the
+// answer users expect, and it keeps the renderer (Chromium, same machine) in
+// agreement without either side having to know the rule.
+//
+// PI_DESKTOP_REPORT_TZ overrides it, which is what the tests use to get a
+// fixed reference point.
+const REPORT_TZ = process.env.PI_DESKTOP_REPORT_TZ || undefined;
 
-function cnDateParts(ts: string | number): { date: string; hour: number } {
+/**
+ * Calendar date ("YYYY-MM-DD") and hour (0–23) of a timestamp, in the
+ * reporting timezone. Sole authority on day bucketing: the API's date-range
+ * endpoints resolve "today" through this too, so a record and the range that
+ * should contain it can never disagree.
+ */
+export function reportDateParts(ts: string | number): { date: string; hour: number } {
   const d = new Date(ts);
   if (isNaN(d.getTime())) return { date: "unknown", hour: 0 };
   const date = new Intl.DateTimeFormat("en-CA", {
-    timeZone: CN_TZ,
+    timeZone: REPORT_TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(d); // "2026-08-06"
   const hour = Number(
     new Intl.DateTimeFormat("en-US", {
-      timeZone: CN_TZ,
+      timeZone: REPORT_TZ,
       hour: "2-digit",
       hour12: false,
     }).format(d)
   );
   return { date, hour: hour === 24 ? 0 : hour };
 }
+
+const cnDateParts = reportDateParts;
 
 function parseSessionFile(filePath: string): UsageRecord[] {
   const records: UsageRecord[] = [];
@@ -792,7 +809,7 @@ export function readAtomcodeUsage(): UsageRecord[] {
   const sessionsDir = join(ATOMCODE_DIR, "sessions");
   if (!existsSync(sessionsDir)) return allRecords;
 
-  let sessionDirs: string[] = [];
+  let sessionDirs: string[];
   try {
     sessionDirs = readdirSync(sessionsDir)
       .map((name) => join(sessionsDir, name))
@@ -1117,7 +1134,9 @@ export function getModelSummaries(records: UsageRecord[]) {
   }
 
   return Array.from(sums.entries()).map(([key, s]) => {
-    const [providerId, modelId] = key.split("/");
+    // The provider half of the key is redundant here — the accumulator already
+    // carries it, unsplit.
+    const [, modelId] = key.split("/");
     return {
       modelId: modelId!,
       providerId: s.providerId,
@@ -1390,7 +1409,7 @@ interface ProjectGroup {
 function decodeProjectName(dirName: string): { projectPath: string; projectName: string } {
   // dirName: "--Users-a123--workspace-wwwroot-X-xenicalofficial-official-v1--"
   // Replace "--" with "/", trim leading/trailing "/" and "-"
-  let decoded = dirName.replace(/^--|--$/g, "").replace(/--/g, "/");
+  const decoded = dirName.replace(/^--|--$/g, "").replace(/--/g, "/");
   // Remove leading "/Users/a123" or similar home path prefix for display
   const home = homedir();
   let displayName = decoded;
@@ -1403,7 +1422,34 @@ function decodeProjectName(dirName: string): { projectPath: string; projectName:
   return { projectPath: decoded, projectName };
 }
 
-export function listSessions(): ProjectGroup[] {
+// Listing sessions parses every JSONL header under ~/.pi/agent/sessions —
+// measured at ~90ms cold, ~45ms warm. The sidebar reloads on every window
+// focus and after every new session, so a short TTL keeps that off the hot
+// path. Every other bulk reader in this module already caches for 30s.
+const SESSION_LIST_TTL_MS = 5_000;
+let sessionListCache: { groups: ProjectGroup[]; at: number } | null = null;
+
+/** Drop the cached session list — called after any write that changes it. */
+export function clearSessionListCache(): void {
+  sessionListCache = null;
+}
+
+/**
+ * Session groups, newest first, current workspace pinned to the top.
+ *
+ * Pass `refresh` to bypass the cache; mutating helpers in this module
+ * (trash, restore, rename) invalidate it directly.
+ */
+export function listSessions(refresh = false): ProjectGroup[] {
+  if (!refresh && sessionListCache && Date.now() - sessionListCache.at < SESSION_LIST_TTL_MS) {
+    return sessionListCache.groups;
+  }
+  const groups = scanSessions();
+  sessionListCache = { groups, at: Date.now() };
+  return groups;
+}
+
+function scanSessions(): ProjectGroup[] {
   const dirs = getSessionDirs();
   const groups = new Map<string, ProjectGroup>();
 
@@ -1542,6 +1588,7 @@ export function deleteSessionFile(filePath: string): boolean {
     if (!existsSync(filePath)) return false;
 
     unlinkSync(filePath);
+    clearSessionListCache();
     return true;
   } catch {
     return false;
@@ -1623,6 +1670,7 @@ export function trashSessionFile(filePath: string): boolean {
     const trashPath = join(TRASH_DIR, rel);
     mkdirSync(dirname(trashPath), { recursive: true });
     renameSync(resolved, trashPath);
+    clearSessionListCache();
     return true;
   } catch {
     return false;
@@ -1665,6 +1713,7 @@ export function restoreFromTrash(trashPath: string): boolean {
     const original = join(SESSIONS_DIR, rel);
     mkdirSync(dirname(original), { recursive: true });
     renameSync(resolved, original);
+    clearSessionListCache();
     return true;
   } catch {
     return false;
@@ -1997,7 +2046,9 @@ export function updateSessionUserMessage(sessionId: string, messageId: string, t
   const nextText = text.trim();
   if (!nextText || nextText.length > 200_000) return false;
 
-  const session = listSessions().flatMap((group) => group.sessions).find((item) => item.id === sessionId);
+  // Fresh scan: a session created seconds ago must be findable, and the
+  // cached list may predate it.
+  const session = listSessions(true).flatMap((group) => group.sessions).find((item) => item.id === sessionId);
   if (!session) return false;
   const filePath = resolve(session.filePath);
   if (!filePath.startsWith(SESSIONS_DIR + sep) || !filePath.endsWith(".jsonl") || !existsSync(filePath)) return false;
@@ -2051,7 +2102,9 @@ export function renameSession(sessionId: string, name: string): boolean {
   const nextName = name.replace(/\s+/g, " ").trim();
   if (nextName.length > 200) return false;
 
-  const session = listSessions().flatMap((group) => group.sessions).find((item) => item.id === sessionId);
+  // Fresh scan: renaming a session created seconds ago must work, and the
+  // cached list may predate it.
+  const session = listSessions(true).flatMap((group) => group.sessions).find((item) => item.id === sessionId);
   if (!session) return false;
   const filePath = resolve(session.filePath);
   if (!filePath.startsWith(SESSIONS_DIR + sep) || !filePath.endsWith(".jsonl") || !existsSync(filePath)) return false;
@@ -2077,6 +2130,8 @@ export function renameSession(sessionId: string, name: string): boolean {
       entry.timestamp = new Date().toISOString();
       lines[index] = JSON.stringify(entry);
       writeFileSync(filePath, lines.join("\n"), "utf-8");
+      // The cached list carries the old title.
+      clearSessionListCache();
       return true;
     }
 
@@ -2105,6 +2160,7 @@ export function renameSession(sessionId: string, name: string): boolean {
     };
     const body = trailingNewline ? raw : `${raw}\n`;
     writeFileSync(filePath, `${body}${JSON.stringify(entry)}\n`, "utf-8");
+    clearSessionListCache();
     return true;
   } catch {
     return false;
@@ -2235,7 +2291,7 @@ export function readMemoryStatus(): {
   return {
     targets: map.map(({ filename, target, limit }) => {
       const p = join(HERMES_DIR, filename);
-      let chars = 0;
+      let chars: number;
       try {
         chars = existsSync(p) ? readFileSync(p, "utf-8").length : 0;
       } catch {
@@ -3026,7 +3082,9 @@ function toNum(v: any): number | undefined {
 }
 
 // Heuristic reasoning detection (server-side; mirrors client guessModelMeta)
-const REASONING_RE = /(^|[/_\-])(r1|o1|o3|o4|z1|reasoner|reasoning|qwq|deepseek-r|think)([/_\-:]|$)/i;
+// The `\-` in the second class is load-bearing: unescaped, `_-:` would be read
+// as a reversed character range. In the first class the dash is already last.
+const REASONING_RE = /(^|[/_-])(r1|o1|o3|o4|z1|reasoner|reasoning|qwq|deepseek-r|think)([/_\-:]|$)/i;
 const VISION_RE = /(vision|[-_]vl\b|multimodal|gpt-4o|gpt-5|claude-(sonnet|opus)|gemini|llama-.*vision|qwen.*vl|glm-.*v\b)/i;
 const AUDIO_RE = /(audio|whisper|tts|speech)/i;
 function heuristicFlags(id: string): { reasoning?: boolean; vision?: boolean; audio?: boolean; contextWindow?: number } {
@@ -3117,7 +3175,6 @@ export async function fetchProviderModels(
         const flags = heuristicFlags(id);
         // Ollama details: try /api/show for richer info (best-effort, ignore errors)
         let cw: number | undefined = flags.contextWindow;
-        let mt: number | undefined;
         try {
           const showUrl = new URL("/api/show", base);
           const show = await fetch(showUrl.toString(), {
@@ -3132,7 +3189,8 @@ export async function fetchProviderModels(
         models.push({
           id,
           contextWindow: cw,
-          maxTokens: mt,
+          // No maxTokens: /api/show does not report an output limit, and
+          // inventing one would show up in the model editor as fact.
           reasoning: flags.reasoning,
           vision: flags.vision,
           audio: flags.audio,
@@ -3260,7 +3318,11 @@ export async function testModel(
   baseUrl: string,
   modelId: string,
   apiKey?: string,
-  apiType: string = "openai-completions"
+  // Accepted so callers can pass the provider's declared apiType, but unused:
+  // the probe always hits an OpenAI-shaped /chat/completions, which is what
+  // every provider in the catalog exposes. Kept in the signature rather than
+  // dropped so the call sites do not have to change if that stops being true.
+  _apiType: string = "openai-completions"
 ): Promise<ProviderTestResult> {
   let url: URL;
   try {

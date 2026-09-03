@@ -35,9 +35,17 @@ const MIME: Record<string, string> = {
 
 function serveStatic(pathOnly: string, res: http.ServerResponse): void {
   // SPA fallback: unknown non-asset paths serve index.html
-  let filePath = path.join(DIST_DIR, pathOnly === '/' ? 'index.html' : pathOnly);
+  const indexPath = path.join(DIST_DIR, 'index.html');
+  let filePath = path.resolve(DIST_DIR, `.${pathOnly === '/' ? '/index.html' : pathOnly}`);
+  // Defence in depth. Callers pass `new URL(...).pathname`, which already
+  // collapses `..` segments, but that is an invariant of the caller rather
+  // than of this function — assert containment here so the bundle directory
+  // stays the boundary no matter who calls it.
+  if (filePath !== DIST_DIR && !filePath.startsWith(DIST_DIR + path.sep)) {
+    filePath = indexPath;
+  }
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-    filePath = path.join(DIST_DIR, 'index.html');
+    filePath = indexPath;
   }
   const ext = path.extname(filePath).toLowerCase();
   res.setHeader('Content-Type', MIME[ext] ?? 'application/octet-stream');

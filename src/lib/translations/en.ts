@@ -205,6 +205,8 @@ const en: Record<string, string> = {
   "subagents.no_chains_desc": "Create chain .chain.md files in ~/.pi/agent/chains/ to get started.",
   "subagents.no_history": "No run history",
   "subagents.no_history_desc": "Subagent run history will appear here after agents are executed.",
+  "subagents.no_match": "No matching results",
+  "subagents.no_match_desc": "Try another keyword, or clear the search box to see everything.",
   "subagents.model": "Model",
   "subagents.edit": "Edit",
   "subagents.save": "Save",

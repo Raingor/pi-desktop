@@ -144,12 +144,17 @@ npm install
 
 npm run electron:dev      # Electron + Vite HMR（推荐）
 npm run dev               # 只跑 Web，浏览器访问 http://localhost:5179
-npm test                  # vitest（72 个用例）
+npm run verify            # typecheck + lint + test，提交前跑这个
+npm test                  # vitest 108 个 + node:test 3 个用例
+npm run lint              # eslint
+npm run typecheck         # tsc -b
 npm run build             # tsc -b && vite build
 npm run electron:build    # 打出 release/ 下的 DMG + ZIP（x64 与 arm64）
 npm run electron:preview  # 不打包直接跑生产构建
 npm run tray:icon         # 重新生成菜单栏模板图标
 ```
+
+CI（`.github/workflows/verify.yml`）在 macOS runner 上跑 typecheck + lint + test + 三个 bundle 构建，不含签名与 DMG 打包。
 
 **开发与打包运行同一套后端代码**：`server/api-routes.ts` 导出 `createPiApiMiddleware()`，开发时挂在 Vite 中间件上，打包后由 `electron/api-server.ts` 起的本地 HTTP 服务复用 —— 两种模式下前端行为完全一致。
 
@@ -175,7 +180,6 @@ pi-desktop/
 │   ├── components/
 │   │   ├── chat/                # ChatPage
 │   │   ├── layout/              # AppShell、Sidebar、RightPanel
-│   │   ├── tools/               # 右侧六个面板（文件/审查/子代理/任务/浏览器/终端）
 │   │   ├── tools/               # 右侧六个面板（文件/审查/子代理/任务/浏览器/终端）
 │   │   ├── settings/            # SettingsWorkspace、SettingsPage、Skills、Commands、PiCli、PackageBrowser
 │   │   ├── dashboard/           # 使用统计

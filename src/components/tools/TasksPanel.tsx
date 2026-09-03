@@ -1,7 +1,7 @@
 // Background tasks panel — every command started from the terminal panel plus
 // the pi chat runs the server currently has in flight. Both can be stopped.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   CheckCircle2,
   CircleStop,
@@ -11,6 +11,7 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
+import { usePolling } from "@/hooks/usePolling";
 
 const POLL_MS = 2000;
 
@@ -58,11 +59,7 @@ export function TasksPanel({ onOpenTask }: { onOpenTask: (id: string) => void })
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    load();
-    const id = window.setInterval(() => load(true), POLL_MS);
-    return () => window.clearInterval(id);
-  }, [load]);
+  usePolling(() => load(true), POLL_MS);
 
   const post = (path: string, body: unknown) =>
     fetch(path, {

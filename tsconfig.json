@@ -20,5 +20,10 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src", "electron"]
+  // server/ was missing here, which meant the API route table, the session
+  // parsers and their tests were never type-checked — `tsc -b` passed while a
+  // request-body reader was annotated `(chunk: string)` for what Node actually
+  // hands it, a Buffer. That mismatch is what silently corrupted long Chinese
+  // request bodies.
+  "include": ["src", "electron", "server"]
 }

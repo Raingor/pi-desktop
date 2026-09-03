@@ -3,20 +3,17 @@ import { useTranslation } from "@/lib/i18n";
 import { useConfigStore } from "@/store/config-store";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatTokens } from "@/lib/utils";
-import type { AgentDef, ChainDef, ChainStep, RunRecord, SubagentsData } from "@/types";
+import type { AgentDef, ChainDef, RunRecord, SubagentsData } from "@/types";
 import {
   Brain,
   GitBranch,
   History,
   Box,
   Users,
-  FileCode,
   CheckCircle2,
   XCircle,
   Loader2,
   Search,
-  ExternalLink,
   Pencil,
   Check,
   X,
@@ -195,11 +192,14 @@ function AgentList({
   const selected = agents.find((a) => a.fileName === selectedFile) ?? null;
 
   if (agents.length === 0) {
+    // With a query active the list being empty means the filter excluded
+    // everything, not that nothing is configured — telling the user to go
+    // create agent files would be wrong.
     return (
       <EmptyState
         icon={<Brain className="h-8 w-8" />}
-        title={t("subagents.no_agents")}
-        description={t("subagents.no_agents_desc")}
+        title={searchActive ? t("subagents.no_match") : t("subagents.no_agents")}
+        description={searchActive ? t("subagents.no_match_desc") : t("subagents.no_agents_desc")}
       />
     );
   }
@@ -438,8 +438,8 @@ function ChainList({
     return (
       <EmptyState
         icon={<GitBranch className="h-8 w-8" />}
-        title={t("subagents.no_chains")}
-        description={t("subagents.no_chains_desc")}
+        title={searchActive ? t("subagents.no_match") : t("subagents.no_chains")}
+        description={searchActive ? t("subagents.no_match_desc") : t("subagents.no_chains_desc")}
       />
     );
   }
@@ -545,8 +545,8 @@ function RunHistoryList({
     return (
       <EmptyState
         icon={<History className="h-8 w-8" />}
-        title={t("subagents.no_history")}
-        description={t("subagents.no_history_desc")}
+        title={searchActive ? t("subagents.no_match") : t("subagents.no_history")}
+        description={searchActive ? t("subagents.no_match_desc") : t("subagents.no_history_desc")}
       />
     );
   }

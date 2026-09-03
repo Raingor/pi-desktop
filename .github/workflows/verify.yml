@@ -1,0 +1,41 @@
+name: verify
+
+# Runs on macOS because that is the only platform this app is built for: the
+# tray, the popup panel and the dock behaviour are all macOS-specific, and
+# electron-builder targets dmg/zip. A Linux runner would be cheaper but would
+# not exercise anything the developer machine does not already cover.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      # The renderer bundle plus both Electron bundles. Stops short of
+      # electron-builder: signing and dmg packaging need credentials and add
+      # minutes, and a broken bundle fails here anyway.
+      - name: Build
+        run: |
+          npm run build
+          npx vite build --config vite.electron.config.ts
+          npx vite build --config vite.preload.config.ts

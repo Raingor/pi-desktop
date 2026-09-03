@@ -1198,6 +1198,9 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .settings-page-back:hover { color: var(--sidebar-active-text); }
 .settings-page-content { min-width: 0; overflow-y: auto; }
 .settings-page-inner { width: min(100%, 1480px); margin: 0 auto; padding: 30px 40px 56px; animation: canvas-enter 220ms ease both; }
+/* Lazy-chunk placeholder. Chunks come off local disk, so this is on screen for
+   a frame or two at most — keep it quiet rather than animated. */
+.settings-page-loading { padding: 40px 0; color: var(--text-muted); font-size: 13px; }
 
 /* ─── Page / Panel Language ───────────────────────────── */
 

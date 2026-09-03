@@ -136,11 +136,6 @@ function Select({
   );
 }
 
-const BOOLEAN_CHOICES = [
-  { value: "true", label: "开启" },
-  { value: "false", label: "关闭" },
-];
-
 const THINKING_LEVELS: PiThinkingLevel[] = [
   "off",
   "minimal",

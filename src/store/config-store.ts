@@ -36,7 +36,6 @@ async function apiPost(path: string, data: unknown): Promise<boolean> {
 
 function getCustomProviders(modelsJson: PiModelsJson | null): Provider[] {
   if (!modelsJson) return [];
-  const disabled = new Set(Object.keys(modelsJson._disabledProviders ?? {}));
   const result: Provider[] = [];
   for (const [id, cfg] of Object.entries(modelsJson.providers)) {
     result.push({

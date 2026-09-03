@@ -3,7 +3,7 @@ import { useConfigStore } from "@/store/config-store";
 import { useTranslation } from "@/lib/i18n";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
-import { formatTokens, cn, formatCost, USD_TO_CNY } from "@/lib/utils";
+import { formatTokens, cn, formatCost } from "@/lib/utils";
 import {
   formatImportedApiKeys,
   parseImportedApiKeys,
@@ -691,7 +691,8 @@ function ProviderDetail({ provider, onDelete, onDuplicate, onRenamed, modelsJson
   const toggleReveal = (id: string) =>
     setRevealedKeys((prev) => {
       const s = new Set(prev);
-      s.has(id) ? s.delete(id) : s.add(id);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
       return s;
     });
 
@@ -728,15 +729,17 @@ function ProviderDetail({ provider, onDelete, onDuplicate, onRenamed, modelsJson
   const toggleSelect = (id: string) => {
     setFetchSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
   const toggleAll = () => {
-    setFetchSelected((prev) => {
-      if (availableModels.every((m) => isSelected(m.id))) return new Set();
-      return new Set(availableModels.map((m) => m.id));
-    });
+    setFetchSelected(
+      availableModels.every((m) => isSelected(m.id))
+        ? new Set()
+        : new Set(availableModels.map((m) => m.id)),
+    );
   };
 
   const fetchModels = async () => {
@@ -2358,7 +2361,8 @@ function ImportProviderModal({
   const toggleFetched = (mid: string) => {
     setFetchSel((prev) => {
       const next = new Set(prev);
-      next.has(mid) ? next.delete(mid) : next.add(mid);
+      if (next.has(mid)) next.delete(mid);
+      else next.add(mid);
       return next;
     });
   };

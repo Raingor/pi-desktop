@@ -1,5 +1,6 @@
 import {
   FormEvent,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -25,14 +26,13 @@ import {
   Square,
   Wrench,
   X,
-  Sun,
-  Moon,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
+import { usePolling } from "@/hooks/usePolling";
 import { useTranslation } from "@/lib/i18n";
-import { useWorkspace } from "@/lib/workspace";
+import { resolveWorkspaceCwd, useWorkspace } from "@/lib/workspace";
 import { useConfigStore } from "@/store/config-store";
 
 interface Message {
@@ -157,10 +157,9 @@ export function ChatPage() {
   // instead of the UI hardcoding a project name.
   const [defaultCwd, setDefaultCwd] = useState<{ path: string; name: string } | null>(null);
   // Keep the tool panel pointed at whatever directory a prompt would run in.
+  // The effect that pushes the value lives further down, next to the session
+  // info fetch it also depends on.
   const { setCwd: setWorkspaceCwd } = useWorkspace();
-  useEffect(() => {
-    setWorkspaceCwd(projectPath.trim() || defaultCwd?.path || "");
-  }, [projectPath, defaultCwd, setWorkspaceCwd]);
   useEffect(() => {
     fetch("/api/pi/chat/default-directory")
       .then((res) => (res.ok ? res.json() : null))
@@ -466,33 +465,61 @@ export function ChatPage() {
       .catch(() => setProjects([]));
   }, [sessionId]);
 
-  // Session usage: refresh on session change, after each turn, and while running.
-  useEffect(() => {
+  // Which session the numbers on screen belong to. A reply for a session the
+  // user has already navigated away from must not overwrite the new one's, and
+  // the fetches below outlive the render that started them.
+  const sessionMetaIdRef = useRef(sessionId);
+  sessionMetaIdRef.current = sessionId;
+
+  const loadSessionMeta = useCallback(() => {
     if (!sessionId) {
       setSessionUsage(null);
       setSessionInfo(null);
       return;
     }
-    let cancelled = false;
-    const load = () => {
-      fetch(`/api/pi/session-usage?session=${encodeURIComponent(sessionId)}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: SessionUsage | null) => {
-          if (!cancelled) setSessionUsage(data && data.sessionId ? data : null);
-        })
-        .catch(() => { if (!cancelled) setSessionUsage(null); });
-      fetch(`/api/pi/session-info?session=${encodeURIComponent(sessionId)}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: SessionInfo | null) => {
-          if (!cancelled) setSessionInfo(data && data.sessionId ? data : null);
-        })
-        .catch(() => { if (!cancelled) setSessionInfo(null); });
-    };
-    load();
-    if (!running) return () => { cancelled = true; };
-    const id = window.setInterval(load, 4000);
-    return () => { cancelled = true; window.clearInterval(id); };
-  }, [sessionId, running]);
+    const stale = () => sessionMetaIdRef.current !== sessionId;
+    fetch(`/api/pi/session-usage?session=${encodeURIComponent(sessionId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: SessionUsage | null) => {
+        if (!stale()) setSessionUsage(data && data.sessionId ? data : null);
+      })
+      .catch(() => { if (!stale()) setSessionUsage(null); });
+    fetch(`/api/pi/session-info?session=${encodeURIComponent(sessionId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: SessionInfo | null) => {
+        if (!stale()) setSessionInfo(data && data.sessionId ? data : null);
+      })
+      .catch(() => { if (!stale()) setSessionInfo(null); });
+  }, [sessionId]);
+
+  // A turn can run for minutes with the window tucked away in the menu bar, so
+  // the repeat pauses while hidden. usePolling reads its task through a ref and
+  // therefore does not restart when the session changes — the effect covers
+  // that, plus the final read once `running` goes false. The two overlap for
+  // one tick when a turn starts; two reads of one session file is cheaper than
+  // the bookkeeping to avoid them.
+  usePolling(loadSessionMeta, 4000, Boolean(sessionId) && running);
+  useEffect(() => {
+    loadSessionMeta();
+  }, [loadSessionMeta, running]);
+
+  // Point the tool panel at the directory this chat actually runs in. Opening a
+  // session from the sidebar only sets ?session=, leaving projectPath empty, so
+  // without the session's own recorded cwd the panel stayed on the default
+  // directory no matter which project was opened. The id check drops the
+  // previous session's cwd during the switch instead of showing it briefly.
+  const openedSessionCwd =
+    sessionInfo && sessionInfo.sessionId === sessionId ? sessionInfo.cwd : undefined;
+  useEffect(() => {
+    setWorkspaceCwd(
+      resolveWorkspaceCwd({
+        sessionPending: Boolean(sessionId),
+        sessionCwd: openedSessionCwd,
+        projectPath,
+        defaultCwd: defaultCwd?.path,
+      }),
+    );
+  }, [sessionId, openedSessionCwd, projectPath, defaultCwd, setWorkspaceCwd]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

@@ -8,6 +8,7 @@ import * as pi from "./pi-reader";
 import * as builtins from "../src/data/builtin-providers";
 import * as tools from "./workspace-tools";
 import { rejectNonLocalRequest } from "./local-origin-guard";
+import { fail, json, readJsonBody } from "./http-json";
 
 export type PiApiNext = () => void;
 export type PiApiMiddleware = (
@@ -16,30 +17,48 @@ export type PiApiMiddleware = (
   next: PiApiNext,
 ) => void;
 
-/** Reply with JSON. */
-function json(res: ServerResponse, payload: unknown): void {
-  res.setHeader("Content-Type", "application/json");
-  res.end(JSON.stringify(payload));
+// Every handler replies through json()/fail() and reads its body through
+// readJson(). Hand-rolling `setHeader` + `end(JSON.stringify(...))` per route
+// is what let a few handlers drift out of sync with the rest — three of them
+// ended up parsing the request body with no error handling at all, which is
+// fatal in the packaged app. See server/http-json.ts for the body reader.
+
+/** Query parameters of the request. */
+function query(req: IncomingMessage): URLSearchParams {
+  return new URL(req.url ?? "", "http://localhost").searchParams;
 }
 
 /** Collect a JSON request body, answering 400 on malformed input. */
 function readJson<T>(
   req: IncomingMessage,
   res: ServerResponse,
-  handle: (body: T) => void,
+  handle: (body: T) => void | Promise<void>,
 ): void {
-  let raw = "";
-  req.on("data", (chunk: string) => (raw += chunk));
-  req.on("end", () => {
-    try {
-      handle((raw ? JSON.parse(raw) : {}) as T);
-    } catch {
-      res.statusCode = 400;
-      json(res, { error: "invalid JSON body" });
-    }
-  });
+  readJsonBody<T>(req, res, handle);
 }
 
+/**
+ * Resolve a usage date range to calendar dates.
+ *
+ * Usage records are bucketed by calendar day in the same timezone (see
+ * `reportDateParts` in pi-reader.ts), so both sides must agree or "today"
+ * silently selects the wrong bucket.
+ */
+function resolveDateRange(range: string, fromParam: string, toParam: string) {
+  let toDate = pi.reportDateParts(Date.now()).date;
+  const shiftDate = (date: string, days: number) => {
+    const [year, month, day] = date.split("-").map(Number) as [number, number, number];
+    const shifted = new Date(Date.UTC(year, (month ?? 1) - 1, day) - days * 86400000);
+    return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}-${String(shifted.getUTCDate()).padStart(2, "0")}`;
+  };
+  let fromDate: string;
+  if (range === "today") fromDate = toDate;
+  else if (range === "7d") fromDate = shiftDate(toDate, 6);
+  else if (range === "30d") fromDate = shiftDate(toDate, 29);
+  else if (range === "custom" && fromParam) { fromDate = fromParam; if (toParam) toDate = toParam; }
+  else fromDate = toDate;
+  return { fromDate, toDate };
+}
 
 export function createPiApiMiddleware(): PiApiMiddleware {
   // Warm the usage cache in the background so the dashboard's first
@@ -59,187 +78,136 @@ export function createPiApiMiddleware(): PiApiMiddleware {
 
   const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => void> = {
     "GET /api/pi/settings"(_, res) {
-      const data = pi.readSettings();
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(data ?? {}));
+      json(res, pi.readSettings() ?? {});
     },
     "POST /api/pi/settings"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        const ok = pi.writeSettings(JSON.parse(body));
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({ success: ok }));
+      readJson<unknown>(req, res, (body) => {
+        json(res, { success: pi.writeSettings(body) });
       });
     },
     "GET /api/pi/auth"(_, res) {
-      const data = pi.readAuth();
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(data ?? {}));
+      json(res, pi.readAuth() ?? {});
     },
     "GET /api/pi/codex-usage-status"(req, res) {
-      const force = new URL(req.url ?? "", "http://localhost").searchParams.get("refresh") === "1";
-      pi.getCodexUsageStatus(force).then((status) => {
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify(status));
-      });
+      const force = query(req).get("refresh") === "1";
+      pi.getCodexUsageStatus(force)
+        .then((status) => json(res, status))
+        .catch(() => fail(res, 500, { error: "Codex usage status failed" }));
     },
     "GET /api/pi/session-info"(req, res) {
-      const sessionId = new URL(req.url ?? "", "http://localhost").searchParams.get("session") ?? "";
-      const data = pi.readSessionInfo(sessionId);
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(data));
+      json(res, pi.readSessionInfo(query(req).get("session") ?? ""));
     },
     "GET /api/pi/skills"(_, res) {
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ skills: pi.listLocalSkills() }));
+      json(res, { skills: pi.listLocalSkills() });
     },
     "GET /api/pi/commands"(_, res) {
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ commands: pi.listPiBuiltinCommands() }));
+      json(res, { commands: pi.listPiBuiltinCommands() });
     },
     "GET /api/pi/chat/active"(_, res) {
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ sessionIds: pi.listActiveWebChats() }));
+      json(res, { sessionIds: pi.listActiveWebChats() });
     },
     "GET /api/pi/session-usage"(req, res) {
-      const sessionId = new URL(req.url ?? "", "http://localhost").searchParams.get("session") ?? "";
-      const usage = pi.readSessionUsage(sessionId);
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(usage ?? {}));
+      json(res, pi.readSessionUsage(query(req).get("session") ?? "") ?? {});
     },
     "GET /api/pi/official-usage-config"(_, res) {
       const config = pi.readOfficialUsageConfig();
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({
+      json(res, {
         endpoint: config.endpoint,
         authMode: config.authMode,
         keyCount: config.apiKeys.length,
         maskedKeys: config.apiKeys.map((key: string) => key.length > 8 ? `${key.slice(0, 4)}••••${key.slice(-4)}` : "••••••••"),
-      }));
-    },
-    "POST /api/pi/official-usage-refresh"(_, res) {
-      pi.queryOfficialUsage(pi.readOfficialUsageConfig()).then((usage) => {
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({ success: true, usage }));
-      }).catch((error) => {
-        res.statusCode = 400;
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Official usage query failed" }));
       });
     },
+    "POST /api/pi/official-usage-refresh"(_, res) {
+      pi.queryOfficialUsage(pi.readOfficialUsageConfig())
+        .then((usage) => json(res, { success: true, usage }))
+        .catch((error) => fail(res, 400, {
+          success: false,
+          error: error instanceof Error ? error.message : "Official usage query failed",
+        }));
+    },
     "POST /api/pi/official-usage-query"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", async () => {
+      readJson<{ endpoint?: unknown; apiKeys?: unknown; authMode?: pi.OfficialUsageConfig["authMode"] }>(req, res, async (input) => {
+        const config: pi.OfficialUsageConfig = {
+          endpoint: typeof input.endpoint === "string" ? input.endpoint : "",
+          apiKeys: Array.isArray(input.apiKeys) ? input.apiKeys.filter((key): key is string => typeof key === "string") : [],
+          authMode: input.authMode ?? "auto",
+        };
         try {
-          const input = JSON.parse(body);
-          const config = {
-            endpoint: typeof input.endpoint === "string" ? input.endpoint : "",
-            apiKeys: Array.isArray(input.apiKeys) ? input.apiKeys : [],
-            authMode: input.authMode,
-          };
           const usage = await pi.queryOfficialUsage(config);
           const saved = pi.writeOfficialUsageConfig(config);
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: saved, usage, error: saved ? undefined : "Failed to save configuration" }));
+          json(res, { success: saved, usage, error: saved ? undefined : "Failed to save configuration" });
         } catch (error) {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Official usage query failed" }));
+          fail(res, 400, {
+            success: false,
+            error: error instanceof Error ? error.message : "Official usage query failed",
+          });
         }
       });
     },
     "POST /api/pi/auth"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        const ok = pi.writeAuth(JSON.parse(body));
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({ success: ok }));
+      readJson<unknown>(req, res, (body) => {
+        json(res, { success: pi.writeAuth(body) });
       });
     },
     "GET /api/pi/models"(_, res) {
-      const data = pi.readModels();
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(data ?? { providers: {} }));
+      json(res, pi.readModels() ?? { providers: {} });
     },
     "POST /api/pi/models"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        const ok = pi.writeModels(JSON.parse(body));
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({ success: ok }));
+      readJson<unknown>(req, res, (body) => {
+        json(res, { success: pi.writeModels(body) });
       });
     },
     "GET /api/pi/builtin-providers"(_, res) {
-      res.setHeader("Content-Type", "application/json");
       // Prefer the live catalog from the local pi install; fall back to
       // the hand-written static list when pi isn't found on this machine.
-      const catalog = pi.readBuiltinCatalog();
-      res.end(JSON.stringify(catalog ?? builtins.getBuiltinProviders()));
+      json(res, pi.readBuiltinCatalog() ?? builtins.getBuiltinProviders());
     },
     "GET /api/pi/usage"(_, res) {
       const records = pi.readAllUsage();
-      const usage = {
+      json(res, {
         records,
         dailyAggregates: pi.getDailyAggregates(records),
         providerSummaries: pi.getProviderSummaries(records),
         modelSummaries: pi.getModelSummaries(records),
         totals: pi.getTotals(records),
-      };
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(usage));
+      });
     },
-    "GET /api/pi/sessions"(_, res) {
-      const sessions = pi.listSessions();
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(sessions));
+    "GET /api/pi/sessions"(req, res) {
+      json(res, pi.listSessions(query(req).get("refresh") === "1"));
     },
     "POST /api/pi/chat"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", async () => {
-        try {
-          const { prompt, sessionId, projectPath, model, thinking } = JSON.parse(body) as { prompt?: string; sessionId?: string; projectPath?: string; model?: string; thinking?: string };
-          if (typeof prompt !== "string" || !prompt.trim()) throw new Error("missing prompt");
-          res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-          res.setHeader("Cache-Control", "no-cache, no-transform");
-          res.setHeader("Connection", "keep-alive");
-          const send = (event: string, data: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-          const result = await pi.runWebChat(prompt.trim(), sessionId, (chunk) => send("delta", chunk), projectPath, model, thinking, (status) => send("status", status), (step) => send("step", step));
-          if (result.error) send("error", result.error);
-          else send("done", { sessionId: result.sessionId });
-          res.end();
-        } catch (error) {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ error: error instanceof Error ? error.message : "Invalid request" }));
-        }
+      readJson<{ prompt?: string; sessionId?: string; projectPath?: string; model?: string; thinking?: string }>(req, res, async (body) => {
+        const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+        if (!prompt) return fail(res, 400, { error: "missing prompt" });
+        res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+        res.setHeader("Cache-Control", "no-cache, no-transform");
+        res.setHeader("Connection", "keep-alive");
+        const send = (event: string, data: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        const result = await pi.runWebChat(
+          prompt,
+          body.sessionId,
+          (chunk) => send("delta", chunk),
+          body.projectPath,
+          body.model,
+          body.thinking,
+          (status) => send("status", status),
+          (step) => send("step", step),
+        );
+        if (result.error) send("error", result.error);
+        else send("done", { sessionId: result.sessionId });
+        res.end();
       });
     },
     "POST /api/pi/chat/stop"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        try {
-          const { sessionId } = JSON.parse(body) as { sessionId?: string };
-          const stopped = typeof sessionId === "string" && pi.stopWebChat(sessionId);
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ stopped }));
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ stopped: false }));
-        }
+      readJson<{ sessionId?: string }>(req, res, (body) => {
+        json(res, { stopped: typeof body.sessionId === "string" && pi.stopWebChat(body.sessionId) });
       });
     },
     "POST /api/pi/chat/select-directory"(_, res) {
-      pi.chooseChatDirectory().then((path) => {
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({ path }));
-      });
+      pi.chooseChatDirectory()
+        .then((path) => json(res, { path }))
+        .catch(() => json(res, { path: null }));
     },
     "GET /api/pi/chat/default-directory"(_, res) {
       // What a prompt without an explicit project directory actually runs in.
@@ -250,328 +218,197 @@ export function createPiApiMiddleware(): PiApiMiddleware {
       json(res, { path, name });
     },
     "GET /api/pi/memory"(_, res) {
-      const memory = pi.readMemoryFiles();
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(memory));
+      json(res, pi.readMemoryFiles());
     },
     "GET /api/pi/subagents"(_, res) {
-      const data = pi.readSubagents();
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(data));
+      json(res, pi.readSubagents());
     },
     "GET /api/pi/packages/search"(req, res) {
-      const parsed = new URL(req.url ?? "", "http://localhost");
-      const q = parsed.searchParams.get("q") ?? "";
-      pi.searchPackages(q).then((results: unknown) => {
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({ results }));
-      }).catch(() => {
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({ results: [] }));
-      });
+      pi.searchPackages(query(req).get("q") ?? "")
+        .then((results: unknown) => json(res, { results }))
+        .catch(() => json(res, { results: [] }));
     },
     "POST /api/pi/subagents/update-agent"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        try {
-          const { fileName, model, thinking } = JSON.parse(body) as { fileName: string; model?: string; thinking?: string };
-          const ok = pi.updateAgentFields(fileName, { model, thinking });
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: ok }));
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: false, error: "Invalid request body" }));
+      readJson<{ fileName?: string; model?: string; thinking?: string }>(req, res, (body) => {
+        if (typeof body.fileName !== "string" || !body.fileName) {
+          return fail(res, 400, { success: false, error: "Invalid request body" });
         }
+        json(res, { success: pi.updateAgentFields(body.fileName, { model: body.model, thinking: body.thinking }) });
       });
     },
     "GET /api/pi/memory/config"(_, res) {
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(pi.readHermesMemoryConfig() ?? {}));
+      json(res, pi.readHermesMemoryConfig() ?? {});
     },
     "GET /api/pi/memory/status"(_, res) {
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(pi.readMemoryStatus()));
+      json(res, pi.readMemoryStatus());
     },
     "POST /api/pi/memory/config"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        try {
-          const patch = JSON.parse(body);
-          const ok = pi.writeHermesMemoryConfig(patch);
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: ok }));
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: false, error: "Invalid request body" }));
-        }
+      readJson<pi.HermesMemoryConfig>(req, res, (patch) => {
+        json(res, { success: pi.writeHermesMemoryConfig(patch) });
       });
     },
     "POST /api/pi/memory/optimize"(_, res) {
-      pi.optimizeMemory().then((result: unknown) => {
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify(result));
-      }).catch((error: unknown) => {
-        res.statusCode = 500;
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Optimize failed" }));
-      });
+      pi.optimizeMemory()
+        .then((result: unknown) => json(res, result))
+        .catch((error: unknown) => fail(res, 500, {
+          success: false,
+          error: error instanceof Error ? error.message : "Optimize failed",
+        }));
     },
     "POST /api/pi/memory/delete-entry"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        try {
-          const { filename, text } = JSON.parse(body) as { filename: string; text: string };
-          const ok = pi.deleteMemoryEntry(filename, text);
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: ok }));
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: false, error: "Invalid request body" }));
+      readJson<{ filename?: string; text?: string }>(req, res, (body) => {
+        if (typeof body.filename !== "string" || typeof body.text !== "string") {
+          return fail(res, 400, { success: false, error: "Invalid request body" });
         }
+        json(res, { success: pi.deleteMemoryEntry(body.filename, body.text) });
       });
     },
     "GET /api/pi/trash"(_, res) {
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(pi.listTrash()));
+      json(res, pi.listTrash());
     },
     "GET /api/pi/copilot-config"(_, res) {
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(pi.readCopilotConfig() ?? {}));
+      json(res, pi.readCopilotConfig() ?? {});
     },
     "POST /api/pi/copilot-config"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        try {
-          const cfg = JSON.parse(body) as { username?: string; token?: string };
-          const ok = pi.writeCopilotConfig(cfg);
-          // Config changed → drop cached usage so the next view refetches.
-          pi.clearCopilotCaches();
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: ok }));
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: false, error: "Invalid request body" }));
-        }
+      readJson<{ username?: string; token?: string }>(req, res, (cfg) => {
+        const ok = pi.writeCopilotConfig(cfg);
+        // Config changed → drop cached usage so the next view refetches.
+        pi.clearCopilotCaches();
+        json(res, { success: ok });
       });
     },
     "POST /api/pi/session/trash"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        try {
-          const { path: p } = JSON.parse(body) as { path: string };
-          const ok = pi.trashSessionFile(p);
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: ok }));
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: false, error: "Invalid request body" }));
+      readJson<{ path?: string }>(req, res, (body) => {
+        if (typeof body.path !== "string" || !body.path) {
+          return fail(res, 400, { success: false, error: "Invalid request body" });
         }
+        json(res, { success: pi.trashSessionFile(body.path) });
       });
     },
     "POST /api/pi/session/restore"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        try {
-          const { trashPath } = JSON.parse(body) as { trashPath: string };
-          const ok = pi.restoreFromTrash(trashPath);
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: ok }));
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: false, error: "Invalid request body" }));
+      readJson<{ trashPath?: string }>(req, res, (body) => {
+        if (typeof body.trashPath !== "string" || !body.trashPath) {
+          return fail(res, 400, { success: false, error: "Invalid request body" });
         }
+        json(res, { success: pi.restoreFromTrash(body.trashPath) });
       });
     },
     "GET /api/pi/session-preview"(req, res) {
-      const parsedUrl = new URL(req.url!, "http://localhost");
-      const p = parsedUrl.searchParams.get("path") || "";
-      const preview = pi.readSessionPreview(decodeURIComponent(p));
-      if (!preview) {
-        res.statusCode = 404;
-        res.setHeader("Content-Type", "application/json");
-        return res.end(JSON.stringify({ error: "Session not found" }));
-      }
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(preview));
+      const preview = pi.readSessionPreview(query(req).get("path") ?? "");
+      if (!preview) return fail(res, 404, { error: "Session not found" });
+      json(res, preview);
     },
     "GET /api/pi/session-history"(req, res) {
-      const parsedUrl = new URL(req.url!, "http://localhost");
-      const history = pi.readSessionHistory(parsedUrl.searchParams.get("id") || "");
-      if (!history) {
-        res.statusCode = 404;
-        res.setHeader("Content-Type", "application/json");
-        return res.end(JSON.stringify({ error: "Session not found" }));
-      }
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(history));
+      const history = pi.readSessionHistory(query(req).get("id") ?? "");
+      if (!history) return fail(res, 404, { error: "Session not found" });
+      json(res, history);
     },
     "POST /api/pi/session-rename"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        try {
-          const { sessionId, name } = JSON.parse(body) as { sessionId?: string; name?: string };
-          const success = typeof sessionId === "string" && typeof name === "string" && pi.renameSession(sessionId, name);
-          res.statusCode = success ? 200 : 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success }));
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: false }));
-        }
+      readJson<{ sessionId?: string; name?: string }>(req, res, (body) => {
+        const success = typeof body.sessionId === "string" && typeof body.name === "string"
+          && pi.renameSession(body.sessionId, body.name);
+        res.statusCode = success ? 200 : 400;
+        json(res, { success });
       });
     },
     "POST /api/pi/session-message"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        try {
-          const { sessionId, messageId, text } = JSON.parse(body) as { sessionId?: string; messageId?: string; text?: string };
-          const success = typeof sessionId === "string" && typeof messageId === "string" && typeof text === "string"
-            && pi.updateSessionUserMessage(sessionId, messageId, text);
-          res.statusCode = success ? 200 : 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success }));
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: false }));
-        }
+      readJson<{ sessionId?: string; messageId?: string; text?: string }>(req, res, (body) => {
+        const success = typeof body.sessionId === "string" && typeof body.messageId === "string"
+          && typeof body.text === "string"
+          && pi.updateSessionUserMessage(body.sessionId, body.messageId, body.text);
+        res.statusCode = success ? 200 : 400;
+        json(res, { success });
       });
     },
     "GET /api/pi/check-updates"(_, res) {
       pi.checkUpdates()
-        .then((result) => {
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify(result));
-        })
-        .catch(() => {
-          res.statusCode = 500;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ error: "Update check failed" }));
-        });
+        .then((result) => json(res, result))
+        .catch(() => fail(res, 500, { error: "Update check failed" }));
     },
     "POST /api/pi/apply-updates"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", async () => {
-        try {
-          const { names } = JSON.parse(body) as { names: string[] };
-          const results = await pi.applyExtensionUpdates(Array.isArray(names) ? names : []);
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ results }));
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ error: "Invalid request body" }));
-        }
+      readJson<{ names?: unknown }>(req, res, async (body) => {
+        const results = await pi.applyExtensionUpdates(Array.isArray(body.names) ? body.names : []);
+        json(res, { results });
       });
     },
     "POST /api/pi/provider-models"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        try {
-          const { baseUrl, apiKey, providerId } = JSON.parse(body) as {
-            baseUrl: string;
-            apiKey?: string;
-            providerId?: string;
-          };
-          if (!baseUrl) throw new Error("missing baseUrl");
-          pi.fetchProviderModels(baseUrl, apiKey, providerId).then((result) => {
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify(result));
-          });
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ models: [], error: "Invalid request body" }));
-        }
+      readJson<{ baseUrl?: string; apiKey?: string; providerId?: string }>(req, res, async (body) => {
+        if (!body.baseUrl) return fail(res, 400, { models: [], error: "Invalid request body" });
+        json(res, await pi.fetchProviderModels(body.baseUrl, body.apiKey, body.providerId));
       });
     },
     "POST /api/pi/model-test"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        try {
-          const { baseUrl, modelId, apiKey, apiType } = JSON.parse(body) as { baseUrl: string; modelId: string; apiKey?: string; apiType?: string };
-          if (!baseUrl || !modelId) throw new Error("missing baseUrl or modelId");
-          pi.testModel(baseUrl, modelId, apiKey, apiType ?? "openai-completions").then((result) => {
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify(result));
-          });
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: false, message: "Invalid request body" }));
+      readJson<{ baseUrl?: string; modelId?: string; apiKey?: string; apiType?: string }>(req, res, async (body) => {
+        if (!body.baseUrl || !body.modelId) {
+          return fail(res, 400, { success: false, message: "Invalid request body" });
         }
+        json(res, await pi.testModel(body.baseUrl, body.modelId, body.apiKey, body.apiType ?? "openai-completions"));
       });
     },
     "POST /api/pi/provider-test"(req, res) {
-      let body = "";
-      req.on("data", (chunk: string) => (body += chunk));
-      req.on("end", () => {
-        try {
-          const { baseUrl, apiKey } = JSON.parse(body) as { baseUrl: string; apiKey?: string };
-          if (!baseUrl) throw new Error("missing baseUrl");
-          pi.testProviderConnection(baseUrl, apiKey).then((result) => {
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify(result));
-          });
-        } catch {
-          res.statusCode = 400;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ success: false, message: "Invalid request body" }));
-        }
+      readJson<{ baseUrl?: string; apiKey?: string }>(req, res, async (body) => {
+        if (!body.baseUrl) return fail(res, 400, { success: false, message: "Invalid request body" });
+        json(res, await pi.testProviderConnection(body.baseUrl, body.apiKey));
       });
+    },
+
+    "POST /api/pi/sessions/auto-trash"(_, res) {
+      // Automatically archive sessions that have been inactive for more
+      // than two weeks. This is recoverable through the existing trash tab.
+      json(res, pi.autoTrashStaleSessions(14));
+    },
+
+    // ─── Usage ranges ───────────────────────────────────
+    "GET /api/pi/usage-range"(req, res) {
+      const q = query(req);
+      if (q.get("refresh") === "1") {
+        pi.clearUsageCache();
+        pi.clearChatgptUsageCache();
+      }
+      const { fromDate, toDate } = resolveDateRange(
+        q.get("range") || "today",
+        q.get("from") || "",
+        q.get("to") || "",
+      );
+      json(res, pi.getUsageByRange(pi.readAllUsage(), fromDate, toDate));
+    },
+    // Local Codex Desktop rollout JSONL under ~/.codex/sessions.
+    "GET /api/pi/chatgpt-usage-range"(req, res) {
+      const q = query(req);
+      if (q.get("refresh") === "1") pi.clearChatgptUsageCache();
+      const { fromDate, toDate } = resolveDateRange(
+        q.get("range") || "today",
+        q.get("from") || "",
+        q.get("to") || "",
+      );
+      json(res, pi.getUsageByRange(pi.readChatgptUsage(), fromDate, toDate));
     },
 
     // ─── Right-hand tool panel ──────────────────────────
     // Files and git are scoped to the project root the panel sends; see
     // server/workspace-tools.ts for the containment rules.
     "GET /api/pi/workspace/tree"(req, res) {
-      const q = new URL(req.url ?? "", "http://localhost").searchParams;
-      const listing = tools.listDirectory(q.get("root") ?? "", q.get("path") ?? ".");
-      json(res, listing);
+      const q = query(req);
+      json(res, tools.listDirectory(q.get("root") ?? "", q.get("path") ?? "."));
     },
     "GET /api/pi/workspace/file"(req, res) {
-      const q = new URL(req.url ?? "", "http://localhost").searchParams;
+      const q = query(req);
       json(res, tools.readTextFile(q.get("root") ?? "", q.get("path") ?? ""));
     },
     "GET /api/pi/workspace/review"(req, res) {
-      const q = new URL(req.url ?? "", "http://localhost").searchParams;
-      json(res, tools.gitReview(q.get("cwd") ?? ""));
+      json(res, tools.gitReview(query(req).get("cwd") ?? ""));
     },
     "GET /api/pi/workspace/diff"(req, res) {
-      const q = new URL(req.url ?? "", "http://localhost").searchParams;
-      json(
-        res,
-        tools.gitDiff(q.get("cwd") ?? "", q.get("path") ?? "", q.get("staged") === "1"),
-      );
+      const q = query(req);
+      json(res, tools.gitDiff(q.get("cwd") ?? "", q.get("path") ?? "", q.get("staged") === "1"));
     },
     "GET /api/pi/workspace/tasks"(_, res) {
       json(res, { tasks: tools.listTasks() });
     },
     "GET /api/pi/workspace/task-output"(req, res) {
-      const q = new URL(req.url ?? "", "http://localhost").searchParams;
+      const q = query(req);
       const out = tools.readTaskOutput(q.get("id") ?? "", Number(q.get("since") ?? 0) || 0);
-      if (!out) {
-        res.statusCode = 404;
-        return json(res, { error: "task not found" });
-      }
+      if (!out) return fail(res, 404, { error: "task not found" });
       json(res, out);
     },
     "POST /api/pi/workspace/task-run"(req, res) {
@@ -607,11 +444,7 @@ export function createPiApiMiddleware(): PiApiMiddleware {
     if (!url.startsWith("/api/pi/")) return next();
 
     const rejection = rejectNonLocalRequest(req);
-    if (rejection) {
-      res.statusCode = 403;
-      res.setHeader("Content-Type", "application/json");
-      return res.end(JSON.stringify({ error: rejection }));
-    }
+    if (rejection) return fail(res, 403, { error: rejection });
 
     // Every response here is derived from live files or processes. Without this
     // Chromium may serve a repeated identical GET from its memory cache, which
@@ -622,99 +455,28 @@ export function createPiApiMiddleware(): PiApiMiddleware {
     // Strip query string
     const pathOnly = url.split("?")[0];
 
-    // Automatically archive sessions that have been inactive for more
-    // than two weeks. This is recoverable through the existing trash tab.
-    if (method === "POST" && pathOnly === "/api/pi/sessions/auto-trash") {
-      const result = pi.autoTrashStaleSessions(14);
-      res.setHeader("Content-Type", "application/json");
-      return res.end(JSON.stringify(result));
-    }
-
-    // Handle DELETE /api/pi/session?path=... (move to trash) and /api/pi/trash?path=... (permanent)
+    // DELETE /api/pi/session?path=... (move to trash) and
+    // DELETE /api/pi/trash?path=... (permanent).
     if (method === "DELETE" && (pathOnly === "/api/pi/session" || pathOnly === "/api/pi/trash")) {
-      const parsedUrl = new URL(url, "http://localhost");
-      const filePath = parsedUrl.searchParams.get("path");
-      if (!filePath) {
-        res.statusCode = 400;
-        res.setHeader("Content-Type", "application/json");
-        return res.end(JSON.stringify({ success: false, error: "Missing path" }));
-      }
-      const decodedPath = decodeURIComponent(filePath);
+      const filePath = query(req).get("path");
+      if (!filePath) return fail(res, 400, { success: false, error: "Missing path" });
       const ok = pathOnly === "/api/pi/session"
-        ? pi.trashSessionFile(decodedPath)
-        : pi.permanentlyDeleteTrash(decodedPath);
-      res.setHeader("Content-Type", "application/json");
-      return res.end(JSON.stringify({ success: ok }));
+        ? pi.trashSessionFile(filePath)
+        : pi.permanentlyDeleteTrash(filePath);
+      return json(res, { success: ok });
     }
 
-    // Handle GET /api/pi/usage-range?range=today|7d|30d|custom&from=...&to=...
-    if (method === "GET" && pathOnly === "/api/pi/usage-range") {
-      const parsedUrl = new URL(url, "http://localhost");
-      const range = parsedUrl.searchParams.get("range") || "today";
-      const fromParam = parsedUrl.searchParams.get("from") || "";
-      const toParam = parsedUrl.searchParams.get("to") || "";
-      if (parsedUrl.searchParams.get("refresh") === "1") {
-        pi.clearUsageCache();
-        pi.clearChatgptUsageCache();
-      }
-      const { fromDate, toDate } = resolveDateRange(range, fromParam, toParam);
+    const handler = routes[`${method} ${pathOnly}`];
+    if (!handler) return fail(res, 404, { error: "Not found" });
 
-      const allRecords = pi.readAllUsage();
-      const usage = pi.getUsageByRange(allRecords, fromDate, toDate);
-      res.setHeader("Content-Type", "application/json");
-      return res.end(JSON.stringify(usage));
-    }
-
-    // Helper: resolve date range params
-    function resolveDateRange(range: string, fromParam: string, toParam: string) {
-      // Convert to a China-time calendar date first, then use UTC date
-      // arithmetic so a machine in another timezone cannot shift the range.
-      const localDateStr = (dt: Date) =>
-        new Intl.DateTimeFormat("en-CA", {
-          timeZone: "Asia/Shanghai",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }).format(dt);
-      let toDate = localDateStr(new Date());
-      const shiftDate = (date: string, days: number) => {
-        const [year, month, day] = date.split("-").map(Number) as [number, number, number];
-        const shifted = new Date(Date.UTC(year, (month ?? 1) - 1, day) - days * 86400000);
-        return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}-${String(shifted.getUTCDate()).padStart(2, "0")}`;
-      };
-      let fromDate: string;
-      if (range === "today") fromDate = toDate;
-      else if (range === "7d") fromDate = shiftDate(toDate, 6);
-      else if (range === "30d") fromDate = shiftDate(toDate, 29);
-      else if (range === "custom" && fromParam) { fromDate = fromParam; if (toParam) toDate = toParam; }
-      else fromDate = toDate;
-      return { fromDate, toDate };
-    }
-
-    // Handle GET /api/pi/chatgpt-usage-range using local Codex Desktop
-    // rollout JSONL files under ~/.codex/sessions and archived_sessions.
-    if (method === "GET" && pathOnly === "/api/pi/chatgpt-usage-range") {
-      const parsedUrl = new URL(url, "http://localhost");
-      const range = parsedUrl.searchParams.get("range") || "today";
-      const fromParam = parsedUrl.searchParams.get("from") || "";
-      const toParam = parsedUrl.searchParams.get("to") || "";
-      if (parsedUrl.searchParams.get("refresh") === "1") {
-        pi.clearChatgptUsageCache();
-      }
-      const { fromDate, toDate } = resolveDateRange(range, fromParam, toParam);
-      const usage = pi.getUsageByRange(pi.readChatgptUsage(), fromDate, toDate);
-      res.setHeader("Content-Type", "application/json");
-      return res.end(JSON.stringify(usage));
-    }
-
-    const key = `${method} ${pathOnly}`;
-    const handler = routes[key];
-    if (handler) {
+    // A synchronous throw inside a handler would otherwise reach the process,
+    // and in the packaged app that means the whole window disappears.
+    try {
       handler(req, res);
-    } else {
-      res.statusCode = 404;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ error: "Not found" }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "request failed";
+      if (res.headersSent) res.end();
+      else fail(res, 500, { error: message });
     }
   };
 }

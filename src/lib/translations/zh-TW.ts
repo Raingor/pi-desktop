@@ -202,6 +202,8 @@ const zhTW: Record<string, string> = {
   "subagents.no_chains_desc": "在 ~/.pi/agent/chains/ 目錄下建立 .chain.md 檔案即可新增流水線。",
   "subagents.no_history": "暫無執行記錄",
   "subagents.no_history_desc": "執行子代理後，執行記錄將顯示在這裡。",
+  "subagents.no_match": "沒有符合的結果",
+  "subagents.no_match_desc": "換個關鍵字，或清空搜尋框查看全部。",
   "subagents.model": "模型",
   "subagents.edit": "編輯",
   "subagents.save": "儲存",

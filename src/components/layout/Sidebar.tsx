@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation, LANGUAGES } from "@/lib/i18n";
+import { usePolling } from "@/hooks/usePolling";
 import { ChangelogButton } from "@/components/help/ChangelogButton";
 
 const TELEGRAM_GROUP_URL = "https://t.me/+ODpy7_7NlOE4NzA1";
@@ -89,24 +90,12 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const [runningSessions, setRunningSessions] = useState<Set<string>>(
     new Set(),
   );
-  useEffect(() => {
-    let cancelled = false;
-    const poll = () =>
-      fetch("/api/pi/chat/active")
-        .then((r) => (r.ok ? r.json() : { sessionIds: [] }))
-        .then((data: { sessionIds?: string[] }) => {
-          if (!cancelled) setRunningSessions(new Set(data.sessionIds ?? []));
-        })
-        .catch(() => {
-          if (!cancelled) setRunningSessions(new Set());
-        });
-    poll();
-    const id = window.setInterval(poll, 2000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, []);
+  usePolling(() => {
+    fetch("/api/pi/chat/active")
+      .then((r) => (r.ok ? r.json() : { sessionIds: [] }))
+      .then((data: { sessionIds?: string[] }) => setRunningSessions(new Set(data.sessionIds ?? [])))
+      .catch(() => setRunningSessions(new Set()));
+  }, 2000);
   useEffect(() => {
     const load = () =>
       fetch("/api/pi/sessions")

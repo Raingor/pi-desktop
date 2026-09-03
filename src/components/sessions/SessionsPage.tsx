@@ -64,8 +64,6 @@ interface TreeNode {
   lastActive?: string; // Latest activity for sorting
 }
 
-const SESSIONS_PER_GROUP = 50;
-
 function formatDuration(ms?: number): string {
   if (!ms) return "—";
   const seconds = Math.floor(ms / 1000);
@@ -115,7 +113,6 @@ function buildDirectoryTree(groups: ProjectGroup[]): TreeNode[] {
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
       if (!segment) continue;
-      const parentPath = currentPath;
       currentPath = currentPath ? `${currentPath}-${segment}` : segment;
       
       const isLastSegment = i === segments.length - 1;
@@ -251,7 +248,7 @@ function TreeNodeItem({
   expandedNodes: Set<string>;
   forceExpanded?: boolean;
   onToggle: (id: string) => void;
-  onDelete: (session: SessionInfo, groupPath: string) => void;
+  onDelete: (session: SessionInfo) => void;
   onPreview: (session: SessionInfo) => void;
   t: (key: string, ...args: string[]) => string;
 }) {
@@ -419,8 +416,7 @@ function TreeNodeItem({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  // Find parent project path for this session
-                  onDelete(session, findParentProjectPath(node));
+                  onDelete(session);
                 }}
                 className="rounded-lg p-1.5 transition-colors hover:bg-gray-500/10"
                 style={{ color: "var(--subtle-text)" }}
@@ -455,15 +451,6 @@ function TreeNodeItem({
   );
 }
 
-/** Find the parent project path for a session node */
-function findParentProjectPath(node: TreeNode): string {
-  // Walk up to find the nearest project ancestor
-  // Note: In our current structure, the parent should be a project or directory
-  // We need to pass this info differently - for now return empty string
-  // The actual fix would require restructuring how we track parent paths
-  return "";
-}
-
 export function SessionsPage() {
   const { t } = useTranslation();
   const { initialized } = useConfigStore();
@@ -475,7 +462,7 @@ export function SessionsPage() {
   const [autoTrashed, setAutoTrashed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState<{ session: SessionInfo; groupPath: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SessionInfo | null>(null);
   const [deleting, setDeleting] = useState(false);
   // Trash tab state
   const [selectedTrash, setSelectedTrash] = useState<Set<string>>(new Set());
@@ -524,7 +511,7 @@ export function SessionsPage() {
     setDeleting(true);
     try {
       const res = await fetch(
-        `/api/pi/session?path=${encodeURIComponent(deleteTarget.session.filePath)}`,
+        `/api/pi/session?path=${encodeURIComponent(deleteTarget.filePath)}`,
         { method: "DELETE" }
       );
       const result = await res.json();
@@ -790,7 +777,7 @@ function countExpandableNodes(nodes: TreeNode[]): number {
                     level={0}
                     expandedNodes={expandedNodes}
                     onToggle={toggleNode}
-                    onDelete={(session, groupPath) => setDeleteTarget({ session, groupPath })}
+                    onDelete={setDeleteTarget}
                     onPreview={openPreview}
                     t={t}
                   />
@@ -909,11 +896,11 @@ function countExpandableNodes(nodes: TreeNode[]): number {
                 {t("sessions.delete_confirm")}
               </p>
               <p className="text-xs mt-1" style={{ color: "var(--muted-text)" }}>
-                {deleteTarget?.session.name || deleteTarget?.session.fileName}
+                {deleteTarget?.name || deleteTarget?.fileName}
               </p>
-              {deleteTarget?.session.messageCount && (
+              {deleteTarget?.messageCount && (
                 <p className="text-xs mt-1" style={{ color: "var(--subtle-text)" }}>
-                  {t("sessions.messages", String(deleteTarget.session.messageCount))} · {formatFullTimestamp(deleteTarget.session.lastActive || deleteTarget.session.timestamp)}
+                  {t("sessions.messages", String(deleteTarget.messageCount))} · {formatFullTimestamp(deleteTarget.lastActive || deleteTarget.timestamp)}
                 </p>
               )}
               <p className="text-xs mt-2" style={{ color: "var(--subtle-text)" }}>

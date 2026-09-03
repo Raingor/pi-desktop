@@ -1,7 +1,7 @@
 // SubAgent panel — a live view of subagent runs so a long fan-out can be
 // watched while the conversation continues. Polls while the panel is visible.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   CheckCircle2,
   Loader2,
@@ -9,6 +9,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
+import { usePolling } from "@/hooks/usePolling";
 import type { SubagentsData } from "@/types";
 
 const POLL_MS = 4000;
@@ -54,11 +55,7 @@ export function SubagentPanel() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    load();
-    const id = window.setInterval(() => load(true), POLL_MS);
-    return () => window.clearInterval(id);
-  }, [load]);
+  usePolling(() => load(true), POLL_MS);
 
   const runs = data?.runHistory ?? [];
   const live = runs.filter((r) => isRunning(r.status));
