@@ -1,0 +1,1 @@
+- [x] 2a4836a 同步 pi-web-switch 0.9.1：mergePiSettings（防嵌套配置丢失）+ PiSettings 类型扩充 + CLI 设置页 + Skills/Commands 页 + provider-import 密钥池模块；对端 UI 模式回退不适用（本端早已 chat-only 且 Sidebar 更强）
