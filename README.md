@@ -55,7 +55,7 @@ pi-desktop 把 pi CLI 的日常操作搬进原生窗口：**左边是会话列�
 
 ### 和 pi-web-switch 的关系
 
-pi-desktop 脓生于姊妹项目 **[pi-web-switch](https://github.com/Raingor/pi-web-switch)**（从它的 `codex/web-pi-chat` 分支整体搬迁而来），之后分开演进为两个定位不同的工具：
+pi-desktop 衍生于姊妹项目 **[pi-web-switch](https://github.com/Raingor/pi-web-switch)**（从它的 `codex/web-pi-chat` 分支整体搬迁而来），之后分开演进为两个定位不同的工具：
 
 | | pi-web-switch | pi-desktop（本项目） |
 |---|---|---|
