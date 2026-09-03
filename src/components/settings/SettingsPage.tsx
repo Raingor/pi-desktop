@@ -59,7 +59,7 @@ const THEME_SWATCHES: {
 
 const UI_STYLES: { id: string; name: string; desc: string; bg: string; dots: string[] }[] = [
   { id: "graphite", name: "石墨仪器", desc: "暖纸灰 · 信号蓝（默认）", bg: "linear-gradient(145deg, #f7f6f3, #e2dfd6)", dots: ["#3f6fd8", "#2f56ad", "#b9b3a4"] },
-  { id: "cyber", name: "赛博霓虹", desc: "深空黑 · 洋红霓虹", bg: "linear-gradient(145deg, #150a24, #3b0d52)", dots: ["#e879f9", "#a78bfa", "#2dd4bf"] },
+  { id: "cyber", name: "赛博霓虹", desc: "纯黑 · 洋红霓虹（恒暗）", bg: "linear-gradient(145deg, #000000, #2a0838)", dots: ["#e879f9", "#a78bfa", "#2dd4bf"] },
   { id: "kiro", name: "Kiro", desc: "品牌紫 · 干净留白", bg: "linear-gradient(145deg, #1c1428, #4b2585)", dots: ["#9147ff", "#c59eff", "#8469aa"] },
   { id: "pixel", name: "像素游戏", desc: "GB 绿 · 方角等宽", bg: "linear-gradient(145deg, #16210f, #3f5e14)", dots: ["#9bbc0f", "#c2e04a", "#306230"] },
   { id: "kawaii", name: "可爱软糖", desc: "奶油粉 · 樱花红", bg: "linear-gradient(145deg, #fff5f7, #ffd6e4)", dots: ["#db2777", "#f9a8d4", "#c4b5fd"] },
