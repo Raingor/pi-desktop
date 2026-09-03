@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld('piAPI', {
   // Usage summary for the menu bar popup (today + 7d aggregated stats)
   getUsageSummary: (opts?: { force?: boolean }) => ipcRenderer.invoke('pi:usage:summary', opts),
 
+  // Official Codex 5h / weekly quota (sanitized summary only)
+  getCodexUsage: (opts?: { force?: boolean }) => ipcRenderer.invoke('pi:codex:usage', opts),
+
   // Open the full Dashboard window from the popup
   openDashboard: () => ipcRenderer.invoke('pi:open:dashboard'),
 

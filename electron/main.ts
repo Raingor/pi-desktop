@@ -159,7 +159,7 @@ function createPopupWindow() {
 
   const win = new BrowserWindow({
     width: 350,
-    height: 420,
+    height: 500,
     x,
     y,
     show: false,
@@ -450,6 +450,18 @@ function setupIPC() {
       return { error: String(err) };
     }
   });
+
+  // Official Codex 5h / weekly quota for the menu bar popup. Uses the
+  // locally logged-in openai-codex OAuth session; pi-reader returns only a
+  // sanitized quota summary, never the OAuth tokens themselves.
+  ipcMain.handle('pi:codex:usage', (_e: IpcMainInvokeEvent, opts?: { force?: boolean }) =>
+    piReader.getCodexUsageStatus(opts?.force === true).catch((err: unknown) => ({
+      loggedIn: false,
+      provider: 'openai-codex' as const,
+      checkedAt: new Date().toISOString(),
+      error: String(err),
+    }))
+  );
 
   // Open external links (e.g. full Dashboard) from the popup
   ipcMain.handle('pi:open:dashboard', () => {

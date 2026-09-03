@@ -32,6 +32,24 @@ interface SummaryData {
   error?: string;
 }
 
+interface CodexWindow {
+  windowSeconds: number;
+  usedPercent: number;
+  remainingPercent: number;
+  resetAfterSeconds: number | null;
+  resetAt: number | null;
+}
+
+interface CodexUsageStatus {
+  loggedIn: boolean;
+  provider: "openai-codex";
+  planType?: string;
+  primary?: CodexWindow;
+  secondary?: CodexWindow;
+  checkedAt: string;
+  error?: string;
+}
+
 // ─── Helpers ──────────────────────────────────────────────
 
 function formatTokens(n: number): string {
@@ -50,6 +68,35 @@ function shortDate(iso: string): string {
   const parts = iso.split("-");
   if (parts.length !== 3) return iso;
   return `${parts[1]}/${parts[2]}`;
+}
+
+// Codex reports window length in seconds (18000 = 5h, 604800 = 7d).
+function windowLabel(seconds: number): string {
+  if (seconds >= 86_400) {
+    const days = Math.round(seconds / 86_400);
+    return days === 7 ? "每周" : `${days} 天`;
+  }
+  const hours = Math.round(seconds / 3600);
+  return `${hours} 小时`;
+}
+
+function remainingTime(seconds: number | null): string | null {
+  if (typeof seconds !== "number" || seconds < 0) return null;
+  if (seconds >= 86_400) {
+    const days = Math.floor(seconds / 86_400);
+    const hours = Math.floor((seconds % 86_400) / 3600);
+    return hours > 0 ? `${days}天${hours}小时后重置` : `${days}天后重置`;
+  }
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return hours > 0 ? `${hours}小时${minutes}分后重置` : `${minutes}分钟后重置`;
+}
+
+// Green under 60% used, amber to 85%, red above.
+function quotaTone(usedPercent: number): string {
+  if (usedPercent >= 85) return "danger";
+  if (usedPercent >= 60) return "warn";
+  return "ok";
 }
 
 function providerDisplay(id: string): string {
@@ -75,7 +122,46 @@ function providerDisplay(id: string): string {
 
 // ─── Rendering ────────────────────────────────────────────
 
-function render(data: SummaryData): string {
+// Codex quota block: only rendered when an openai-codex OAuth session exists
+// locally. Shows the two official windows (5h + weekly) with a used-percent bar.
+function renderCodexQuota(codex: CodexUsageStatus | null): string {
+  if (!codex || !codex.loggedIn) return "";
+
+  const plan = codex.planType ? codex.planType.toUpperCase() : "";
+  const header = `
+    <div class="section-title quota-head">
+      <span>Codex 官方额度${plan ? ` · ${plan}` : ""}</span>
+      <span class="quota-live">已登录</span>
+    </div>`;
+
+  if (codex.error || (!codex.primary && !codex.secondary)) {
+    return `<div class="section">${header}<div class="stat-sub">额度暂不可用</div></div>`;
+  }
+
+  const row = (win: CodexWindow | undefined, fallbackLabel: string) => {
+    if (!win) return `<div class="quota-row"><div class="quota-top"><span>${fallbackLabel}</span><span class="quota-sub">无数据</span></div></div>`;
+    const tone = quotaTone(win.usedPercent);
+    const reset = remainingTime(win.resetAfterSeconds);
+    return `
+      <div class="quota-row">
+        <div class="quota-top">
+          <span class="quota-label">${windowLabel(win.windowSeconds)}</span>
+          <span class="quota-pct ${tone}">剩余 ${win.remainingPercent}%</span>
+        </div>
+        <div class="quota-track"><div class="quota-fill ${tone}" style="width:${Math.min(100, Math.max(0, win.usedPercent))}%"></div></div>
+        <div class="quota-sub">已用 ${win.usedPercent}%${reset ? ` · ${reset}` : ""}</div>
+      </div>`;
+  };
+
+  return `
+    <div class="section">
+      ${header}
+      ${row(codex.primary, "5 小时")}
+      ${row(codex.secondary, "每周")}
+    </div>`;
+}
+
+function render(data: SummaryData, codex: CodexUsageStatus | null): string {
   const t = data.today;
   const s = data.sevenDays;
 
@@ -113,6 +199,8 @@ function render(data: SummaryData): string {
         </div>
         <button class="refresh-btn" id="refresh-btn">刷新</button>
       </div>
+
+      ${renderCodexQuota(codex)}
 
       <div class="section">
         <div class="section-title">今日</div>
@@ -175,11 +263,15 @@ async function loadSummary(force = false) {
       root.innerHTML = renderError("piAPI bridge 不可用");
       return;
     }
-    const data: SummaryData = await piAPI.getUsageSummary(force ? { force: true } : undefined);
+    // Both reads are independent; a Codex quota failure must not hide local usage.
+    const [data, codex] = await Promise.all([
+      piAPI.getUsageSummary(force ? { force: true } : undefined) as Promise<SummaryData>,
+      (piAPI.getCodexUsage?.(force ? { force: true } : undefined) ?? Promise.resolve(null)).catch(() => null) as Promise<CodexUsageStatus | null>,
+    ]);
     if (data.error) {
       root.innerHTML = renderError(data.error);
     } else {
-      root.innerHTML = render(data);
+      root.innerHTML = render(data, codex);
     }
 
     // Wire up buttons
