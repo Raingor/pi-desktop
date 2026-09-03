@@ -51,6 +51,8 @@ interface RunStep {
 interface SessionHistory {
   messages: Message[];
   total: number;
+  /** Model / thinking level the session was last run with, from its JSONL. */
+  model?: { providerId?: string; modelId?: string; thinkingLevel?: string };
 }
 interface ProjectGroup {
   projectPath: string;
@@ -188,6 +190,11 @@ export function ChatPage() {
   };
   // Live steps for the in-flight turn (thinking / tool calls / tool results).
   const [runSteps, setRunSteps] = useState<RunStep[]>([]);
+  // Model / thinking level the opened session was last run with. Applied once
+  // the model list has loaded, so reopening a conversation restores the model
+  // it actually used instead of the last globally picked one.
+  const [sessionModelState, setSessionModelState] = useState<SessionHistory["model"] | null>(null);
+  const restoredModelSessionId = useRef<string | null>(null);
   const [runStepOpenOverrides, setRunStepOpenOverrides] = useState<Record<number, boolean>>({});
   const defaultModelRef =
     settings?.defaultProvider && settings.defaultModel
@@ -320,6 +327,31 @@ export function ChatPage() {
     updateScrollToBottomVisibility();
   }, [loadingHistory, messages]);
 
+  // Restore the session's own model / thinking level once the model list is
+  // available. Runs once per opened session so a manual pick afterwards sticks.
+  useEffect(() => {
+    if (!sessionId || !sessionModelState || selectableModels.length === 0) return;
+    if (restoredModelSessionId.current === sessionId) return;
+    restoredModelSessionId.current = sessionId;
+    const { providerId, modelId, thinkingLevel } = sessionModelState;
+    if (providerId && modelId) {
+      const ref = `${providerId}/${modelId}`;
+      const available = selectableModels.some((model) => `${model.providerId}/${model.id}` === ref);
+      // The provider may have been removed since the session ran. Falling back
+      // to the default model is clearer than leaving the previous session's
+      // pick on screen, which would misrepresent this conversation.
+      const next = available ? ref : defaultModelRef;
+      if (next) {
+        setSelectedModel(next);
+        window.localStorage.setItem("pi-web-switch:chat-model", next);
+      }
+    }
+    if (thinkingLevel) {
+      setSelectedThinking(thinkingLevel);
+      window.localStorage.setItem("pi-web-switch:chat-thinking", thinkingLevel);
+    }
+  }, [defaultModelRef, sessionId, sessionModelState, selectableModels]);
+
   useEffect(() => {
     if (
       selectedModel &&
@@ -380,8 +412,10 @@ export function ChatPage() {
     setMessages([]);
     setPrompt("");
     setHistoryError("");
+    setSessionModelState(null);
     if (!sessionId) {
       scrollToLatestAfterHistory.current = false;
+      restoredModelSessionId.current = null;
       return;
     }
     const controller = new AbortController();
@@ -394,7 +428,10 @@ export function ChatPage() {
         if (!res.ok) throw new Error();
         return res.json();
       })
-      .then((history: SessionHistory) => setMessages(history.messages))
+      .then((history: SessionHistory) => {
+        setMessages(history.messages);
+        setSessionModelState(history.model ?? null);
+      })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === "AbortError"))
           setHistoryError("加载会话历史失败");

@@ -1750,7 +1750,7 @@ table { border-collapse: collapse; }
 .codex-project-group { margin-bottom: 12px; }
 .codex-project-header { margin: 0 2px 3px; border: 1px solid transparent; background: color-mix(in srgb, var(--sidebar-hover-bg) 54%, transparent); }
 .codex-project-header:hover, .codex-project-header:focus-within { border-color: color-mix(in srgb, var(--sidebar-border) 78%, transparent); background: var(--sidebar-hover-bg); }
-.codex-project-title { min-height: 34px; padding: 8px 10px; color: var(--sidebar-hover-text); font-size: 12px; font-weight: 720; letter-spacing: .01em; }
+.codex-project-title { min-height: 34px; padding: 8px 10px; color: var(--sidebar-hover-text); font-size: 12px; font-weight: 400; letter-spacing: .01em; }
 .codex-project-title > svg:nth-child(2) { color: var(--signal-cyan); }
 .codex-project-title small { padding: 2px 5px; color: var(--sidebar-hover-text); border-radius: 999px; background: color-mix(in srgb, var(--signal-cyan) 10%, transparent); font-size: 9px; }
 .codex-conversation-row { margin-left: 28px; border-radius: 0 7px 7px 0; }

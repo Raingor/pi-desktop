@@ -1732,13 +1732,53 @@ export function readSessionPreview(filePath: string, limit = 20): { messages: Se
 }
 
 /** Load all displayable user and assistant turns for a known local session id. */
-export function readSessionHistory(sessionId: string): { messages: SessionPreviewMessage[]; total: number } | null {
+export function readSessionHistory(sessionId: string): { messages: SessionPreviewMessage[]; total: number; model?: SessionModelState } | null {
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(sessionId)) return null;
   for (const group of listSessions()) {
     const session = group.sessions.find((item) => item.id === sessionId);
-    if (session) return readSessionMessages(session.filePath);
+    if (session) {
+      const history = readSessionMessages(session.filePath);
+      return history ? { ...history, model: readSessionModelState(session.filePath) } : null;
+    }
   }
   return null;
+}
+
+// ─── Session Model State ──────────────────────────────────
+// pi records every model / thinking-level switch as its own JSONL entry, so
+// the state a session was last run with is the last such entry — that is what
+// the chat window should restore when reopening the conversation.
+export interface SessionModelState {
+  providerId?: string;
+  modelId?: string;
+  thinkingLevel?: string;
+}
+
+function readSessionModelState(filePath: string): SessionModelState | undefined {
+  try {
+    const resolved = resolve(filePath);
+    if (!resolved.startsWith(SESSIONS_DIR + sep) || !resolved.endsWith(".jsonl") || !existsSync(resolved)) return undefined;
+    const state: SessionModelState = {};
+    for (const line of readFileSync(resolved, "utf-8").split("\n")) {
+      if (!line.trim()) continue;
+      try {
+        const entry = JSON.parse(line);
+        if (entry.type === "model_change") {
+          if (typeof entry.provider === "string" && entry.provider) state.providerId = entry.provider;
+          if (typeof entry.modelId === "string" && entry.modelId) state.modelId = entry.modelId;
+        } else if (entry.type === "thinking_level_change") {
+          // pi has used both field names across session versions.
+          const level = typeof entry.thinkingLevel === "string" ? entry.thinkingLevel : entry.level;
+          if (typeof level === "string" && level) state.thinkingLevel = level;
+        }
+      } catch {
+        /* skip malformed JSONL rows */
+      }
+    }
+    return state.providerId || state.modelId || state.thinkingLevel ? state : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Aggregate token usage for one session file, plus the model actually used. */
