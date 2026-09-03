@@ -95,6 +95,7 @@ export default tseslint.config(
       "extensions/**/*.js",
       "pi-package/**/*.ts",
       "test/**/*.js",
+      "test/**/*.ts",
       "src/usage.js",
       "*.config.ts",
       "*.config.js",

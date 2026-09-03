@@ -28,6 +28,29 @@ function query(req: IncomingMessage): URLSearchParams {
   return new URL(req.url ?? "", "http://localhost").searchParams;
 }
 
+/**
+ * The session id a request is asking about, under either parameter name.
+ *
+ * `session-history` shipped reading `id` while `session-info` and
+ * `session-usage` read `session`. Nothing was broken — each caller in the
+ * renderer matched the route it was written against — but the three routes take
+ * the same kind of argument, so which spelling a given one wants was pure
+ * memory, and getting it wrong returns an empty result rather than an error.
+ * Both names work on all three now; the renderer keeps its existing calls.
+ *
+ * Exported for the test that pins this down: the invariant is that the two
+ * spellings are indistinguishable, which is easy to break again by adding a
+ * fourth route that reads `query(req).get(...)` directly.
+ */
+export function sessionIdFromUrl(url: string): string {
+  const params = new URL(url || "", "http://localhost").searchParams;
+  return params.get("session") ?? params.get("id") ?? "";
+}
+
+function sessionId(req: IncomingMessage): string {
+  return sessionIdFromUrl(req.url ?? "");
+}
+
 /** Collect a JSON request body, answering 400 on malformed input. */
 function readJson<T>(
   req: IncomingMessage,
@@ -95,7 +118,7 @@ export function createPiApiMiddleware(): PiApiMiddleware {
         .catch(() => fail(res, 500, { error: "Codex usage status failed" }));
     },
     "GET /api/pi/session-info"(req, res) {
-      json(res, pi.readSessionInfo(query(req).get("session") ?? ""));
+      json(res, pi.readSessionInfo(sessionId(req)));
     },
     "GET /api/pi/skills"(_, res) {
       json(res, { skills: pi.listLocalSkills() });
@@ -107,7 +130,7 @@ export function createPiApiMiddleware(): PiApiMiddleware {
       json(res, { sessionIds: pi.listActiveWebChats() });
     },
     "GET /api/pi/session-usage"(req, res) {
-      json(res, pi.readSessionUsage(query(req).get("session") ?? "") ?? {});
+      json(res, pi.readSessionUsage(sessionId(req)) ?? {});
     },
     "GET /api/pi/official-usage-config"(_, res) {
       const config = pi.readOfficialUsageConfig();
@@ -299,7 +322,7 @@ export function createPiApiMiddleware(): PiApiMiddleware {
       json(res, preview);
     },
     "GET /api/pi/session-history"(req, res) {
-      const history = pi.readSessionHistory(query(req).get("id") ?? "");
+      const history = pi.readSessionHistory(sessionId(req));
       if (!history) return fail(res, 404, { error: "Session not found" });
       json(res, history);
     },

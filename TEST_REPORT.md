@@ -1,20 +1,22 @@
 # 回归测试报告 · v0.8.3 优化批次
 
-- 测试日期：2026-09-03
+- 测试日期：2026-09-03（第二轮：测试脚本落仓库并加护栏后重跑）
 - 被测产物：`release/mac-arm64/pi-desktop.app`（`npm run electron:build` 全新打包，Electron 43.5.1 / darwin arm64）
 - 数据环境：真实 `~/.pi/agent/`（15 个会话、12 个项目、6 个供应商、60 条记忆），未使用 mock
-- 结论：**通过**。自动化 213 项全绿，未发现回归，也未发现新缺陷。
+- 结论：**通过**。自动化 322 项全绿，未发现回归，也未发现新缺陷。
 
-| 层次 | 用例数 | 通过 | 失败 |
-|---|---|---|---|
-| 单元测试（vitest） | 108 | 108 | 0 |
-| 单元测试（node:test） | 3 | 3 | 0 |
-| API 端到端（打包后真实 HTTP） | 47 | 47 | 0 |
-| UI 端到端（CDP 驱动打包应用） | 58 | 58 | 0 |
-| 静态检查（tsc / eslint error） | — | 0 错误 | 0 |
-| **合计** | **216** | **216** | **0** |
+| 层次 | 用例数 | 通过 | 失败 | 入口 |
+|---|---|---|---|---|
+| 单元测试（vitest） | 142 | 142 | 0 | `npm test` |
+| 单元测试（node:test） | 3 | 3 | 0 | `npm test` |
+| API 端到端（打包后真实 HTTP） | 61 | 61 | 0 | `npm run test:api` |
+| UI 端到端（CDP 驱动打包应用） | 116 | 116 | 0 | `npm run test:ui` |
+| 静态检查（tsc / eslint error） | — | 0 错误 | 0 | `npm run typecheck` / `lint` |
+| **合计** | **322** | **322** | **0** | `npm run verify` + 两条 e2e |
 
-ESLint 另有 89 条 warning，全部是 React Compiler 的 `set-state-in-effect` / `immutability` 类建议与 `no-explicit-any`，按既定分层策略只提示不阻断，`npm run lint` 仍以 0 error 通过。
+第一轮的两套 e2e 脚本是 `/tmp` 里的一次性 shell 与 `.mjs`，跑完即删；本轮已全部改写成 TypeScript 落进 `test/e2e/`，纳入 `tsc -b` 与 `eslint`，并为每一类曾经误报的断言补了可在 CI 单独运行的单元测试（见 §5）。这也是用例数从 216 涨到 322 的原因：新增 34 条单测 + e2e 断言加密。
+
+ESLint 另有 101 条 warning，全部是 React Compiler 的 `set-state-in-effect` / `immutability` 类建议与 `no-explicit-any`，按既定分层策略只提示不阻断，`npm run lint` 仍以 0 error 通过。
 
 ---
 
@@ -186,19 +188,27 @@ recharts 所在的 450K Dashboard chunk 与 85K 供应商编辑器已完全移�
 
 ---
 
-## 5. 测试过程中发现并修正的问题
+## 5. 曾经的 5 个假失败：已修复并加上回归护栏
 
-全部是测试脚本自身的错误断言，被"用真实文案定位"的策略挡住。产品代码未因此改动：
+第一轮把这 5 条记为"测试脚本自身的错误断言"，但当时的修法是在 `/tmp` 的脚本里手改一次，而那两个文件在收尾清理时被删掉了——报告里描述的修复在仓库里根本不存在，5 类问题全都能原样复发。
 
-1. **`session-history` 的参数名**：脚本按邻居路由的惯例传 `?session=`，实际该路由读 `?id=`（[`api-routes.ts:302`](server/api-routes.ts:302)）。前端 [`ChatPage.tsx:441`](src/components/chat/ChatPage.tsx:441) 传的是 `id`，与实现一致，是脚本错了。**这属于路由层的命名不一致，值得后续统一，但不是本批次引入的。**
+本轮的做法是让每一类**在结构上不可能再发生**，而不是再手改一次。脚本已落仓库、纳入类型检查，每条护栏都有能在 CI 单独运行的单测。
 
-2. **代理环境导致 Host 守卫误判 502**：shell 导出了 `http_proxy`，curl 连 127.0.0.1 也走代理，Host 头测试拿到的是代理的 502 而不是应用的 403。加 `--noproxy '*'` 后确认守卫本身正常。
+| # | 原假失败 | 根因 | 现在为什么不会再犯 |
+|---|---|---|---|
+| 1 | `session-history` 传 `?session=` 拿不到数据 | 三个同族路由参数名不一致（邻居用 `session`，它用 `id`） | **改了产品代码**：三个路由统一接受两种拼写，[`sessionIdFromUrl()`](server/api-routes.ts:1) 单一实现 + [`api-routes.test.ts`](server/api-routes.test.ts:1) 6 条单测钉住；e2e 里两种拼写各跑一遍 |
+| 2 | Host 守卫返回 502 | curl 对 127.0.0.1 也走 `http_proxy`，拿到的是代理的错误 | 换成 [`http-client.ts`](test/e2e/http-client.ts:1) 的裸 `node:http`：不读任何代理环境变量，且能真正伪造 `Host`/`Origin`（`fetch` 会重写 Host，做不到这件事）。传输层的选择本身就是这条测试 |
+| 3 | 六个图标 tab 全点到第一个 | 按 textContent 匹配，图标按钮的 textContent 是空串，`"".includes("")` 恒真 | 定位逻辑抽成 [`indexByAccessibleName()`](test/e2e/locators.ts:35)：空查询直接抛错，`aria-label` → `title` → 文本优先级固定；[12 条单测](test/e2e/locators.test.ts:1) 覆盖，其中一条断言注入页面的表达式里**包含该函数的源码**，从而不可能出现第二份会漂移的实现；每次点击后还要断言 `aria-current` 真的移到了目标 tab |
+| 4 | 文案写死且写错 | 脚本里手抄"今天 / 调用明细 / 链"，实际是"当天 / 请求日志 / 流水线" | 文案改为按 key 从**真实词典**取：[`label()`](test/e2e/labels.ts:41) 未知 key 直接抛错（不像 `t()` 会降级返回 key）；顺带发现 zh-TW 真缺一个 key（`providers_models.no_match`），已补 |
+| 5 | 弹窗被判定坏掉 | popup 走 IPC 异步取数，脚本单帧采样抓到"加载使用量数据…"中间态 | 异步断言只保留轮询形态 [`Runner.waitFor()`](test/e2e/runner.ts:43)，失败时报告的是**最后一次实际观测到的状态**而不是"超时"；popup、lazy chunk、range 切换全部走这条路径 |
 
-3. **工具面板 tab 是纯图标按钮**：按 textContent 匹配全部命中第一个 tab；改用 aria-label 后六个 tab 才真正被分别点到。
+### 本轮重跑又抓出 2 类同样性质的问题
 
-4. **文案硬编码错误**：脚本写"今天 / 7 天 / 30 天"、"调用明细"、"链 / 历史"，实际是"当天 / 7天 / 30天"、"请求日志"、"流水线 / 运行记录"。
+护栏生效的直接证据——这两条都是第一轮**没被发现**的假失败：
 
-5. **弹窗异步加载被单帧采样误判**：popup 是常隐藏窗口，show 时才走 IPC 取数；单次采样抓到了"加载使用量数据…"中间态。改为轮询至占位清除。
+6. **`usage-range` 的字段名**：`/api/pi/usage` 把数字嵌在 `totals` 下，`/api/pi/usage-range` 是平铺的，脚本对两者都问 `totals.requests`，于是 4 个 range 全报 `? req`，看起来像 4 条坏路由。改为按 [`getUsageByRange()`](server/pi-reader.ts:1167) 的真实返回逐字段校验（缺哪个字段就报哪个字段名，不再打印问号），并新增 [`usage-range.test.ts`](server/usage-range.test.ts:1) 8 条单测，让 CI 在没有打包应用的环境里也能守住这个契约。同时加了一条与数据量无关的不变式：`today ≤ 7d ≤ 30d`——安静的一天里每个 range 都合法地是 0，只有这条还能抓出分桶错误。
+
+7. **通用设置子页的面板选择器**：断言写的是 `.settings-page-inner section > 0`，这对用 `Card` 构建的 4 个子 tab 成立，但 Skills 与命令两页渲染的是裸 `div.skills-page`，于是两个健康的页面被判为空白。改为用兄弟选择器 `nav ~ *` 让 DOM 自己回答"面板在哪"，并要求文本**非空且与上一个 tab 不同**——空白页过不了第一条，点击没切换过不了第二条。这三个页面的中文是硬编码在组件里的，没有词典 key 可取，所以这里不能改成取文案，只能改成结构不变式。
 
 ---
 
@@ -206,10 +216,11 @@ recharts 所在的 450K Dashboard chunk 与 85K 供应商编辑器已完全移�
 
 不阻塞发布，记录备查：
 
-- **89 条 lint warning**：React Compiler 的 `set-state-in-effect`（17 处）、`immutability`（5 处）、`refs`（1 处）分布在 6 个以上组件，每一处都是独立重构且各带回归风险，本批次按"提示不阻断"处理。
+- **101 条 lint warning**：React Compiler 的 `set-state-in-effect`（17 处）、`immutability`（5 处）、`refs`（1 处）分布在 6 个以上组件，每一处都是独立重构且各带回归风险，本批次按"提示不阻断"处理。
 - **`src/hooks/useSessionUsage.ts` 是死代码**：全仓无引用，且其字段形状（`contextWindowRatio` / `cacheHitRatio`）与当前 API 返回不匹配，属于过期副本。本批次未删除。
 - **`testModel` 的 `apiType` 参数被接受但忽略**：探测始终按 OpenAI 形状打 `/chat/completions`。已重命名为 `_apiType` 并加注释使其显式可见，未实现按类型路由——缺少可验证的真实供应商环境。
-- **路由参数命名不一致**：`session-info` / `session-usage` 用 `?session=`，`session-history` 用 `?id=`。
+- ~~**路由参数命名不一致**~~：已于本轮修复，三个 session 路由都接受 `?session=` 与 `?id=`（§5 第 1 条）。
+- **Skills / 命令 / CLI 设置三页文案硬编码**：不走 i18n 词典，所以 e2e 无法按 key 断言其文案，只能断言结构不变式。若这三页要支持多语言，需要先补词典 key。
 - **未自动化的部分**：模型测速实跑、写配置类 POST、记忆删除、更新安装。原因是会消耗真实配额或改写用户数据，宜人工确认。
 
 ---
@@ -217,10 +228,20 @@ recharts 所在的 450K Dashboard chunk 与 85K 供应商编辑器已完全移�
 ## 附：复现方式
 
 ```bash
-npm run verify          # tsc + eslint + vitest 108 + node:test 3
+npm run verify          # tsc + eslint + vitest 142 + node:test 3
 npm run electron:build  # 打包
+
 env -u ELECTRON_RUN_AS_NODE \
-  ./release/mac-arm64/pi-desktop.app/Contents/MacOS/pi-desktop --remote-debugging-port=9333
+  ./release/mac-arm64/pi-desktop.app/Contents/MacOS/pi-desktop \
+  --remote-debugging-port=9222 &
+
+npm run test:api        # 61 项，压 127.0.0.1:51799
+npm run test:ui         # 116 项，CDP 连 9222
 ```
 
-`ELECTRON_RUN_AS_NODE` 必须清掉：该变量存在时 Electron 会退化成纯 Node 运行，不开窗口。
+两点必须注意：
+
+- `ELECTRON_RUN_AS_NODE` 必须清掉。该变量存在时 Electron 会退化成纯 Node 运行，不开窗口，CDP 里也就没有任何 target。
+- `--remote-debugging-port` 只有 `test:ui` 需要，`test:api` 不依赖它。端口可用 `PI_E2E_PORT` / `PI_E2E_CDP_PORT` 覆盖。
+
+两套 e2e 是普通 `.ts` 文件，不匹配 vitest 的 `*.test.ts` 也不匹配 `node --test "test/**/*.js"`，所以 `npm test` 不会在没有打包应用的环境里去跑它们——CI 保持绿色，e2e 由人显式触发。

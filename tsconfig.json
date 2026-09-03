@@ -25,5 +25,10 @@
   // request-body reader was annotated `(chunk: string)` for what Node actually
   // hands it, a Buffer. That mismatch is what silently corrupted long Chinese
   // request bodies.
-  "include": ["src", "electron", "server"]
+  //
+  // test/ is included for the same reason. The end-to-end harnesses used to be
+  // untyped .mjs files in /tmp, which is how a locator could quietly return the
+  // wrong element and a label could be a string that appears nowhere in the app.
+  // They are TypeScript in the repo now, so `tsc -b` covers them too.
+  "include": ["src", "electron", "server", "test"]
 }

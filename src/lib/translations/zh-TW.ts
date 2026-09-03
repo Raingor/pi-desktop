@@ -100,6 +100,7 @@ const zhTW: Record<string, string> = {
   "providers_models.confirm_import": "匯入選中模型",
 
   "providers_models.import_done": "已匯入 {0} 個模型",
+  "providers_models.no_match": "沒有找到符合的模型",
 
   "nav.sessions": "會話",
   "nav.memory": "記憶",
