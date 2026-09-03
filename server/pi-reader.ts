@@ -2542,6 +2542,25 @@ export function chooseChatDirectory(): Promise<string | null> {
   });
 }
 
+// ─── Default chat working directory ─────────────────────────────
+// A GUI app launched from Finder inherits cwd "/", so process.cwd() is useless
+// as a project directory: a prompt sent without an explicit choice would run
+// pi against the filesystem root. Fall back to the most recently active local
+// session's project instead, then the home directory.
+export function resolveDefaultChatCwd(): string {
+  const cwd = resolve(process.cwd());
+  const usable = cwd !== sep && existsSync(cwd) && statSync(cwd).isDirectory();
+  if (usable) return cwd;
+
+  const recent = listSessions()
+    .flatMap((group) => group.sessions)
+    .filter((session) => session.projectPath)
+    .sort((a, b) => (b.lastActive || b.timestamp || "").localeCompare(a.lastActive || a.timestamp || ""))[0]?.projectPath;
+  if (recent && existsSync(recent) && statSync(recent).isDirectory()) return resolve(recent);
+
+  return homedir();
+}
+
 /** Execute one non-interactive local pi turn, preserving its project session. */
 export async function runWebChat(
   prompt: string,
@@ -2558,7 +2577,7 @@ export async function runWebChat(
     ? requestedSessionId
     : `web-${randomUUID()}`;
   if (!pi) return { sessionId, text: "", error: "pi executable not found" };
-  const currentCwd = resolve(process.cwd());
+  const currentCwd = resolveDefaultChatCwd();
   const selectedCwd = requestedCwd ? resolve(requestedCwd) : currentCwd;
   if (!existsSync(selectedCwd) || !statSync(selectedCwd).isDirectory()) return { sessionId, text: "", error: "invalid project directory" };
   return new Promise((resolvePromise) => {

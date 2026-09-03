@@ -5,6 +5,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import * as pi from "./pi-reader";
 import * as builtins from "../src/data/builtin-providers";
+import { rejectNonLocalRequest } from "./local-origin-guard";
 
 export type PiApiNext = () => void;
 export type PiApiMiddleware = (
@@ -12,6 +13,7 @@ export type PiApiMiddleware = (
   res: ServerResponse,
   next: PiApiNext,
 ) => void;
+
 
 export function createPiApiMiddleware(): PiApiMiddleware {
   // Warm the usage cache in the background so the dashboard's first
@@ -212,6 +214,12 @@ export function createPiApiMiddleware(): PiApiMiddleware {
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify({ path }));
       });
+    },
+    "GET /api/pi/chat/default-directory"(_, res) {
+      // What a prompt without an explicit project directory actually runs in.
+      const path = pi.resolveDefaultChatCwd();
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ path, name: path.split("/").filter(Boolean).pop() ?? path }));
     },
     "GET /api/pi/memory"(_, res) {
       const memory = pi.readMemoryFiles();
@@ -509,6 +517,13 @@ export function createPiApiMiddleware(): PiApiMiddleware {
     const url = req.url!;
     // Only handle /api/pi/* paths
     if (!url.startsWith("/api/pi/")) return next();
+
+    const rejection = rejectNonLocalRequest(req);
+    if (rejection) {
+      res.statusCode = 403;
+      res.setHeader("Content-Type", "application/json");
+      return res.end(JSON.stringify({ error: rejection }));
+    }
 
     // Strip query string
     const pathOnly = url.split("?")[0];

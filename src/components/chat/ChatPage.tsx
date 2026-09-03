@@ -151,6 +151,18 @@ export function ChatPage() {
     setProjectPath(requestedProjectPath);
     setCustomProject(false);
   }, [requestedProjectPath]);
+  // Directory a prompt runs in when no project is picked. A GUI launch has
+  // cwd "/", so the server resolves a sensible fallback and reports it here
+  // instead of the UI hardcoding a project name.
+  const [defaultCwd, setDefaultCwd] = useState<{ path: string; name: string } | null>(null);
+  useEffect(() => {
+    fetch("/api/pi/chat/default-directory")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { path?: string; name?: string } | null) => {
+        if (data?.path) setDefaultCwd({ path: data.path, name: data.name || data.path });
+      })
+      .catch(() => setDefaultCwd(null));
+  }, []);
   const [selectedModel, setSelectedModel] = useState(
     () => window.localStorage.getItem("pi-web-switch:chat-model") ?? "",
   );
@@ -690,7 +702,9 @@ export function ChatPage() {
                     }
                   }}
                 >
-                  <option value="">当前项目（pi-web-switch）</option>
+                  <option value="">
+                    {defaultCwd ? `默认目录（${defaultCwd.name}）` : "默认目录"}
+                  </option>
                   {projects.map((project) => (
                     <option
                       key={project.projectPath}
