@@ -59,6 +59,12 @@ const THEME_SWATCHES: {
 
 const UI_STYLES: { id: string; name: string; desc: string; bg: string; dots: string[] }[] = [
   { id: "graphite", name: "石墨仪器", desc: "暖纸灰 · 信号蓝（默认）", bg: "linear-gradient(145deg, #f7f6f3, #e2dfd6)", dots: ["#3f6fd8", "#2f56ad", "#b9b3a4"] },
+  { id: "cyber", name: "赛博霓虹", desc: "深空黑 · 洋红霓虹", bg: "linear-gradient(145deg, #150a24, #3b0d52)", dots: ["#e879f9", "#a78bfa", "#2dd4bf"] },
+  { id: "kiro", name: "Kiro", desc: "品牌紫 · 干净留白", bg: "linear-gradient(145deg, #1c1428, #4b2585)", dots: ["#9147ff", "#c59eff", "#8469aa"] },
+  { id: "pixel", name: "像素游戏", desc: "GB 绿 · 方角等宽", bg: "linear-gradient(145deg, #16210f, #3f5e14)", dots: ["#9bbc0f", "#c2e04a", "#306230"] },
+  { id: "kawaii", name: "可爱软糖", desc: "奶油粉 · 樱花红", bg: "linear-gradient(145deg, #fff5f7, #ffd6e4)", dots: ["#db2777", "#f9a8d4", "#c4b5fd"] },
+  { id: "elegant", name: "文雅书卷", desc: "象牙纸 · 墨青蓝", bg: "linear-gradient(145deg, #f7f4ee, #e4ddcc)", dots: ["#0f4c5c", "#6b5b95", "#a89f8c"] },
+  { id: "plain", name: "素雅灰白", desc: "极简中性灰", bg: "linear-gradient(145deg, #f8f8f7, #dededd)", dots: ["#4b5563", "#94949c", "#c8c8c6"] },
   { id: "terminal", name: "信号终端", desc: "深海青 · 荧光青", bg: "linear-gradient(145deg, #041a1e, #0a3d42)", dots: ["#00d4aa", "#2fe8c0", "#0f766e"] },
   { id: "amber", name: "暖琥珀", desc: "米黄纸 · 琥珀橙", bg: "linear-gradient(145deg, #faf5ec, #e8d8b8)", dots: ["#b45309", "#d97706", "#c8b394"] },
   { id: "violet", name: "星紫", desc: "雾紫白 · 电光紫", bg: "linear-gradient(145deg, #f6f4fa, #dcd4ee)", dots: ["#6d28d9", "#a89af0", "#c4bfe4"] },
@@ -411,7 +417,7 @@ export function SettingsPage() {
           </Card>
 
           <Card icon={Sparkles} title="界面风格" desc="整体界面的配色风格，点击卡片即时切换。">
-            <div className="grid grid-cols-2 gap-3 max-w-xl sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {UI_STYLES.map((s) => {
                 const active = uiStyle === s.id;
                 return (
