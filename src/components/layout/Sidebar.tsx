@@ -79,6 +79,12 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   );
   const [removingSelection, setRemovingSelection] = useState(false);
   const [menuMessage, setMenuMessage] = useState("");
+  // Session being renamed inline (file path) plus its draft title.
+  const [renamingSessionPath, setRenamingSessionPath] = useState<string | null>(
+    null,
+  );
+  const [renameDraft, setRenameDraft] = useState("");
+  const [savingRename, setSavingRename] = useState(false);
   // Session ids with a pi run in flight, so the list can show a busy marker.
   const [runningSessions, setRunningSessions] = useState<Set<string>>(
     new Set(),
@@ -128,6 +134,51 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         .filter((session) => selectedSessionPaths.has(session.filePath)),
     [groups, selectedSessionPaths],
   );
+  const startRename = (session: Session) => {
+    setRenamingSessionPath(session.filePath);
+    // Seed with the current display title so a small tweak is one keystroke away.
+    setRenameDraft(sessionTitle(session));
+    setMenuSessionPath(null);
+    setMenuMessage("");
+  };
+  const cancelRename = () => {
+    setRenamingSessionPath(null);
+    setRenameDraft("");
+    setSavingRename(false);
+  };
+  // Writes a session_info entry via the API; an empty name clears the custom
+  // title and the list falls back to the first user message again.
+  const submitRename = async (session: Session) => {
+    const nextName = renameDraft.replace(/\s+/g, " ").trim();
+    if (nextName === (session.name?.trim() ?? "") || nextName === sessionTitle(session)) {
+      cancelRename();
+      return;
+    }
+    setSavingRename(true);
+    try {
+      const response = await fetch("/api/pi/session-rename", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: session.id, name: nextName }),
+      });
+      const result = (await response.json()) as { success?: boolean };
+      if (!result.success) throw new Error();
+      setGroups((previous) =>
+        previous.map((group) => ({
+          ...group,
+          sessions: group.sessions.map((item) =>
+            item.filePath === session.filePath
+              ? { ...item, name: nextName || undefined }
+              : item,
+          ),
+        })),
+      );
+      cancelRename();
+    } catch {
+      setSavingRename(false);
+      setMenuMessage("重命名失败");
+    }
+  };
   const moveToTrash = async (session: Session) => {
     if (
       !window.confirm(
@@ -462,6 +513,28 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                         }
                       />
                     )}
+                    {renamingSessionPath === session.filePath ? (
+                      <input
+                        className="conversation-rename-input"
+                        value={renameDraft}
+                        autoFocus
+                        disabled={savingRename}
+                        placeholder="会话名称（留空恢复默认）"
+                        aria-label="重命名会话"
+                        maxLength={200}
+                        onChange={(event) => setRenameDraft(event.target.value)}
+                        onBlur={() => submitRename(session)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            submitRename(session);
+                          } else if (event.key === "Escape") {
+                            event.preventDefault();
+                            cancelRename();
+                          }
+                        }}
+                      />
+                    ) : (
                     <Link
                       to={`/chat?session=${encodeURIComponent(session.id)}`}
                       onClick={
@@ -471,6 +544,10 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                       }
                       className="codex-conversation"
                       title={sessionTitle(session)}
+                      onDoubleClick={(event) => {
+                        event.preventDefault();
+                        startRename(session);
+                      }}
                     >
                       {runningSessions.has(session.id) && (
                         <Loader2
@@ -480,7 +557,8 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                       )}
                       <span className="truncate">{sessionTitle(session)}</span>
                     </Link>
-                    {!selectingSessions && (
+                    )}
+                    {!selectingSessions && renamingSessionPath !== session.filePath && (
                       <button
                         className="conversation-more"
                         aria-label={`会话菜单：${sessionTitle(session)}`}
@@ -501,6 +579,9 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                     )}
                     {menuSessionPath === session.filePath && (
                       <div className="conversation-menu">
+                        <button onClick={() => startRename(session)}>
+                          重命名
+                        </button>
                         <button
                           onClick={async () => {
                             try {

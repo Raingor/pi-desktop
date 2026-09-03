@@ -1758,6 +1758,8 @@ table { border-collapse: collapse; }
 .codex-conversation-row::after { position: absolute; z-index: 0; top: 50%; left: -13px; width: 8px; height: 1px; content: ""; background: color-mix(in srgb, var(--sidebar-border) 82%, transparent); }
 .codex-conversation { position: relative; z-index: 1; min-height: 34px; padding: 7px 10px 7px 12px; color: var(--muted-text); font-size: 11.5px; }
 .codex-conversation-row:hover .codex-conversation, .codex-conversation-row.is-active .codex-conversation { color: var(--page-text); }
+.conversation-rename-input { min-width: 0; flex: 1; min-height: 34px; margin: 0 4px 0 4px; padding: 6px 8px; color: var(--input-text); border: 1px solid var(--signal-cyan); border-radius: 6px; background: var(--input-bg); font-family: inherit; font-size: 11.5px; }
+.conversation-rename-input:disabled { cursor: wait; opacity: .6; }
 .codex-conversation-row.is-active::before, .codex-conversation-row.is-active::after { background: var(--signal-cyan); }
 
 .ui-mode-switch { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--card-border); border-radius: 10px; background: color-mix(in srgb, var(--card-bg-solid) 70%, transparent); }

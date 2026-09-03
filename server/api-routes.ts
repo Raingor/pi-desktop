@@ -381,6 +381,23 @@ export function createPiApiMiddleware(): PiApiMiddleware {
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify(history));
     },
+    "POST /api/pi/session-rename"(req, res) {
+      let body = "";
+      req.on("data", (chunk: string) => (body += chunk));
+      req.on("end", () => {
+        try {
+          const { sessionId, name } = JSON.parse(body) as { sessionId?: string; name?: string };
+          const success = typeof sessionId === "string" && typeof name === "string" && pi.renameSession(sessionId, name);
+          res.statusCode = success ? 200 : 400;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ success }));
+        } catch {
+          res.statusCode = 400;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ success: false }));
+        }
+      });
+    },
     "POST /api/pi/session-message"(req, res) {
       let body = "";
       req.on("data", (chunk: string) => (body += chunk));

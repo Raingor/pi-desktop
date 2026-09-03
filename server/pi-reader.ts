@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, existsSync, statSync, unlinkSync, writeFileS
 import { homedir, platform } from "os";
 import { join, resolve, dirname, relative, sep, delimiter } from "path";
 import { spawnSync, spawn } from "child_process";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes } from "crypto";
 import { DatabaseSync } from "node:sqlite";
 
 const PI_DIR = join(homedir(), ".pi", "agent");
@@ -2000,7 +2000,78 @@ export function updateSessionUserMessage(sessionId: string, messageId: string, t
   }
 }
 
-// ─── Memory Entry Deletion ───────────────────────────
+// ─── Session Rename ──────────────────────────────────────
+// pi stores the user-facing display name in a `session_info` entry (the same
+// one `/name` and pi.setSessionName() write). Renaming therefore means editing
+// that entry when it exists, or appending one to the end of the JSONL when it
+// does not — no other entry is touched, so the transcript stays intact and pi
+// itself picks the new name up on the next /resume.
+export function renameSession(sessionId: string, name: string): boolean {
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(sessionId)) return false;
+  const nextName = name.replace(/\s+/g, " ").trim();
+  if (nextName.length > 200) return false;
+
+  const session = listSessions().flatMap((group) => group.sessions).find((item) => item.id === sessionId);
+  if (!session) return false;
+  const filePath = resolve(session.filePath);
+  if (!filePath.startsWith(SESSIONS_DIR + sep) || !filePath.endsWith(".jsonl") || !existsSync(filePath)) return false;
+
+  try {
+    const raw = readFileSync(filePath, "utf-8");
+    const trailingNewline = raw.endsWith("\n");
+    const lines = raw.split("\n");
+
+    // Existing session_info entry → rewrite its name in place.
+    const index = lines.findIndex((line) => {
+      try {
+        return JSON.parse(line).type === "session_info";
+      } catch {
+        return false;
+      }
+    });
+    if (index >= 0) {
+      const entry = JSON.parse(lines[index]!);
+      // An empty name clears the custom title and falls back to the first message.
+      if (nextName) entry.name = nextName;
+      else delete entry.name;
+      entry.timestamp = new Date().toISOString();
+      lines[index] = JSON.stringify(entry);
+      writeFileSync(filePath, lines.join("\n"), "utf-8");
+      return true;
+    }
+
+    // Nothing to clear when no session_info exists yet.
+    if (!nextName) return true;
+
+    // Append a new entry, chained to the last entry like pi does.
+    let lastId: string | null = null;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      try {
+        const entry = JSON.parse(lines[i]!);
+        if (typeof entry.id === "string" && entry.id) {
+          lastId = entry.id;
+          break;
+        }
+      } catch {
+        // Skip blank or partial trailing lines.
+      }
+    }
+    const entry = {
+      type: "session_info",
+      id: randomBytes(4).toString("hex"),
+      parentId: lastId,
+      timestamp: new Date().toISOString(),
+      name: nextName,
+    };
+    const body = trailingNewline ? raw : `${raw}\n`;
+    writeFileSync(filePath, `${body}${JSON.stringify(entry)}\n`, "utf-8");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ─── Memory Entry Deletion ──────────────────────────
 
 const MEMORY_FILENAMES = ["MEMORY.md", "USER.md", "failures.md"];
 
