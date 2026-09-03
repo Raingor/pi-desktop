@@ -53,6 +53,20 @@ pi-desktop 把 pi CLI 的日常操作搬进原生窗口：**左边是会话列�
 - **和 pi 共用会话** —— 桌面端开的对话就是 pi 的 session 文件，终端 `pi --resume` 能直接接上
 - **重命名兼容** —— 侧栏改会话名写的是 pi 原生的 `session_info`，CLI 侧看到的名字一致
 
+### 和 pi-web-switch 的关系
+
+pi-desktop 衷生于姊妹项目 **[pi-web-switch](https://github.com/Raingor/pi-web-switch)**（从它的 `codex/web-pi-chat` 分支整体搬迁而来），之后分开演进为两个定位不同的工具：
+
+| | pi-web-switch | pi-desktop（本项目） |
+|---|---|---|
+| 形态 | 浏览器面板 | 原生 macOS 应用（Electron） |
+| 侧重 | 多页并列的配置管理，Chat 只是 8 项导航里的一页 | 聊天优先，主窗口只做对话，配置收进独立工作台 |
+| 菜单栏 | 无 | 常驻图标 + 用量浮窗（含 Codex 官方额度） |
+| 主题 | 浅色 / 深色 | 15 套整体界面风格 |
+| 安装 | `npm:@raingor/pi-web-switch` | DMG / ZIP（未发布到 npm） |
+
+**两边读写同一份 `~/.pi/agent/` 配置，可以并存使用，不冲突。** 想在浏览器里管配置就用 pi-web-switch，想要一个常驻的对话窗口就用 pi-desktop。
+
 ## 功能
 
 ### 聊天工作台
@@ -241,6 +255,8 @@ MIT
 
 <p align="center">
   <sub>
+    <a href="https://github.com/Raingor/pi-desktop">pi-desktop</a> ·
+    姊妹项目 <a href="https://github.com/Raingor/pi-web-switch">pi-web-switch</a> ·
     <a href="https://github.com/Raingor">GitHub @Raingor</a> ·
     <a href="https://raingor.github.io/my-blog/">Blog</a> ·
     灵感来自 <a href="https://github.com/farion1231/cc-switch">cc-switch</a>

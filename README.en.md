@@ -53,6 +53,20 @@ It is not a replacement for pi — it is a second entry point to the same config
 - **Shares sessions with pi** — a desktop conversation *is* a pi session file, so `pi --resume` picks it up directly
 - **Compatible renaming** — renaming a session in the sidebar writes pi's native `session_info`, so the CLI shows the same name
 
+### Relationship to pi-web-switch
+
+pi-desktop grew out of its sister project **[pi-web-switch](https://github.com/Raingor/pi-web-switch)** (migrated wholesale from its `codex/web-pi-chat` branch), and the two have since diverged into different tools:
+
+| | pi-web-switch | pi-desktop (this repo) |
+|---|---|---|
+| Form | Browser dashboard | Native macOS app (Electron) |
+| Focus | Multi-page config management; Chat is one of 8 nav items | Chat-first; the main window is only conversation, config lives in a separate workspace |
+| Menu bar | — | Persistent icon + usage popup (incl. Codex official quota) |
+| Theming | Light / dark | 15 whole-UI style presets |
+| Install | `npm:@raingor/pi-web-switch` | DMG / ZIP (not published to npm) |
+
+**Both read and write the same `~/.pi/agent/` config and can be used side by side.** Use pi-web-switch when you want config management in a browser tab; use pi-desktop when you want a persistent conversation window.
+
 ## Features
 
 ### Chat workspace
@@ -241,6 +255,8 @@ MIT
 
 <p align="center">
   <sub>
+    <a href="https://github.com/Raingor/pi-desktop">pi-desktop</a> ·
+    sister project <a href="https://github.com/Raingor/pi-web-switch">pi-web-switch</a> ·
     <a href="https://github.com/Raingor">GitHub @Raingor</a> ·
     <a href="https://raingor.github.io/my-blog/">Blog</a> ·
     inspired by <a href="https://github.com/farion1231/cc-switch">cc-switch</a>
