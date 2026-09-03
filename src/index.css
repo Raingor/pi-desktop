@@ -1769,3 +1769,328 @@ table { border-collapse: collapse; }
 .ui-mode-switch button:hover { color: var(--page-text); background: var(--hover-bg); }
 .ui-mode-switch button.is-active { color: #fff; background: var(--signal-cyan); }
 .ui-mode-switch button.is-active svg { color: #fff; }
+
+/* ─── Right-hand tool panel ──────────────────────────────
+   Hidden by default; toggled from the floating button at the window's top
+   right or with Cmd/Ctrl+J. Mirror image of the sidebar: fixed width from
+   --tools-w, its own drag handle, and it never shrinks the chat below usable
+   width because the stage keeps min-width: 0. */
+
+.tools-toggle {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 40;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--muted-text);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  -webkit-app-region: no-drag;
+}
+.tools-toggle:hover { color: var(--page-text); border-color: var(--card-border); background: var(--hover-bg); }
+.tools-toggle.is-active { color: var(--signal-cyan); border-color: color-mix(in srgb, var(--signal-cyan) 42%, transparent); background: var(--accent-bg); }
+.is-desktop-shell .tools-toggle { top: 30px; }
+
+.tools-resizer {
+  position: relative;
+  z-index: 31;
+  flex: 0 0 7px;
+  margin: 0 -3px;
+  cursor: col-resize;
+  touch-action: none;
+}
+.tools-resizer::after {
+  content: "";
+  position: absolute;
+  inset: 0 2px;
+  border-radius: 3px;
+  background: transparent;
+  transition: background 120ms ease;
+}
+.tools-resizer:hover::after,
+.tools-resizer.is-dragging::after { background: color-mix(in srgb, var(--signal-cyan) 55%, transparent); }
+
+.tool-panel {
+  z-index: 29;
+  display: flex;
+  width: var(--tools-w, 380px);
+  min-width: var(--tools-w, 380px);
+  height: 100vh;
+  overflow: hidden;
+  border-left: 1px solid color-mix(in srgb, var(--sidebar-border) 86%, transparent);
+  background: color-mix(in srgb, var(--sidebar-bg) 96%, var(--page-bg));
+}
+
+/* Icon rail. Room is reserved at the top so the traffic lights and the
+   toggle button never sit on the first tab. */
+.tool-panel-tabs {
+  display: flex;
+  flex: 0 0 42px;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 0;
+  border-right: 1px solid color-mix(in srgb, var(--sidebar-border) 58%, transparent);
+}
+.is-desktop-shell .tool-panel-tabs { padding-top: 46px; }
+.tool-panel-tab {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: var(--subtle-text);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  transition: color 120ms ease, background 120ms ease;
+}
+.tool-panel-tab:hover { color: var(--sidebar-hover-text); background: var(--sidebar-hover-bg); }
+.tool-panel-tab.is-active {
+  color: var(--signal-cyan);
+  border-color: color-mix(in srgb, var(--signal-cyan) 34%, transparent);
+  background: var(--accent-bg);
+}
+.tool-panel-close { margin-top: auto; }
+
+.tool-panel-stage { display: flex; min-width: 0; flex: 1; flex-direction: column; overflow: hidden; }
+.tool-panel-body { display: flex; min-width: 0; min-height: 0; flex: 1; flex-direction: column; overflow: hidden; }
+
+/* Header strip shared by every panel: title, meta, and icon actions. */
+.tool-panel-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 9px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--sidebar-border) 58%, transparent);
+}
+.is-desktop-shell .tool-panel-bar { padding-top: 34px; }
+.tool-panel-bar-icon { color: var(--signal-cyan); flex: 0 0 auto; }
+.tool-panel-bar-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--page-text);
+  font-size: 11px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tool-panel-bar-meta { flex: 0 0 auto; color: var(--subtle-text); font-family: var(--font-mono); font-size: 9px; }
+
+.tool-icon-btn {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--muted-text);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+}
+.tool-icon-btn:hover:not(:disabled) { color: var(--page-text); border-color: var(--card-border); background: var(--hover-bg); }
+.tool-icon-btn:disabled { opacity: .4; }
+
+.tool-crumb-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding: 2px 5px 2px 2px;
+  color: var(--muted-text);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 10px;
+}
+.tool-crumb-back:hover { color: var(--page-text); border-color: var(--card-border); background: var(--hover-bg); }
+
+.tool-panel-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 18px;
+  color: var(--subtle-text);
+  font-size: 11px;
+  line-height: 1.7;
+  text-align: center;
+  white-space: pre-line;
+}
+.tool-panel-footnote {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-top: 1px solid color-mix(in srgb, var(--sidebar-border) 58%, transparent);
+  color: var(--subtle-text);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+/* ─── Files + review lists ─── */
+.tool-file-list { min-height: 0; flex: 1; margin: 0; padding: 4px; list-style: none; overflow-y: auto; }
+.tool-file-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 7px;
+  color: var(--sidebar-text);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 11px;
+  text-align: left;
+}
+.tool-file-row:hover { color: var(--sidebar-hover-text); background: var(--sidebar-hover-bg); }
+.tool-file-icon { flex: 0 0 auto; color: var(--subtle-text); }
+.tool-file-icon.is-dir { color: var(--signal-cyan); }
+.tool-file-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tool-file-size { flex: 0 0 auto; color: var(--subtle-text); font-family: var(--font-mono); font-size: 9px; }
+
+.tool-review-flag {
+  display: grid;
+  width: 20px;
+  height: 16px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+}
+.tool-review-flag.is-new { color: var(--success-text); background: color-mix(in srgb, var(--success-solid) 18%, transparent); }
+.tool-review-flag.is-staged { color: var(--signal-cyan); background: var(--accent-bg); }
+.tool-review-flag.is-dirty { color: var(--warn-text); background: color-mix(in srgb, var(--signal-amber) 18%, transparent); }
+
+/* ─── File + diff viewers ─── */
+.tool-file-view,
+.tool-diff-view,
+.tool-terminal-view {
+  min-height: 0;
+  flex: 1;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  color: var(--page-text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.65;
+  tab-size: 2;
+  white-space: pre;
+}
+.tool-diff-view { display: flex; flex-direction: column; padding: 6px 0; }
+.tool-diff-line { padding: 0 10px; white-space: pre; }
+.tool-diff-line.is-add { color: var(--success-text); background: color-mix(in srgb, var(--success-solid) 12%, transparent); }
+.tool-diff-line.is-del { color: var(--danger-text); background: color-mix(in srgb, var(--danger-solid) 12%, transparent); }
+.tool-diff-line.is-hunk { color: var(--signal-cyan); background: var(--accent-bg); }
+.tool-diff-line.is-meta { color: var(--subtle-text); }
+
+/* ─── Subagent runs ─── */
+.tool-run-list { min-height: 0; flex: 1; margin: 0; padding: 4px; list-style: none; overflow-y: auto; }
+.tool-run-row { display: flex; align-items: flex-start; gap: 7px; padding: 6px 7px; border-radius: 7px; }
+.tool-run-row:hover { background: var(--sidebar-hover-bg); }
+.tool-run-icon { flex: 0 0 auto; padding-top: 1px; }
+.tool-run-icon .is-ok { color: var(--success-text); }
+.tool-run-icon .is-fail { color: var(--danger-text); }
+.tool-run-icon .is-running { color: var(--signal-cyan); }
+.tool-run-main { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 1px; }
+.tool-run-agent { overflow: hidden; color: var(--page-text); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.tool-run-meta { color: var(--subtle-text); font-family: var(--font-mono); font-size: 9px; }
+
+/* ─── Background tasks ─── */
+.tool-task-list { min-height: 0; flex: 1; margin: 0; padding: 4px; list-style: none; overflow-y: auto; }
+.tool-task-row { display: flex; align-items: center; gap: 7px; padding: 6px 7px; border-radius: 7px; }
+.tool-task-row:hover { background: var(--sidebar-hover-bg); }
+.tool-task-icon { flex: 0 0 auto; }
+.tool-task-icon.is-ok { color: var(--success-text); }
+.tool-task-icon.is-fail { color: var(--danger-text); }
+.tool-task-icon.is-running { color: var(--signal-cyan); }
+.tool-task-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.tool-task-main.is-clickable:hover .tool-task-cmd { color: var(--signal-cyan); }
+.tool-task-cmd {
+  overflow: hidden;
+  color: var(--page-text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tool-task-meta { color: var(--subtle-text); font-size: 9px; }
+
+/* ─── Terminal ─── */
+.tool-terminal-view { background: color-mix(in srgb, var(--page-bg-deep) 40%, transparent); white-space: pre-wrap; word-break: break-word; }
+.tool-terminal-hint { color: var(--subtle-text); }
+.tool-terminal-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 7px 8px;
+  border-top: 1px solid color-mix(in srgb, var(--sidebar-border) 58%, transparent);
+}
+.tool-terminal-prompt { flex: 0 0 auto; color: var(--signal-cyan); font-family: var(--font-mono); font-size: 11px; }
+.tool-terminal-input input {
+  min-width: 0;
+  flex: 1;
+  padding: 4px 6px;
+  color: var(--input-text);
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+.tool-terminal-input input:focus { border-color: color-mix(in srgb, var(--signal-cyan) 55%, var(--input-border)); outline: none; }
+
+/* ─── Embedded browser ─── */
+.tool-browser-address {
+  min-width: 0;
+  flex: 1;
+  padding: 3px 6px;
+  color: var(--input-text);
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.tool-browser-address:focus { border-color: color-mix(in srgb, var(--signal-cyan) 55%, var(--input-border)); outline: none; }
+.tool-browser-view { min-height: 0; flex: 1; border: 0; background: #fff; }
+.tool-browser-shortcuts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.tool-browser-shortcuts button {
+  padding: 3px 8px;
+  color: var(--muted-text);
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+.tool-browser-shortcuts button:hover { color: var(--signal-cyan); border-color: color-mix(in srgb, var(--signal-cyan) 42%, transparent); background: var(--accent-bg); }
+
+/* The chat column is capped at 1600px and centred; with the panel open that
+   cap plus the panel can overflow narrow windows, so relax it. */
+.has-tools .codex-chat { width: 100%; }
+
+@media (max-width: 1100px) {
+  /* Not enough room for three columns — the panel takes over the stage. */
+  .tool-panel { position: fixed; top: 0; right: 0; width: min(420px, 92vw); min-width: 0; box-shadow: -18px 0 40px rgba(12, 26, 30, .28); }
+  .tools-resizer { display: none; }
+}

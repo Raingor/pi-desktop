@@ -5,6 +5,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import * as pi from "./pi-reader";
 import * as builtins from "../src/data/builtin-providers";
+import * as tools from "./workspace-tools";
 import { rejectNonLocalRequest } from "./local-origin-guard";
 
 export type PiApiNext = () => void;
@@ -13,6 +14,30 @@ export type PiApiMiddleware = (
   res: ServerResponse,
   next: PiApiNext,
 ) => void;
+
+/** Reply with JSON. */
+function json(res: ServerResponse, payload: unknown): void {
+  res.setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(payload));
+}
+
+/** Collect a JSON request body, answering 400 on malformed input. */
+function readJson<T>(
+  req: IncomingMessage,
+  res: ServerResponse,
+  handle: (body: T) => void,
+): void {
+  let raw = "";
+  req.on("data", (chunk: string) => (raw += chunk));
+  req.on("end", () => {
+    try {
+      handle((raw ? JSON.parse(raw) : {}) as T);
+    } catch {
+      res.statusCode = 400;
+      json(res, { error: "invalid JSON body" });
+    }
+  });
+}
 
 
 export function createPiApiMiddleware(): PiApiMiddleware {
@@ -510,6 +535,66 @@ export function createPiApiMiddleware(): PiApiMiddleware {
         }
       });
     },
+
+    // ─── Right-hand tool panel ──────────────────────────
+    // Files and git are scoped to the project root the panel sends; see
+    // server/workspace-tools.ts for the containment rules.
+    "GET /api/pi/workspace/tree"(req, res) {
+      const q = new URL(req.url ?? "", "http://localhost").searchParams;
+      const listing = tools.listDirectory(q.get("root") ?? "", q.get("path") ?? ".");
+      json(res, listing);
+    },
+    "GET /api/pi/workspace/file"(req, res) {
+      const q = new URL(req.url ?? "", "http://localhost").searchParams;
+      json(res, tools.readTextFile(q.get("root") ?? "", q.get("path") ?? ""));
+    },
+    "GET /api/pi/workspace/review"(req, res) {
+      const q = new URL(req.url ?? "", "http://localhost").searchParams;
+      json(res, tools.gitReview(q.get("cwd") ?? ""));
+    },
+    "GET /api/pi/workspace/diff"(req, res) {
+      const q = new URL(req.url ?? "", "http://localhost").searchParams;
+      json(
+        res,
+        tools.gitDiff(q.get("cwd") ?? "", q.get("path") ?? "", q.get("staged") === "1"),
+      );
+    },
+    "GET /api/pi/workspace/tasks"(_, res) {
+      json(res, { tasks: tools.listTasks() });
+    },
+    "GET /api/pi/workspace/task-output"(req, res) {
+      const q = new URL(req.url ?? "", "http://localhost").searchParams;
+      const out = tools.readTaskOutput(q.get("id") ?? "", Number(q.get("since") ?? 0) || 0);
+      if (!out) {
+        res.statusCode = 404;
+        return json(res, { error: "task not found" });
+      }
+      json(res, out);
+    },
+    "POST /api/pi/workspace/task-run"(req, res) {
+      readJson<{ command?: string; cwd?: string; label?: string }>(req, res, (body) => {
+        const result = tools.startTask({
+          command: body.command ?? "",
+          cwd: body.cwd ?? "",
+          label: body.label,
+        });
+        if ("error" in result) res.statusCode = 400;
+        json(res, result);
+      });
+    },
+    "POST /api/pi/workspace/task-input"(req, res) {
+      readJson<{ id?: string; data?: string }>(req, res, (body) => {
+        json(res, { ok: tools.writeTaskInput(body.id ?? "", body.data ?? "") });
+      });
+    },
+    "POST /api/pi/workspace/task-stop"(req, res) {
+      readJson<{ id?: string }>(req, res, (body) => {
+        json(res, { stopped: tools.killTask(body.id ?? "") });
+      });
+    },
+    "POST /api/pi/workspace/tasks-clear"(_, res) {
+      json(res, { removed: tools.clearFinishedTasks() });
+    },
   };
 
   return (req, res, next) => {
@@ -524,6 +609,12 @@ export function createPiApiMiddleware(): PiApiMiddleware {
       res.setHeader("Content-Type", "application/json");
       return res.end(JSON.stringify({ error: rejection }));
     }
+
+    // Every response here is derived from live files or processes. Without this
+    // Chromium may serve a repeated identical GET from its memory cache, which
+    // silently froze the tool panel's task-output poll on its first (empty)
+    // reply — the URL never changes while `since` stays 0.
+    res.setHeader("Cache-Control", "no-store");
 
     // Strip query string
     const pathOnly = url.split("?")[0];

@@ -52,21 +52,49 @@ export interface ApiServerHandle {
   url: string;
 }
 
+// The renderer is served over http://127.0.0.1:<port>, so the port is part of
+// the page's origin — and localStorage is origin-scoped. Listening on port 0
+// therefore threw away every stored preference (interface style, zoom, font
+// size, language, currency, sidebar width, last chat model, speed-test
+// results, tool-panel state) on each launch. Prefer a fixed port and only
+// walk upward when something else already holds it.
+const PREFERRED_PORT = 51799;
+const PORT_ATTEMPTS = 24;
+
 export function startApiServer(): Promise<ApiServerHandle> {
   const apiMiddleware = createPiApiMiddleware();
-  return new Promise((resolve, reject) => {
-    const server = http.createServer((req, res) => {
-      const url = req.url ?? '/';
-      const pathname = new URL(url, 'http://localhost').pathname;
-      // API routes first; everything else falls back to static files.
-      apiMiddleware(req, res, () => serveStatic(pathname, res));
+
+  const listenOn = (port: number): Promise<ApiServerHandle> =>
+    new Promise((resolve, reject) => {
+      const server = http.createServer((req, res) => {
+        const url = req.url ?? '/';
+        const pathname = new URL(url, 'http://localhost').pathname;
+        // API routes first; everything else falls back to static files.
+        apiMiddleware(req, res, () => serveStatic(pathname, res));
+      });
+
+      const onError = (error: NodeJS.ErrnoException) => {
+        server.close();
+        reject(error);
+      };
+      server.once('error', onError);
+      server.listen(port, '127.0.0.1', () => {
+        server.removeListener('error', onError);
+        const addr = server.address();
+        const actual = typeof addr === 'object' && addr ? addr.port : port;
+        resolve({ server, port: actual, url: `http://127.0.0.1:${actual}` });
+      });
     });
 
-    server.on('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const addr = server.address();
-      const port = typeof addr === 'object' && addr ? addr.port : 0;
-      resolve({ server, port, url: `http://127.0.0.1:${port}` });
+  const attempt = (offset: number): Promise<ApiServerHandle> =>
+    listenOn(PREFERRED_PORT + offset).catch((error: NodeJS.ErrnoException) => {
+      const busy = error.code === 'EADDRINUSE' || error.code === 'EACCES';
+      if (!busy) throw error;
+      // Out of candidates: fall back to an ephemeral port so the app still
+      // starts. Preferences reset in that case, which beats not launching.
+      if (offset + 1 >= PORT_ATTEMPTS) return listenOn(0);
+      return attempt(offset + 1);
     });
-  });
+
+  return attempt(0);
 }

@@ -30,4 +30,7 @@ contextBridge.exposeInMainWorld('piAPI', {
 
   // Open an external http(s) URL in the system browser
   openExternal: (url: string) => ipcRenderer.invoke('pi:open:external', url),
+
+  // Open the system terminal at a directory (tool panel → terminal)
+  openTerminal: (path: string) => ipcRenderer.invoke('pi:open:terminal', path),
 });

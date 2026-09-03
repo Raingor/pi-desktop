@@ -5,6 +5,7 @@ const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, nativeTheme, shell
 import type { BrowserWindow as BrowserWindowType, Tray as TrayType, IpcMainInvokeEvent } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import * as piReader from '../server/pi-reader';
 import { startApiServer } from './api-server';
@@ -117,9 +118,34 @@ function createMainWindow() {
       preload: resolvePreload(),
       contextIsolation: true,
       nodeIntegration: false,
+      // The tool panel's browser tab embeds pages with <webview>. An iframe
+      // cannot be used because most sites refuse to be framed. The guest gets
+      // its own process and no node integration.
+      webviewTag: true,
     },
   });
   mainWindow = win;
+
+  // The tool panel's browser tab is the only intended <webview> user. Strip
+  // anything a compromised renderer could try to smuggle into a guest: no
+  // preload script, no node integration, and http(s) only.
+  win.webContents.on(
+    'will-attach-webview',
+    (_e: unknown, webPreferences: Record<string, unknown>, params: Record<string, unknown>) => {
+      delete webPreferences.preload;
+      webPreferences.nodeIntegration = false;
+      webPreferences.contextIsolation = true;
+      const src = typeof params.src === 'string' ? params.src : '';
+      if (!/^https?:\/\//i.test(src)) params.src = 'about:blank';
+    },
+  );
+
+  // A guest asking for a new window opens in the system browser instead of an
+  // uncontrolled Electron window.
+  win.webContents.setWindowOpenHandler(({ url }: { url: string }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    return { action: 'deny' as const };
+  });
 
   // Surface renderer failures to the persistent log file.
   win.webContents.on('did-fail-load', (_e: unknown, code: number, desc: string, url: string) => {
@@ -472,6 +498,21 @@ function setupIPC() {
     if (typeof url === 'string' && /^https?:\/\//.test(url)) {
       shell.openExternal(url);
     }
+  });
+
+  // Open the system terminal at a directory. The tool panel's terminal has no
+  // PTY, so anything interactive (vim, top, a program that prompts) needs the
+  // real thing.
+  ipcMain.handle('pi:open:terminal', (_e: IpcMainInvokeEvent, target: unknown) => {
+    if (typeof target !== 'string' || !target) return false;
+    if (process.platform !== 'darwin') {
+      // Elsewhere, revealing the folder is the closest portable equivalent.
+      shell.openPath(target);
+      return true;
+    }
+    // `open -a Terminal <dir>` opens a new window already cd'd into it.
+    spawn('open', ['-a', 'Terminal', target], { stdio: 'ignore', detached: true }).unref();
+    return true;
   });
 }
 

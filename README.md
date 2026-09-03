@@ -80,6 +80,21 @@ pi-desktop 衍生于姊妹项目 **[pi-web-switch](https://github.com/Raingor/pi
 - **可拖拽侧栏** —— 200–480px 自由调整（默认 264px），宽度持久化
 - **沉浸式标题栏** —— 无边框窗口，交通灯按钮融入侧栏；窗口尺寸按你的屏幕工作区自适应
 
+### 右侧工具面板
+
+默认隐藏。点窗口右上角按钮或按 **⌘J** 展开，宽度 280–720px 可拖拽，开合状态、所在标签、宽度都会记住。六个工具：
+
+| 工具 | 能做什么 |
+|---|---|
+| **文件目录** | 浏览当前项目目录树，点开文本文件直接预览（512KB 上限，二进制文件标注不预览）；node_modules / dist 等目录自动隐藏 |
+| **审查** | 当前分支的 git 改动清单 + 逐文件 unified diff 着色；未跟踪文件按全新增渲染。只读，不暂存不提交 |
+| **SubAgent** | 子代理运行记录（每 4 秒刷新），运行中/成功/失败分色，可以一边对话一边盯子任务 |
+| **后台任务** | 终端面板起的每条命令 + 服务端正在跑的 pi 对话，看状态/耗时/退出码，可逐个终止，点任务跳回终端看输出 |
+| **浏览器** | 内嵌 `<webview>` 看文档、localhost 预览、API 控制台；前进/后退/刷新，可转交系统浏览器 |
+| **终端** | 在项目目录执行命令并流式回显，支持向进程 stdin 送行、Ctrl+C 终止、↑↓ 翻历史 |
+
+> **终端是命令执行器，不是终端模拟器。** 没有 PTY，子进程看到的是管道，所以 `vim`、`top` 这类需要 tty 的交互式程序用不了。这是为了不引入 native 模块（打包产物刻意不含 `node_modules`）而做的取舍 —— 需要完整交互时点右上角「在系统终端打开」。
+
 ### 菜单栏速览
 
 常驻菜单栏图标，**单击弹出用量浮窗**：
@@ -148,14 +163,17 @@ pi-desktop/
 │   ├── popup.html / popup-render.ts   # 菜单栏浮窗
 ├── server/
 │   ├── pi-reader.ts             # 读写 ~/.pi/agent/、解析会话、聚合用量、驱动 pi CLI
-│   ├── api-routes.ts            # 45 条 API 的唯一实现
+│   ├── api-routes.ts            # 55 条 API 的唯一实现
+│   ├── workspace-tools.ts       # 工具面板后端：目录树、git diff、后台任务进程表
 │   ├── local-origin-guard.ts    # Host / Origin / Content-Type 防护
 ├── src/
 │   ├── App.tsx                  # 路由：/ 与 /chat → 聊天，/settings → 设置工作台
 │   ├── index.css                # 主题与 15 套风格的 CSS 令牌
 │   ├── components/
 │   │   ├── chat/                # ChatPage
-│   │   ├── layout/              # AppShell、Sidebar
+│   │   ├── layout/              # AppShell、Sidebar、RightPanel
+│   │   ├── tools/               # 右侧六个面板（文件/审查/子代理/任务/浏览器/终端）
+│   │   ├── tools/               # 右侧六个面板（文件/审查/子代理/任务/浏览器/终端）
 │   │   ├── settings/            # SettingsWorkspace、SettingsPage、Skills、Commands、PiCli、PackageBrowser
 │   │   ├── dashboard/           # 使用统计
 │   │   ├── providers/           # 提供商与模型
@@ -164,7 +182,7 @@ pi-desktop/
 │   │   ├── sessions/            # 会话管理、记忆
 │   │   └── ui/                  # StatCard、Badge、Modal、EmptyState
 │   ├── store/config-store.ts    # Zustand
-│   ├── lib/                     # i18n、pi-settings 合并、provider 导入、货币、工具
+│   ├── lib/                     # i18n、workspace 上下文、pi-settings 合并、provider 导入、货币、工具
 │   └── data/                    # 内置提供商、模型目录、更新日志
 ├── pi-package/ + extensions/    # 作为 pi 扩展分发的入口
 ├── scripts/                     # electron-dev、托盘图标生成
@@ -189,7 +207,7 @@ pi-desktop/
 
 ## API
 
-45 条路由（24 GET / 21 POST），全部在 `/api/pi/*` 下，仅监听 `127.0.0.1`。
+55 条路由（30 GET / 25 POST），全部在 `/api/pi/*` 下，仅监听 `127.0.0.1`。
 
 <details>
 <summary>展开完整清单</summary>
@@ -212,6 +230,9 @@ pi-desktop/
 **扩展与工具**
 `GET /skills` · `GET /commands` · `GET /subagents` · `POST /subagents/update-agent` · `GET /packages/search` · `GET /check-updates` · `POST /apply-updates` · `POST /provider-test` · `POST /provider-models` · `POST /model-test`
 
+**工具面板**
+`GET /workspace/tree` · `GET /workspace/file` · `GET /workspace/review` · `GET /workspace/diff` · `GET /workspace/tasks` · `GET /workspace/task-output` · `POST /workspace/task-run` · `POST /workspace/task-input` · `POST /workspace/task-stop` · `POST /workspace/tasks-clear`
+
 </details>
 
 ## 安全说明
@@ -223,6 +244,10 @@ pi-desktop/
 - POST 非 `application/json` 直接拒绝（挡掉无需预检的表单型 CSRF）
 
 Electron 侧 `contextIsolation: true`、`nodeIntegration: false`，渲染进程只能通过 preload 白名单调用主进程能力。
+
+浏览器面板需要 `webviewTag`，因此主进程在 `will-attach-webview` 里强制剔除 guest 的 preload、关掉 node 集成、拒绝非 http(s) 的 src；guest 开新窗统一转给系统浏览器。
+
+工具面板的文件浏览与预览都做了根目录包含校验 —— `../../.ssh/id_rsa` 这类路径在服务端就被拒，不会因为面板能「浏览项目」而变成任意读文件。
 
 `auth.json` 里的 API Key 会明文返回给应用自身的前端（编辑密钥、测试连接、导出备份都需要），这是设计取舍 —— 该接口只对本应用可达。
 

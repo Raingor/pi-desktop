@@ -32,6 +32,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
+import { useWorkspace } from "@/lib/workspace";
 import { useConfigStore } from "@/store/config-store";
 
 interface Message {
@@ -155,6 +156,11 @@ export function ChatPage() {
   // cwd "/", so the server resolves a sensible fallback and reports it here
   // instead of the UI hardcoding a project name.
   const [defaultCwd, setDefaultCwd] = useState<{ path: string; name: string } | null>(null);
+  // Keep the tool panel pointed at whatever directory a prompt would run in.
+  const { setCwd: setWorkspaceCwd } = useWorkspace();
+  useEffect(() => {
+    setWorkspaceCwd(projectPath.trim() || defaultCwd?.path || "");
+  }, [projectPath, defaultCwd, setWorkspaceCwd]);
   useEffect(() => {
     fetch("/api/pi/chat/default-directory")
       .then((res) => (res.ok ? res.json() : null))
