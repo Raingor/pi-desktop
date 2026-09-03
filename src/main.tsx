@@ -135,7 +135,15 @@ function applySavedFontSize() {
 }
 
 // ─── UI zoom: apply saved percentage before first paint ─
+applySavedUiStyle();
 applySavedZoom();
+function applySavedUiStyle() {
+  const style = window.localStorage.getItem("pi-ui-style");
+  if (style && ["graphite", "terminal", "amber", "violet"].includes(style)) {
+    document.documentElement.dataset.style = style;
+  }
+}
+
 function applySavedZoom() {
   const saved = Number(localStorage.getItem("pi-ui-zoom"));
   document.documentElement.style.zoom = "";

@@ -113,6 +113,95 @@
   --accent: var(--signal-cyan);
 }
 
+/* ─── UI style presets ──────────────────────────────────── */
+/* Whole-interface style switching: html[data-style] overrides the accent +
+   surface variable set for both modes. "graphite" is the default and needs
+   no overrides. Selected in 设置 → 外观 → 界面风格. */
+html[data-style="terminal"] {
+  --page-bg: #f2f6f5; --page-bg-deep: #e7efed; --page-text: #0d1f1c;
+  --card-bg: rgba(251, 253, 252, .9); --card-bg-solid: #fbfdfc; --card-border: rgba(13, 31, 28, .14);
+  --card-header-border: rgba(13, 31, 28, .1); --card-header-text: #24403b;
+  --input-bg: rgba(255, 255, 255, .8); --input-border: rgba(13, 31, 28, .2); --input-text: #0d1f1c;
+  --muted-text: #5d6f6b; --subtle-text: #8a9b97;
+  --accent-bg: rgba(14, 122, 99, .08); --hover-bg: rgba(14, 122, 99, .06);
+  --sidebar-bg: rgba(240, 246, 245, .95); --sidebar-border: rgba(13, 31, 28, .12);
+  --sidebar-logo: #0e7a63; --sidebar-active-bg: rgba(14, 122, 99, .1); --sidebar-active-text: #0b5c49;
+  --sidebar-text: #5d6f6b; --sidebar-hover-bg: rgba(13, 31, 28, .05); --sidebar-hover-text: #0d1f1c;
+  --signal-cyan: #0e7a63; --signal-cyan-bright: #12987e;
+  --accent-solid: #0f766e; --accent-solid-deep: #115e59;
+  --grid-line: rgba(13, 31, 28, .045);
+}
+html.dark[data-style="terminal"] {
+  --page-bg: #001014; --page-bg-deep: #000a0d; --page-text: #d7f0ea;
+  --card-bg: rgba(4, 26, 30, .85); --card-bg-solid: #041a1e; --card-border: rgba(215, 240, 234, .14);
+  --card-header-border: rgba(215, 240, 234, .1); --card-header-text: #b8d8d1;
+  --input-bg: rgba(6, 32, 37, .92); --input-border: rgba(215, 240, 234, .18); --input-text: #e2f4ef;
+  --muted-text: #7fa39b; --subtle-text: #52726b;
+  --accent-bg: rgba(0, 212, 170, .12); --hover-bg: rgba(0, 212, 170, .09);
+  --sidebar-bg: rgba(0, 14, 17, .96); --sidebar-border: rgba(215, 240, 234, .1);
+  --sidebar-logo: #00d4aa; --sidebar-active-bg: rgba(0, 212, 170, .14); --sidebar-active-text: #2fe8c0;
+  --sidebar-text: #7fa39b; --sidebar-hover-bg: rgba(215, 240, 234, .05); --sidebar-hover-text: #d7f0ea;
+  --signal-cyan: #00d4aa; --signal-cyan-bright: #2fe8c0;
+  --accent-solid: #0f766e; --accent-solid-deep: #115e59;
+  --grid-line: rgba(215, 240, 234, .045);
+}
+html[data-style="amber"] {
+  --page-bg: #faf5ec; --page-bg-deep: #f1e9d9; --page-text: #2a2013;
+  --card-bg: rgba(253, 250, 243, .9); --card-bg-solid: #fdfaf3; --card-border: rgba(42, 32, 19, .14);
+  --card-header-border: rgba(42, 32, 19, .1); --card-header-text: #4a3a24;
+  --input-bg: rgba(255, 255, 255, .8); --input-border: rgba(42, 32, 19, .2); --input-text: #2a2013;
+  --muted-text: #77694f; --subtle-text: #a39478;
+  --accent-bg: rgba(180, 83, 9, .08); --hover-bg: rgba(180, 83, 9, .06);
+  --sidebar-bg: rgba(246, 240, 228, .95); --sidebar-border: rgba(42, 32, 19, .12);
+  --sidebar-logo: #b45309; --sidebar-active-bg: rgba(180, 83, 9, .1); --sidebar-active-text: #8a3e07;
+  --sidebar-text: #77694f; --sidebar-hover-bg: rgba(42, 32, 19, .05); --sidebar-hover-text: #2a2013;
+  --signal-cyan: #b45309; --signal-cyan-bright: #d97706;
+  --accent-solid: #b45309; --accent-solid-deep: #92400e;
+  --grid-line: rgba(42, 32, 19, .045);
+}
+html.dark[data-style="amber"] {
+  --page-bg: #171209; --page-bg-deep: #120e07; --page-text: #f0e8d8;
+  --card-bg: rgba(38, 32, 20, .85); --card-bg-solid: #262014; --card-border: rgba(240, 232, 216, .14);
+  --card-header-border: rgba(240, 232, 216, .1); --card-header-text: #d9cfb8;
+  --input-bg: rgba(44, 37, 24, .92); --input-border: rgba(240, 232, 216, .18); --input-text: #f5eedd;
+  --muted-text: #9a8e74; --subtle-text: #6b604a;
+  --accent-bg: rgba(217, 119, 6, .13); --hover-bg: rgba(217, 119, 6, .1);
+  --sidebar-bg: rgba(21, 17, 10, .96); --sidebar-border: rgba(240, 232, 216, .1);
+  --sidebar-logo: #e0a94e; --sidebar-active-bg: rgba(217, 119, 6, .16); --sidebar-active-text: #f0b45a;
+  --sidebar-text: #9a8e74; --sidebar-hover-bg: rgba(240, 232, 216, .05); --sidebar-hover-text: #f0e8d8;
+  --signal-cyan: #e0a94e; --signal-cyan-bright: #f0be6a;
+  --accent-solid: #b45309; --accent-solid-deep: #92400e;
+  --grid-line: rgba(240, 232, 216, .045);
+}
+html[data-style="violet"] {
+  --page-bg: #f6f4fa; --page-bg-deep: #ede9f5; --page-text: #1e1a2a;
+  --card-bg: rgba(253, 252, 255, .9); --card-bg-solid: #fdfcff; --card-border: rgba(30, 26, 42, .14);
+  --card-header-border: rgba(30, 26, 42, .1); --card-header-text: #3a3450;
+  --input-bg: rgba(255, 255, 255, .8); --input-border: rgba(30, 26, 42, .2); --input-text: #1e1a2a;
+  --muted-text: #655d7d; --subtle-text: #948ba8;
+  --accent-bg: rgba(109, 40, 217, .08); --hover-bg: rgba(109, 40, 217, .06);
+  --sidebar-bg: rgba(243, 240, 249, .95); --sidebar-border: rgba(30, 26, 42, .12);
+  --sidebar-logo: #6d28d9; --sidebar-active-bg: rgba(109, 40, 217, .1); --sidebar-active-text: #5b21b6;
+  --sidebar-text: #655d7d; --sidebar-hover-bg: rgba(30, 26, 42, .05); --sidebar-hover-text: #1e1a2a;
+  --signal-cyan: #6d28d9; --signal-cyan-bright: #8b5cf6;
+  --accent-solid: #6d28d9; --accent-solid-deep: #5b21b6;
+  --grid-line: rgba(30, 26, 42, .045);
+}
+html.dark[data-style="violet"] {
+  --page-bg: #14101d; --page-bg-deep: #0f0c17; --page-text: #ece8f4;
+  --card-bg: rgba(32, 27, 46, .85); --card-bg-solid: #201b2e; --card-border: rgba(236, 232, 244, .14);
+  --card-header-border: rgba(236, 232, 244, .1); --card-header-text: #d5cfe6;
+  --input-bg: rgba(38, 32, 54, .92); --input-border: rgba(236, 232, 244, .18); --input-text: #f1edf9;
+  --muted-text: #948ba8; --subtle-text: #655d7d;
+  --accent-bg: rgba(168, 154, 240, .14); --hover-bg: rgba(168, 154, 240, .1);
+  --sidebar-bg: rgba(18, 14, 26, .96); --sidebar-border: rgba(236, 232, 244, .1);
+  --sidebar-logo: #a89af0; --sidebar-active-bg: rgba(168, 154, 240, .16); --sidebar-active-text: #c4b8f5;
+  --sidebar-text: #948ba8; --sidebar-hover-bg: rgba(236, 232, 244, .05); --sidebar-hover-text: #ece8f4;
+  --signal-cyan: #a89af0; --signal-cyan-bright: #c4b8f5;
+  --accent-solid: #6d28d9; --accent-solid-deep: #5b21b6;
+  --grid-line: rgba(236, 232, 244, .045);
+}
+
 :root { color-scheme: var(--color-scheme, dark); }
 
 * { box-sizing: border-box; }

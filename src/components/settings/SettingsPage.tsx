@@ -57,7 +57,15 @@ const THEME_SWATCHES: {
   { value: "light/dark", labelKey: "settings.system", bg: "linear-gradient(105deg, #0a0a0f 49.5%, #f1f2f6 50.5%)", dots: ["#00d4aa", "#7c5cfc", "#9aa0ab"] },
 ];
 
+const UI_STYLES: { id: string; name: string; desc: string; bg: string; dots: string[] }[] = [
+  { id: "graphite", name: "石墨仪器", desc: "暖纸灰 · 信号蓝（默认）", bg: "linear-gradient(145deg, #f7f6f3, #e2dfd6)", dots: ["#3f6fd8", "#2f56ad", "#b9b3a4"] },
+  { id: "terminal", name: "信号终端", desc: "深海青 · 荧光青", bg: "linear-gradient(145deg, #041a1e, #0a3d42)", dots: ["#00d4aa", "#2fe8c0", "#0f766e"] },
+  { id: "amber", name: "暖琥珀", desc: "米黄纸 · 琥珀橙", bg: "linear-gradient(145deg, #faf5ec, #e8d8b8)", dots: ["#b45309", "#d97706", "#c8b394"] },
+  { id: "violet", name: "星紫", desc: "雾紫白 · 电光紫", bg: "linear-gradient(145deg, #f6f4fa, #dcd4ee)", dots: ["#6d28d9", "#a89af0", "#c4bfe4"] },
+];
+
 const FONT_SIZE_KEY = "pi-font-size";
+const UI_STYLE_KEY = "pi-ui-style";
 const UI_ZOOM_KEY = "pi-ui-zoom";
 
 function Card({
@@ -112,6 +120,15 @@ export function SettingsPage() {
   } = useConfigStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
+  const [uiStyle, setUiStyle] = useState(
+    () => window.localStorage.getItem(UI_STYLE_KEY) ?? "graphite",
+  );
+  const applyUiStyle = (id: string) => {
+    setUiStyle(id);
+    window.localStorage.setItem(UI_STYLE_KEY, id);
+    if (id === "graphite") delete document.documentElement.dataset.style;
+    else document.documentElement.dataset.style = id;
+  };
   const [newPackage, setNewPackage] = useState("");
   const [importError, setImportError] = useState("");
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -390,6 +407,42 @@ export function SettingsPage() {
                 />
                 {t("settings.expand_run_steps")}
               </label>
+            </div>
+          </Card>
+
+          <Card icon={Sparkles} title="界面风格" desc="整体界面的配色风格，点击卡片即时切换。">
+            <div className="grid grid-cols-2 gap-3 max-w-xl sm:grid-cols-4">
+              {UI_STYLES.map((s) => {
+                const active = uiStyle === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => applyUiStyle(s.id)}
+                    className={cn(
+                      "overflow-hidden rounded-xl border text-left transition-all",
+                      active
+                        ? "border-blue-500 ring-1 ring-blue-500/40"
+                        : "border-gray-700 hover:border-gray-600"
+                    )}
+                  >
+                    <div
+                      className="flex h-16 items-end gap-1.5 p-2.5"
+                      style={{ background: s.bg }}
+                    >
+                      {s.dots.map((d) => (
+                        <span key={d} className="h-2.5 w-2.5 rounded-full" style={{ background: d }} />
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between gap-2 bg-gray-800 px-3 py-2">
+                      <span>
+                        <span className={cn("block text-xs font-medium", active ? "text-blue-400" : "text-gray-400")}>{s.name}</span>
+                        <span className="block text-[10px] text-gray-500">{s.desc}</span>
+                      </span>
+                      {active && <Check className="h-3.5 w-3.5 shrink-0 text-blue-400" />}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </Card>
 
