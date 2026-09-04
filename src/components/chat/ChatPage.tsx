@@ -1366,36 +1366,9 @@ export function ChatPage() {
           placeholder={t("chat.input_placeholder")}
           rows={1}
         />
-        {/* Row 1: run controls, right-aligned under the textarea. */}
-        <div className="codex-composer-row">
-          <div className="codex-composer-actions">
-            <button
-              type="button"
-              className="codex-stop"
-              aria-label="停止生成"
-              onClick={stop}
-              disabled={!running}
-            >
-              <Square className="h-3 w-3 fill-current" />
-            </button>
-            <button
-              className="codex-send"
-              aria-label="Send message"
-              disabled={
-                running || !prompt.trim() || (customProject && !projectPath.trim())
-              }
-            >
-              {running ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowUp className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-        </div>
-        {/* Row 2: what this turn runs with — directory, model, thinking depth.
-            The directory is a picker only until the session exists, because pi
-            binds a session to the directory it was started in. */}
+        {/* One control row: what the turn runs with on the left, run controls on
+            the right. The directory is a picker only until the session exists,
+            because pi binds a session to the directory it was started in. */}
         <div className="codex-composer-row">
           <label
             className="codex-cwd-picker"
@@ -1538,6 +1511,33 @@ export function ChatPage() {
               ))}
             </select>
           </label>
+          <div className="codex-composer-actions">
+            {/* Stop only exists while a turn is running; showing a permanently
+                disabled square next to send just adds a dead control. */}
+            {running && (
+              <button
+                type="button"
+                className="codex-stop"
+                aria-label="停止生成"
+                onClick={stop}
+              >
+                <Square className="h-3 w-3 fill-current" />
+              </button>
+            )}
+            <button
+              className="codex-send"
+              aria-label="Send message"
+              disabled={
+                running || !prompt.trim() || (customProject && !projectPath.trim())
+              }
+            >
+              {running ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowUp className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
       </form>
       <p className="codex-disclaimer">Pi 可能会出错，请核查重要信息。</p>
