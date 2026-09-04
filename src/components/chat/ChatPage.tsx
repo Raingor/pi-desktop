@@ -1364,8 +1364,74 @@ export function ChatPage() {
           placeholder={t("chat.input_placeholder")}
           rows={1}
         />
-        {/* Row 1: model and thinking on the left, run controls on the right. */}
+        {/* Row 1: run controls, right-aligned under the textarea. */}
         <div className="codex-composer-row">
+          <div className="codex-composer-actions">
+            <button
+              type="button"
+              className="codex-stop"
+              aria-label="停止生成"
+              onClick={stop}
+              disabled={!running}
+            >
+              <Square className="h-3 w-3 fill-current" />
+            </button>
+            <button
+              className="codex-send"
+              aria-label="Send message"
+              disabled={
+                running || !prompt.trim() || (customProject && !projectPath.trim())
+              }
+            >
+              {running ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowUp className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
+        {/* Row 2: what this turn runs with — directory, model, thinking depth.
+            The directory is a picker only until the session exists, because pi
+            binds a session to the directory it was started in. */}
+        <div className="codex-composer-row">
+          <label
+            className="codex-cwd-picker"
+            title={
+              cwdLocked
+                ? "会话已绑定此目录，新建对话可更换"
+                : "选择本次对话的工作目录"
+            }
+          >
+            <Folder className="h-3.5 w-3.5" />
+            {cwdLocked ? (
+              <span className="truncate">{activeCwdLabel}</span>
+            ) : (
+              <select
+                value={customProject ? "__custom__" : projectPath}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setCustomProject(value === "__custom__");
+                  setProjectPath(value === "__custom__" ? "" : value);
+                  if (searchParams.has("project")) {
+                    const next = new URLSearchParams(searchParams);
+                    next.delete("project");
+                    setSearchParams(next, { replace: true });
+                  }
+                }}
+              >
+                <option value="">
+                  {defaultCwd ? `默认目录（${defaultCwd.name}）` : "默认目录"}
+                </option>
+                {projects.map((project) => (
+                  <option key={project.projectPath} value={project.projectPath}>
+                    {project.projectName}
+                  </option>
+                ))}
+                <option value="__custom__">自定义目录…</option>
+              </select>
+            )}
+          </label>
           <div ref={modelPickerRef} className="codex-model-picker">
             <button
               type="button"
@@ -1469,71 +1535,6 @@ export function ChatPage() {
                 </option>
               ))}
             </select>
-          </label>
-          <div className="codex-composer-actions">
-            <button
-              type="button"
-              className="codex-stop"
-              aria-label="停止生成"
-              onClick={stop}
-              disabled={!running}
-            >
-              <Square className="h-3 w-3 fill-current" />
-            </button>
-            <button
-              className="codex-send"
-              aria-label="Send message"
-              disabled={
-                running || !prompt.trim() || (customProject && !projectPath.trim())
-              }
-            >
-              {running ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowUp className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-        </div>
-        {/* Row 2: the working directory. Locked once a session exists, because
-            pi binds a session to the cwd it was started in. */}
-        <div className="codex-composer-row is-secondary">
-          <label
-            className="codex-cwd-picker"
-            title={
-              cwdLocked
-                ? "会话已绑定此目录，新建对话可更换"
-                : "选择本次对话的工作目录"
-            }
-          >
-            <Folder className="h-3.5 w-3.5" />
-            {cwdLocked ? (
-              <span className="truncate">{activeCwdLabel}</span>
-            ) : (
-              <select
-                value={customProject ? "__custom__" : projectPath}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setCustomProject(value === "__custom__");
-                  setProjectPath(value === "__custom__" ? "" : value);
-                  if (searchParams.has("project")) {
-                    const next = new URLSearchParams(searchParams);
-                    next.delete("project");
-                    setSearchParams(next, { replace: true });
-                  }
-                }}
-              >
-                <option value="">
-                  {defaultCwd ? `默认目录（${defaultCwd.name}）` : "默认目录"}
-                </option>
-                {projects.map((project) => (
-                  <option key={project.projectPath} value={project.projectPath}>
-                    {project.projectName}
-                  </option>
-                ))}
-                <option value="__custom__">自定义目录…</option>
-              </select>
-            )}
           </label>
         </div>
       </form>
