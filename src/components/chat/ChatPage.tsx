@@ -11,6 +11,7 @@ import {
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowDown,
+  ArrowUp,
   Bot,
   BrainCircuit,
   Check,
@@ -23,7 +24,6 @@ import {
   Loader2,
   MessageSquare,
   Pencil,
-  Send,
   Square,
   Wrench,
   X,
@@ -646,6 +646,19 @@ export function ChatPage() {
       }),
     );
   }, [sessionId, openedSessionCwd, projectPath, defaultCwd, setWorkspaceCwd]);
+
+  // pi binds a session to the directory it was started in, so the composer's
+  // directory control is a picker only while the session does not exist yet.
+  // Once it does, it reports where the session actually runs.
+  const cwdLocked = Boolean(sessionId);
+  const activeCwdPath = openedSessionCwd ?? projectPath ?? "";
+  const activeCwdLabel =
+    (activeCwdPath &&
+      (projects.find((project) => project.projectPath === activeCwdPath)?.projectName ||
+        activeCwdPath.split("/").filter(Boolean).pop() ||
+        activeCwdPath)) ||
+    defaultCwd?.name ||
+    "默认目录";
 
   // ── Streaming answer buffer ──────────────────────────────────────────────
   //
@@ -1304,110 +1317,6 @@ export function ChatPage() {
             onPick={pickSlash}
           />
         )}
-        <div ref={modelPickerRef} className="codex-model-picker">
-          <button
-            type="button"
-            className="codex-model-trigger"
-            disabled={running || selectableModels.length === 0}
-            onClick={() => {
-              setActiveModelProviderId(
-                selectedModelInfo?.providerId ?? modelGroups[0]?.id ?? null,
-              );
-              setModelMenuOpen((open) => !open);
-            }}
-          >
-            <Bot className="h-3.5 w-3.5" />
-            <span className="truncate">
-              {selectedModelInfo
-                ? `${selectedModelInfo.providerName} / ${selectedModelInfo.name || selectedModelInfo.id}`
-                : "Pi 默认模型"}
-            </span>
-            <ChevronDown
-              className={cn("h-3.5 w-3.5", modelMenuOpen && "rotate-180")}
-            />
-          </button>
-          {modelMenuOpen && (
-            <div className="codex-model-menu">
-              <div className="codex-provider-list">
-                <button
-                  type="button"
-                  className={cn(
-                    "codex-provider-option",
-                    !selectedModel && "is-selected",
-                  )}
-                  onClick={() => chooseModel("")}
-                >
-                  <span>Pi 默认模型</span>
-                  {!selectedModel && <Check className="h-3.5 w-3.5" />}
-                </button>
-                {modelGroups.map((group) => (
-                  <button
-                    key={group.id}
-                    type="button"
-                    className={cn(
-                      "codex-provider-option",
-                      activeModelGroup?.id === group.id && "is-active",
-                    )}
-                    onMouseEnter={() => setActiveModelProviderId(group.id)}
-                    onClick={() => setActiveModelProviderId(group.id)}
-                  >
-                    <span className="truncate">{group.name}</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                ))}
-              </div>
-              <div className="codex-provider-models">
-                {activeModelGroup && (
-                  <>
-                    <p>{activeModelGroup.name}</p>
-                    {activeModelGroup.models.map((model) => {
-                      const value = `${model.providerId}/${model.id}`;
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          className={cn(
-                            "codex-provider-model",
-                            selectedModel === value && "is-selected",
-                          )}
-                          onClick={() => chooseModel(value)}
-                        >
-                          <span className="truncate">
-                            {model.name || model.id}
-                          </span>
-                          {selectedModel === value && (
-                            <Check className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </>
-                )}
-                <Link to="/providers" onClick={() => setModelMenuOpen(false)}>
-                  管理模型
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-        <label className="codex-thinking-picker" title="选择本次对话的思考深度">
-          <BrainCircuit className="h-3.5 w-3.5" />
-          <select
-            value={selectedThinking}
-            disabled={running}
-            onChange={(event) => {
-              const value = event.target.value;
-              setSelectedThinking(value);
-              window.localStorage.setItem("pi-web-switch:chat-thinking", value);
-            }}
-          >
-            {supportedThinkingOptions.map(([value, label]) => (
-              <option key={value || "default"} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
         <textarea
           ref={promptRef}
           value={prompt}
@@ -1455,27 +1364,178 @@ export function ChatPage() {
           placeholder={t("chat.input_placeholder")}
           rows={1}
         />
-        <button
-          type="button"
-          className="codex-stop"
-          aria-label="停止生成"
-          onClick={stop}
-          disabled={!running}
-        >
-          <Square className="h-3 w-3 fill-current" />
-        </button>
-        <button
-          aria-label="Send message"
-          disabled={
-            running || !prompt.trim() || (customProject && !projectPath.trim())
-          }
-        >
-          {running ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </button>
+        {/* Row 1: model and thinking on the left, run controls on the right. */}
+        <div className="codex-composer-row">
+          <div ref={modelPickerRef} className="codex-model-picker">
+            <button
+              type="button"
+              className="codex-model-trigger"
+              disabled={running || selectableModels.length === 0}
+              onClick={() => {
+                setActiveModelProviderId(
+                  selectedModelInfo?.providerId ?? modelGroups[0]?.id ?? null,
+                );
+                setModelMenuOpen((open) => !open);
+              }}
+            >
+              <Bot className="h-3.5 w-3.5" />
+              <span className="truncate">
+                {selectedModelInfo
+                  ? `${selectedModelInfo.providerName} / ${selectedModelInfo.name || selectedModelInfo.id}`
+                  : "Pi 默认模型"}
+              </span>
+              <ChevronDown
+                className={cn("h-3.5 w-3.5", modelMenuOpen && "rotate-180")}
+              />
+            </button>
+            {modelMenuOpen && (
+              <div className="codex-model-menu">
+                <div className="codex-provider-list">
+                  <button
+                    type="button"
+                    className={cn(
+                      "codex-provider-option",
+                      !selectedModel && "is-selected",
+                    )}
+                    onClick={() => chooseModel("")}
+                  >
+                    <span>Pi 默认模型</span>
+                    {!selectedModel && <Check className="h-3.5 w-3.5" />}
+                  </button>
+                  {modelGroups.map((group) => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      className={cn(
+                        "codex-provider-option",
+                        activeModelGroup?.id === group.id && "is-active",
+                      )}
+                      onMouseEnter={() => setActiveModelProviderId(group.id)}
+                      onClick={() => setActiveModelProviderId(group.id)}
+                    >
+                      <span className="truncate">{group.name}</span>
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  ))}
+                </div>
+                <div className="codex-provider-models">
+                  {activeModelGroup && (
+                    <>
+                      <p>{activeModelGroup.name}</p>
+                      {activeModelGroup.models.map((model) => {
+                        const value = `${model.providerId}/${model.id}`;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            className={cn(
+                              "codex-provider-model",
+                              selectedModel === value && "is-selected",
+                            )}
+                            onClick={() => chooseModel(value)}
+                          >
+                            <span className="truncate">
+                              {model.name || model.id}
+                            </span>
+                            {selectedModel === value && (
+                              <Check className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                  <Link to="/providers" onClick={() => setModelMenuOpen(false)}>
+                    管理模型
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+          <label className="codex-thinking-picker" title="选择本次对话的思考深度">
+            <BrainCircuit className="h-3.5 w-3.5" />
+            <select
+              value={selectedThinking}
+              disabled={running}
+              onChange={(event) => {
+                const value = event.target.value;
+                setSelectedThinking(value);
+                window.localStorage.setItem("pi-web-switch:chat-thinking", value);
+              }}
+            >
+              {supportedThinkingOptions.map(([value, label]) => (
+                <option key={value || "default"} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="codex-composer-actions">
+            <button
+              type="button"
+              className="codex-stop"
+              aria-label="停止生成"
+              onClick={stop}
+              disabled={!running}
+            >
+              <Square className="h-3 w-3 fill-current" />
+            </button>
+            <button
+              className="codex-send"
+              aria-label="Send message"
+              disabled={
+                running || !prompt.trim() || (customProject && !projectPath.trim())
+              }
+            >
+              {running ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowUp className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
+        {/* Row 2: the working directory. Locked once a session exists, because
+            pi binds a session to the cwd it was started in. */}
+        <div className="codex-composer-row is-secondary">
+          <label
+            className="codex-cwd-picker"
+            title={
+              cwdLocked
+                ? "会话已绑定此目录，新建对话可更换"
+                : "选择本次对话的工作目录"
+            }
+          >
+            <Folder className="h-3.5 w-3.5" />
+            {cwdLocked ? (
+              <span className="truncate">{activeCwdLabel}</span>
+            ) : (
+              <select
+                value={customProject ? "__custom__" : projectPath}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setCustomProject(value === "__custom__");
+                  setProjectPath(value === "__custom__" ? "" : value);
+                  if (searchParams.has("project")) {
+                    const next = new URLSearchParams(searchParams);
+                    next.delete("project");
+                    setSearchParams(next, { replace: true });
+                  }
+                }}
+              >
+                <option value="">
+                  {defaultCwd ? `默认目录（${defaultCwd.name}）` : "默认目录"}
+                </option>
+                {projects.map((project) => (
+                  <option key={project.projectPath} value={project.projectPath}>
+                    {project.projectName}
+                  </option>
+                ))}
+                <option value="__custom__">自定义目录…</option>
+              </select>
+            )}
+          </label>
+        </div>
       </form>
       <p className="codex-disclaimer">Pi 可能会出错，请核查重要信息。</p>
     </section>
