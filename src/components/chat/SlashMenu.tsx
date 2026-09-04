@@ -24,9 +24,12 @@ const GROUPS: { source: SlashSource; label: string; icon: typeof Blocks }[] = [
   { source: "skill", label: "技能", icon: Sparkles },
 ];
 
-/** Everything from "/" up to the first space — what the user is typing. */
+/** Everything from the slash up to the first space — what the user is typing. */
 export function slashQuery(text: string): string | null {
-  if (!text.startsWith("/")) return null;
+  // Chinese IMEs in fullwidth-punctuation mode produce ／ (U+FF0F) from the
+  // same physical key. To the user it is the same character; anything else
+  // would make the menu look simply broken.
+  if (!text.startsWith("/") && !text.startsWith("／")) return null;
   const token = text.slice(1);
   // A space means the command name is settled and arguments have begun.
   if (/\s/.test(token)) return null;

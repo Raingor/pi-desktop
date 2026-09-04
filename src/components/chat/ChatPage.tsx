@@ -691,7 +691,10 @@ export function ChatPage() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const text = prompt.trim();
+    // A Chinese IME may have emitted the fullwidth ／ (U+FF0F) for the slash
+    // key; pi only recognizes halfwidth commands, so a leading one is
+    // normalized here rather than sent to be answered as ordinary text.
+    const text = prompt.trim().replace(/^／/, "/");
     if (!text || running || (customProject && !projectPath.trim())) return;
     const requestedSessionId = sessionId ?? `web-${crypto.randomUUID()}`;
     setActiveRunSessionId(requestedSessionId);

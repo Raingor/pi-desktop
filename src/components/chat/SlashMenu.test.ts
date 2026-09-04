@@ -13,6 +13,14 @@ describe("slashQuery", () => {
     expect(slashQuery("/")).toBe("");
   });
 
+  it("treats the fullwidth slash ／ as the same key", () => {
+    // Chinese IMEs in fullwidth-punctuation mode emit U+FF0F; the user has no
+    // way to know they typed a different codepoint.
+    expect(slashQuery("／brow")).toBe("brow");
+    expect(slashQuery("／")).toBe("");
+    expect(slashQuery("／skill:c")).toBe("skill:c");
+  });
+
   it("returns null when the text does not start with a slash", () => {
     expect(slashQuery("hello")).toBeNull();
     expect(slashQuery(" /brow")).toBeNull();
