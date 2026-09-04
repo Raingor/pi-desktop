@@ -132,7 +132,7 @@ describe("compactSession", () => {
     const bin = stub("hang.sh", `cat > /dev/null`);
     const result = await compactSession(newSession(), { binary: bin, timeoutMs: 600, readyMs: 150 });
     expect(result.success).toBe(false);
-    expect(result.error).toMatch(/timed out/);
+    expect(result.error).toMatch(/did not answer/);
   });
 
   it("reports an early exit with pi's stderr", async () => {

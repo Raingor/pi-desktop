@@ -8,6 +8,7 @@ import * as pi from "./pi-reader";
 import * as builtins from "../src/data/builtin-providers";
 import * as tools from "./workspace-tools";
 import { compactSession, isCompacting } from "./session-compact";
+import { listSlashCommands } from "./slash-commands";
 import { rejectNonLocalRequest } from "./local-origin-guard";
 import { fail, json, readJsonBody } from "./http-json";
 
@@ -123,6 +124,25 @@ export function createPiApiMiddleware(): PiApiMiddleware {
     },
     "GET /api/pi/skills"(_, res) {
       json(res, { skills: pi.listLocalSkills() });
+    },
+    // What "/" in the composer can actually run: extension commands, prompt
+    // templates and skills, straight from pi. Built-in TUI commands are
+    // excluded by pi itself because they do not execute outside the terminal.
+    "GET /api/pi/slash-commands"(req, res) {
+      const binary = pi.resolvePiBinary()?.bin;
+      if (!binary) {
+        return json(res, { commands: [], fetchedAt: Date.now(), error: "pi executable not found" });
+      }
+      const force = new URL(req.url ?? "", "http://localhost").searchParams.get("refresh") === "1";
+      listSlashCommands({ binary, cwd: pi.resolveDefaultChatCwd(), force })
+        .then((list) => json(res, list))
+        .catch((error: unknown) =>
+          json(res, {
+            commands: [],
+            fetchedAt: Date.now(),
+            error: error instanceof Error ? error.message : "failed to read commands",
+          }),
+        );
     },
     "GET /api/pi/commands"(_, res) {
       json(res, { commands: pi.listPiBuiltinCommands() });

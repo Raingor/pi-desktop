@@ -78,6 +78,7 @@ pi-desktop 衍生于姊妹项目 **[pi-web-switch](https://github.com/Raingor/pi
 - **侧栏重命名** —— 「···」菜单 → 重命名，写入 pi 原生元数据
 - **默认工作目录是用户目录** —— 下拉里显示为「默认目录（~）」，不选项目时 prompt 就在 `~` 下跑
 - **会话信息面板** —— 消息数、时长、token、成本、项目路径，一键在 Finder 中显示
+- **输入 `/` 弹命令面板** —— 列出扩展包命令、提示模板和技能（当前 44 + 6 + 42），支持模糊匹配、↑↓ 选择、Tab/Enter 补全。列表由 pi 自己枚举，因此不会出现只在终端有效的内置命令
 - **会话用量面板带「压缩会话」** —— 让 pi 把较早的对话总结成摘要以释放上下文，可填摘要侧重点；会调一次模型，因此先确认再执行，完成后显示 token 前后对比与花费
 - **可拖拽侧栏** —— 200–480px 自由调整（默认 264px），宽度持久化
 - **沉浸式标题栏** —— 无边框窗口，交通灯按钮融入侧栏；窗口尺寸按你的屏幕工作区自适应
@@ -172,9 +173,11 @@ pi-desktop/
 │   ├── popup.html / popup-render.ts   # 菜单栏浮窗
 ├── server/
 │   ├── pi-reader.ts             # 读写 ~/.pi/agent/、解析会话、聚合用量、驱动 pi CLI
-│   ├── api-routes.ts            # 59 条 API 的唯一实现
+│   ├── api-routes.ts            # 60 条 API 的唯一实现
 │   ├── workspace-tools.ts       # 工具面板后端：目录树、git diff、后台任务进程表
+│   ├── pi-rpc.ts                # pi RPC 模式的单次命令客户端
 │   ├── session-compact.ts       # 通过 pi 的 RPC 模式手动压缩会话
+│   ├── slash-commands.ts        # “/” 命令注册表（扩展/模板/技能），带缓存
 │   ├── local-origin-guard.ts    # Host / Origin / Content-Type 防护
 ├── src/
 │   ├── App.tsx                  # 路由：/ 与 /chat → 聊天，/settings → 设置工作台
@@ -216,7 +219,7 @@ pi-desktop/
 
 ## API
 
-59 条路由（32 GET / 27 POST），全部在 `/api/pi/*` 下，仅监听 `127.0.0.1`。
+60 条路由（33 GET / 27 POST），全部在 `/api/pi/*` 下，仅监听 `127.0.0.1`。
 
 <details>
 <summary>展开完整清单</summary>
@@ -237,7 +240,7 @@ pi-desktop/
 `GET /memory` · `GET|POST /memory/config` · `GET /memory/status` · `POST /memory/delete-entry` · `POST /memory/optimize`
 
 **扩展与工具**
-`GET /skills` · `GET /commands` · `GET /subagents` · `POST /subagents/update-agent` · `GET /packages/search` · `GET /check-updates` · `POST /apply-updates` · `POST /provider-test` · `POST /provider-models` · `POST /model-test`
+`GET /skills` · `GET /commands` · `GET /slash-commands` · `GET /subagents` · `POST /subagents/update-agent` · `GET /packages/search` · `GET /check-updates` · `POST /apply-updates` · `POST /provider-test` · `POST /provider-models` · `POST /model-test`
 
 **工具面板**
 `GET /workspace/tree` · `GET /workspace/file` · `GET /workspace/review` · `GET /workspace/diff` · `GET /workspace/tasks` · `GET /workspace/task-output` · `POST /workspace/task-run` · `POST /workspace/task-input` · `POST /workspace/task-stop` · `POST /workspace/tasks-clear`

@@ -35,6 +35,7 @@ import { createStreamBuffer, type StreamBuffer } from "@/lib/stream-buffer";
 import { usePolling } from "@/hooks/usePolling";
 import { useTranslation } from "@/lib/i18n";
 import { CompactButton } from "./CompactButton";
+import { SlashMenu, filterCommands, slashQuery, type SlashCommand } from "./SlashMenu";
 import { resolveWorkspaceCwd, useWorkspace } from "@/lib/workspace";
 import { useConfigStore } from "@/store/config-store";
 
@@ -160,6 +161,57 @@ export function ChatPage() {
   const messagesRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState("");
+
+  // ─── "/" command menu ──────────────────────────────
+  // The registry is enumerated by starting pi, which takes seconds, so it is
+  // fetched once on mount rather than when "/" is first typed.
+  const [slashCommands, setSlashCommands] = useState<SlashCommand[]>([]);
+  const [slashLoading, setSlashLoading] = useState(true);
+  const [slashError, setSlashError] = useState<string | undefined>();
+  const [slashIndex, setSlashIndex] = useState(0);
+  // Set when a pick fills the textarea, so the menu does not immediately
+  // reopen on the text it just inserted.
+  const [slashDismissed, setSlashDismissed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/pi/slash-commands")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { commands?: SlashCommand[]; error?: string } | null) => {
+        if (cancelled) return;
+        setSlashCommands(data?.commands ?? []);
+        setSlashError(data?.error);
+      })
+      .catch(() => {
+        if (!cancelled) setSlashError("读取失败");
+      })
+      .finally(() => {
+        if (!cancelled) setSlashLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const slashToken = slashDismissed ? null : slashQuery(prompt);
+  const slashMatches = useMemo(
+    () => (slashToken === null ? [] : filterCommands(slashCommands, slashToken)),
+    [slashCommands, slashToken],
+  );
+  const slashOpen = slashToken !== null;
+
+  // Reset the highlight whenever the candidate set changes.
+  useEffect(() => {
+    setSlashIndex(0);
+  }, [slashToken]);
+
+  const pickSlash = (command: SlashCommand) => {
+    // Leave a trailing space: most of these take arguments, and it also closes
+    // the menu because the token is then complete.
+    setPrompt(`/${command.name} `);
+    setSlashDismissed(true);
+    promptRef.current?.focus();
+  };
   const [running, setRunning] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState("");
@@ -1241,6 +1293,17 @@ export function ChatPage() {
         )}
       </div>
       <form onSubmit={submit} className="codex-composer">
+        {slashOpen && !running && (
+          <SlashMenu
+            commands={slashMatches}
+            loading={slashLoading}
+            error={slashError}
+            query={slashToken ?? ""}
+            activeIndex={slashIndex}
+            onHover={setSlashIndex}
+            onPick={pickSlash}
+          />
+        )}
         <div ref={modelPickerRef} className="codex-model-picker">
           <button
             type="button"
@@ -1348,8 +1411,36 @@ export function ChatPage() {
         <textarea
           ref={promptRef}
           value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
+          onChange={(event) => {
+            setPrompt(event.target.value);
+            // Typing again re-arms the menu after a pick.
+            setSlashDismissed(false);
+          }}
           onKeyDown={(event) => {
+            // The "/" menu owns the arrows, Tab, Enter and Escape while open.
+            if (slashOpen && slashMatches.length > 0) {
+              if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setSlashIndex((i) => (i + 1) % slashMatches.length);
+                return;
+              }
+              if (event.key === "ArrowUp") {
+                event.preventDefault();
+                setSlashIndex((i) => (i - 1 + slashMatches.length) % slashMatches.length);
+                return;
+              }
+              if (event.key === "Tab" || (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing)) {
+                event.preventDefault();
+                const picked = slashMatches[slashIndex] ?? slashMatches[0];
+                if (picked) pickSlash(picked);
+                return;
+              }
+            }
+            if (event.key === "Escape" && slashOpen) {
+              event.preventDefault();
+              setSlashDismissed(true);
+              return;
+            }
             // Enter sends; Shift+Enter inserts a newline. IME composition
             // (e.g. Chinese input) must not be interrupted by a send.
             if (
