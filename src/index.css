@@ -2558,3 +2558,62 @@ table { border-collapse: collapse; }
 /* A staged row in the "/" menu reads as already picked. */
 .codex-slash-menu .codex-slash-item.is-staged code { color: var(--signal-cyan-bright, var(--signal-cyan)); }
 .codex-slash-menu .codex-slash-item.is-staged em { color: var(--signal-cyan); }
+/* ─── Prompt log (side panel) ────────────────────────────
+   Sits above the session ids in the floating panel. Newest first, the running
+   prompt badged, text clamped so a wall of prompts cannot push the ids away. */
+
+.codex-prompt-log ol {
+  display: flex;
+  max-height: 168px;
+  margin: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.codex-prompt-log li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 6px;
+  border: 1px solid var(--card-border);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--card-bg-solid) 55%, transparent);
+}
+.codex-prompt-log-title {
+  margin: 0 0 4px;
+  color: var(--subtle-text);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.codex-prompt-log-time {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--subtle-text);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+.codex-prompt-log-live {
+  padding: 0 4px;
+  color: var(--signal-cyan);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--signal-cyan) 10%, transparent);
+  font-size: 8.5px;
+  font-style: normal;
+  letter-spacing: .04em;
+}
+.codex-prompt-log-text {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted-text);
+  font-size: 10px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: break-word;
+}

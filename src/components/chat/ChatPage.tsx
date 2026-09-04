@@ -44,6 +44,8 @@ interface Message {
   role: "user" | "assistant";
   text: string;
   kind?: "text" | "tool";
+  /** HH:MM, when the turn came from history; absent on local submissions. */
+  timestamp?: string;
 }
 /** A streamed step of pi's work shown between the prompt and the answer. */
 interface RunStep {
@@ -381,6 +383,28 @@ export function ChatPage() {
   const activeModelGroup =
     modelGroups.find((group) => group.id === activeModelProviderId) ??
     modelGroups[0];
+  // The prompt log for the side panel: user turns of this conversation,
+  // newest first, capped so a long session does not grow the panel without
+  // bound. Text is trimmed to what fits the panel; the title carries the rest.
+  const promptLog = useMemo(
+    () =>
+      messages
+        .map((message, index) => ({ message, index }))
+        .filter(({ message }) => message.role === "user" && message.text.trim())
+        .slice(-8)
+        .reverse()
+        .map(({ message, index }) => ({
+          id: message.id,
+          // Local submissions carry no timestamp; fall back to numbering so
+          // the entry is still distinguishable from its neighbours.
+          time: message.timestamp
+            ? message.timestamp.slice(11, 16)
+            : `#${index}`,
+          text: message.text.trim().slice(0, 80),
+        })),
+    [messages],
+  );
+
   const displayItems = useMemo(
     () =>
       messages.reduce<
@@ -848,6 +872,33 @@ export function ChatPage() {
               : item,
           ),
         );
+      // A run that ends without a single delta or step produced nothing: pi
+      // exits cleanly with an empty assistant message when the model is
+      // unavailable (a quota-exhausted Codex answers with empty content, zero
+      // tokens, and no error). Silence here read as "the task just stopped",
+      // so say what most likely happened instead.
+      if (
+        !failure &&
+        answerBuffer.length === 0 &&
+        runSteps.length === 0
+      ) {
+        setMessages((items) =>
+          items.map((item, index) =>
+            index === items.length - 1 && !item.text
+              ? {
+                  ...item,
+                  text: "模型没有返回任何内容。这通常意味着所选模型不可用或额度已耗尽 —— 请在左下角换一个模型后重试。",
+                }
+              : item,
+          ),
+        );
+      }
+      // Land at the end of whatever the run produced, even when following was
+      // interrupted: the user asked for this answer and its ending is the
+      // interesting part.
+      if (followingLatest.current && messagesRef.current) {
+        messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+      }
     } catch (error) {
       // The message is replaced wholesale, so a pending tail would only flash
       // in and vanish. Drop it with the timer.
@@ -1224,6 +1275,29 @@ export function ChatPage() {
         </div>
         {(sessionUsage || sessionInfo) && (
           <div className="codex-side-panels">
+            {/* Prompt log: every prompt sent in this conversation, newest
+                first, with the in-flight one marked. Derived from the message
+                list, so it survives navigation and matches the file. */}
+            {promptLog.length > 0 && (
+              <aside className="codex-session-meta codex-prompt-log" aria-label="发送记录">
+                <p className="codex-prompt-log-title">发送记录</p>
+                <ol>
+                  {promptLog.map((entry, index) => (
+                    <li key={entry.id ?? index}>
+                      <span className="codex-prompt-log-time">
+                        {entry.time}
+                        {index === 0 && running && (
+                          <em className="codex-prompt-log-live">运行中</em>
+                        )}
+                      </span>
+                      <span className="codex-prompt-log-text" title={entry.text}>
+                        {entry.text}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </aside>
+            )}
             {sessionUsage && (
               <aside
                 className={cn("codex-usage-panel", !usageOpen && "is-collapsed")}
