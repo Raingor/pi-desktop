@@ -74,6 +74,14 @@ function resolveAppIcon(): string | null {
 
 // ─── Tray icon (template image for macOS menu bar) ───────
 
+// The menu bar is 22pt tall, and Apple leaves padding inside it, so the icon
+// artwork wants ~18pt. Electron treats a single-representation image's pixel
+// size as its point size, so a 32x32 file rendered 32pt tall — taller than the
+// bar itself. Resizing pins the point size regardless of what the file is,
+// which also keeps this correct if the asset is ever regenerated at 64px for
+// sharper Retina output.
+const TRAY_ICON_POINTS = 18;
+
 function createTrayIcon() {
   // Dev: build/trayIconTemplate.png in the source tree.
   // Packaged: public/ assets are copied into dist/ by Vite.
@@ -82,7 +90,10 @@ function createTrayIcon() {
     path.join(__dirname, '../../dist/trayIconTemplate.png'),
     resolveAppIcon() ?? '',
   );
-  const image = iconPath ? nativeImage.createFromPath(iconPath) : nativeImage.createEmpty();
+  const source = iconPath ? nativeImage.createFromPath(iconPath) : nativeImage.createEmpty();
+  const image = source.isEmpty()
+    ? source
+    : source.resize({ width: TRAY_ICON_POINTS, height: TRAY_ICON_POINTS, quality: 'best' });
   // template image = monochrome, adapts to light/dark menu bar
   image.setTemplateImage(true);
   return image;
