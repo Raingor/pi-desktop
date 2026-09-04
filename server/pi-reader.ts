@@ -2936,7 +2936,7 @@ function detectProxyUrl(): string | null {
 
 const proxyAgents = new Map<string, import("undici").ProxyAgent>();
 
-async function fetchExternal(
+export async function fetchExternal(
   url: string | URL,
   init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal }
 ): Promise<Response> {

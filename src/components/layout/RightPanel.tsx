@@ -1,5 +1,5 @@
 // Right-hand tool panel: file browser, git review, subagent runs, background
-// tasks, an embedded browser and a command terminal.
+// tasks, an embedded browser, a command terminal and image/video generation.
 //
 // Hidden by default; the toggle lives in the window's top-right corner. The
 // open state, active tab and width all persist so the panel comes back the way
@@ -12,6 +12,7 @@ import {
   GitPullRequestArrow,
   Globe,
   ListChecks,
+  Sparkles,
   TerminalSquare,
   Users,
   X,
@@ -22,8 +23,9 @@ import { SubagentPanel } from "@/components/tools/SubagentPanel";
 import { TasksPanel } from "@/components/tools/TasksPanel";
 import { BrowserPanel } from "@/components/tools/BrowserPanel";
 import { TerminalPanel } from "@/components/tools/TerminalPanel";
+import { GeneratePanel } from "@/components/tools/GeneratePanel";
 
-export type ToolTab = "files" | "review" | "subagents" | "tasks" | "browser" | "terminal";
+export type ToolTab = "files" | "review" | "subagents" | "tasks" | "browser" | "terminal" | "generate";
 
 export const TOOL_TABS: { key: ToolTab; label: string; icon: typeof FolderTree }[] = [
   { key: "files", label: "文件目录", icon: FolderTree },
@@ -32,6 +34,7 @@ export const TOOL_TABS: { key: ToolTab; label: string; icon: typeof FolderTree }
   { key: "tasks", label: "后台任务", icon: ListChecks },
   { key: "browser", label: "浏览器", icon: Globe },
   { key: "terminal", label: "终端", icon: TerminalSquare },
+  { key: "generate", label: "生图 / 生视频", icon: Sparkles },
 ];
 
 export function RightPanel({
@@ -88,6 +91,7 @@ export function RightPanel({
             onAttached={() => setAttachTaskId(null)}
           />
         )}
+        {tab === "generate" && <GeneratePanel />}
       </div>
     </aside>
   );

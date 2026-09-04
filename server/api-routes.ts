@@ -11,6 +11,7 @@ import { compactSession, isCompacting } from "./session-compact";
 import { listSlashCommands } from "./slash-commands";
 import { rejectNonLocalRequest } from "./local-origin-guard";
 import { fail, json, readJsonBody } from "./http-json";
+import * as agnes from "./agnes";
 
 export type PiApiNext = () => void;
 export type PiApiMiddleware = (
@@ -518,6 +519,106 @@ export function createPiApiMiddleware(): PiApiMiddleware {
     },
     "POST /api/pi/workspace/tasks-clear"(_, res) {
       json(res, { removed: tools.clearFinishedTasks() });
+    },
+
+    // ─── Agnes image / video generation ─────────────────
+    //
+    // The credential is resolved server-side on every call. The renderer sends
+    // a prompt and parameters; it never holds the key, and the GET only ever
+    // returns a masked form of it.
+
+    "GET /api/pi/agnes-config"(_, res) {
+      json(res, agnes.readAgnesConfigView());
+    },
+    "POST /api/pi/agnes-config"(req, res) {
+      readJson<{ apiKey?: unknown; baseUrl?: unknown }>(req, res, (body) => {
+        const saved = agnes.writeAgnesConfig(body);
+        json(res, {
+          success: saved,
+          ...agnes.readAgnesConfigView(),
+          error: saved ? undefined : "api key required, and base URL must be http(s)",
+        });
+      });
+    },
+    "POST /api/pi/image-generate"(req, res) {
+      readJson<{
+        prompt?: string;
+        model?: string;
+        size?: string;
+        ratio?: string;
+        referenceImages?: string[];
+        wantBase64?: boolean;
+      }>(req, res, async (body) => {
+        const result = await agnes.generateImage({
+          prompt: String(body.prompt ?? ""),
+          model: String(body.model ?? ""),
+          size: String(body.size ?? "1K"),
+          ratio: body.ratio ? String(body.ratio) : undefined,
+          referenceImages: Array.isArray(body.referenceImages) ? body.referenceImages.map(String) : [],
+          wantBase64: body.wantBase64 === true,
+        });
+        if (!result.success && result.message === "missing api key") {
+          return fail(res, 400, result);
+        }
+        json(res, result);
+      });
+    },
+    "POST /api/pi/video-create"(req, res) {
+      readJson<{
+        prompt?: string;
+        model?: string;
+        mode?: agnes.VideoMode;
+        seconds?: string;
+        size?: string;
+        aspectRatio?: string;
+        firstFrame?: string;
+        lastFrame?: string;
+        images?: string[];
+        audios?: string[];
+      }>(req, res, async (body) => {
+        const mode: agnes.VideoMode =
+          body.mode === "keyframe" || body.mode === "reference" ? body.mode : "text";
+        const model = String(body.model ?? "").trim();
+        if (!model) {
+          return fail(res, 400, { success: false, message: "model is required" });
+        }
+        const result = await agnes.createVideoTask({
+          prompt: String(body.prompt ?? ""),
+          model,
+          mode,
+          seconds: String(body.seconds ?? "4"),
+          size: body.size ? String(body.size) : undefined,
+          aspectRatio: body.aspectRatio ? String(body.aspectRatio) : undefined,
+          firstFrame: body.firstFrame ? String(body.firstFrame) : undefined,
+          lastFrame: body.lastFrame ? String(body.lastFrame) : undefined,
+          images: Array.isArray(body.images) ? body.images.map(String) : [],
+          audios: Array.isArray(body.audios) ? body.audios.map(String) : [],
+        });
+        if (!result.success && result.message === "missing api key") {
+          return fail(res, 400, result);
+        }
+        json(res, result);
+      });
+    },
+    // One status query per request — the polling cadence belongs to the client,
+    // because a video takes minutes and a server-side loop could neither be
+    // cancelled nor survive a page change.
+    "GET /api/pi/video-status"(req, res) {
+      const params = query(req);
+      const videoId = params.get("videoId") ?? "";
+      if (!videoId) return fail(res, 400, { success: false, message: "videoId is required" });
+      agnes
+        .pollVideoTask(videoId, params.get("model") ?? undefined)
+        .then((result) => json(res, result))
+        .catch((error: unknown) =>
+          json(res, {
+            success: false,
+            videoId,
+            // A thrown error here is as transient as a caught one.
+            retryable: true,
+            message: error instanceof Error ? error.message : "status query failed",
+          }),
+        );
     },
   };
 

@@ -2317,3 +2317,181 @@ table { border-collapse: collapse; }
   color: var(--page-text);
   font-size: 12px;
 }
+/* ─── Generation panel ───────────────────────────────────
+   Denser than a settings form: this lives in a 280-720px panel, so fields sit
+   in wrapping rows and results scroll under the key card. */
+
+.gen-scroll {
+  overflow-y: auto;
+  flex: 1;
+  padding: 10px;
+}
+
+.gen-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--card-bg-solid);
+}
+.gen-card + .gen-card { margin-top: 10px; }
+
+.gen-card-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: var(--page-text);
+  font-size: 11px;
+  font-weight: 600;
+}
+.gen-card-title svg { color: var(--signal-cyan); }
+
+.gen-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+.gen-row > input { min-width: 0; flex: 1; }
+
+.gen-field {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 84px;
+  flex-direction: column;
+  gap: 3px;
+}
+.gen-field.is-block { flex: 1 1 100%; }
+.gen-field > span {
+  color: var(--subtle-text);
+  font-size: 9.5px;
+  letter-spacing: .02em;
+}
+
+.gen-scroll input,
+.gen-scroll select,
+.gen-scroll textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  color: var(--input-text);
+  border: 1px solid var(--input-border);
+  border-radius: 7px;
+  outline: 0;
+  background: var(--input-bg);
+  font-size: 11px;
+}
+.gen-scroll textarea { resize: vertical; line-height: 1.5; }
+.gen-scroll input:focus,
+.gen-scroll select:focus,
+.gen-scroll textarea:focus {
+  border-color: color-mix(in srgb, var(--signal-cyan) 55%, var(--input-border));
+}
+
+.gen-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 11px;
+  color: var(--page-text);
+  border: 1px solid var(--input-border);
+  border-radius: 7px;
+  background: transparent;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.gen-btn:hover:not(:disabled) { background: var(--hover-bg); }
+.gen-btn.is-primary {
+  color: #fff;
+  border-color: transparent;
+  background: var(--signal-cyan);
+}
+.gen-btn:disabled { opacity: .5; }
+
+.gen-hint {
+  margin: 0;
+  color: var(--subtle-text);
+  font-size: 9.5px;
+  line-height: 1.55;
+}
+.gen-hint code {
+  color: var(--muted-text);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+.gen-error {
+  margin: 0;
+  color: var(--signal-red);
+  font-size: 10.5px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.gen-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0;
+}
+.gen-tabs button {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 0;
+  color: var(--muted-text);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 11px;
+}
+.gen-tabs button.is-active {
+  color: var(--signal-cyan);
+  border-color: color-mix(in srgb, var(--signal-cyan) 50%, var(--card-border));
+  background: color-mix(in srgb, var(--signal-cyan) 8%, transparent);
+}
+
+.gen-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+}
+.gen-figure img,
+.gen-figure video {
+  width: 100%;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--hover-bg);
+}
+.gen-figure a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--signal-cyan);
+  font-size: 10px;
+}
+
+.gen-progress { display: flex; flex-direction: column; gap: 5px; }
+.gen-progress p {
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 10.5px;
+}
+.gen-progress-track {
+  overflow: hidden;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--hover-bg);
+}
+.gen-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--signal-cyan);
+  transition: width 400ms ease;
+}
