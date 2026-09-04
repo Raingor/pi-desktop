@@ -2100,3 +2100,83 @@ table { border-collapse: collapse; }
   .tool-panel { position: fixed; top: 0; right: 0; width: min(420px, 92vw); min-width: 0; box-shadow: -18px 0 40px rgba(12, 26, 30, .28); }
   .tools-resizer { display: none; }
 }
+/* ─── Compact-session control (usage panel footer) ───────
+   The action that reduces the context number shown right above it. Billed and
+   slow, so it confirms first — the confirm state replaces the button rather
+   than opening a dialog, keeping it inside the panel. */
+
+.codex-usage-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 7px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--card-border) 70%, transparent);
+}
+.codex-compact-btn {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 8px;
+  color: var(--muted-text);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.codex-compact-btn:hover:not(:disabled) {
+  color: var(--signal-cyan);
+  border-color: color-mix(in srgb, var(--signal-cyan) 45%, transparent);
+  background: var(--accent-bg);
+}
+.codex-compact-btn:disabled { opacity: .75; }
+.codex-compact-btn svg { flex: 0 0 auto; }
+
+.codex-usage-compact small {
+  color: var(--subtle-text);
+  font-size: 9px;
+  line-height: 1.55;
+}
+.codex-usage-compact small.is-ok { color: var(--success-text); }
+.codex-usage-compact small.is-fail { color: var(--danger-text); }
+
+.codex-usage-compact.is-confirming p {
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.codex-usage-compact.is-confirming input {
+  width: 100%;
+  padding: 4px 6px;
+  color: var(--input-text);
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  font-size: 10px;
+}
+.codex-usage-compact.is-confirming input:focus {
+  border-color: color-mix(in srgb, var(--signal-cyan) 55%, var(--input-border));
+  outline: none;
+}
+.codex-compact-actions { display: flex; gap: 5px; }
+.codex-compact-actions button {
+  flex: 1;
+  padding: 4px 6px;
+  color: var(--muted-text);
+  border: 1px solid var(--card-border);
+  border-radius: 7px;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 600;
+}
+.codex-compact-actions button:hover { color: var(--page-text); background: var(--hover-bg); }
+.codex-compact-actions button.is-primary {
+  color: #fff;
+  border-color: var(--signal-cyan);
+  background: var(--signal-cyan);
+}
+.codex-compact-actions button.is-primary:hover { background: var(--signal-cyan-bright); }

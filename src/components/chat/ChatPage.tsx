@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { createStreamBuffer, type StreamBuffer } from "@/lib/stream-buffer";
 import { usePolling } from "@/hooks/usePolling";
 import { useTranslation } from "@/lib/i18n";
+import { CompactButton } from "./CompactButton";
 import { resolveWorkspaceCwd, useWorkspace } from "@/lib/workspace";
 import { useConfigStore } from "@/store/config-store";
 
@@ -1154,6 +1155,18 @@ export function ChatPage() {
                   <span>{t("chat.usage_cost")}</span>
                   <strong>${sessionUsage.totalCost.toFixed(4)}</strong>
                 </div>
+                {sessionId && (
+                  <CompactButton
+                    sessionId={sessionId}
+                    onCompacted={() => {
+                      // Context usage drops once older turns become a summary.
+                      // The transcript itself is unchanged on disk (compaction
+                      // appends an entry; it does not rewrite history), so only
+                      // the numbers need re-reading.
+                      loadSessionUsage();
+                    }}
+                  />
+                )}
               </div>
             )}
           </aside>

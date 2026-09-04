@@ -78,6 +78,7 @@ pi-desktop 衍生于姊妹项目 **[pi-web-switch](https://github.com/Raingor/pi
 - **侧栏重命名** —— 「···」菜单 → 重命名，写入 pi 原生元数据
 - **默认工作目录是用户目录** —— 下拉里显示为「默认目录（~）」，不选项目时 prompt 就在 `~` 下跑
 - **会话信息面板** —— 消息数、时长、token、成本、项目路径，一键在 Finder 中显示
+- **会话用量面板带「压缩会话」** —— 让 pi 把较早的对话总结成摘要以释放上下文，可填摘要侧重点；会调一次模型，因此先确认再执行，完成后显示 token 前后对比与花费
 - **可拖拽侧栏** —— 200–480px 自由调整（默认 264px），宽度持久化
 - **沉浸式标题栏** —— 无边框窗口，交通灯按钮融入侧栏；窗口尺寸按你的屏幕工作区自适应
 
@@ -171,8 +172,9 @@ pi-desktop/
 │   ├── popup.html / popup-render.ts   # 菜单栏浮窗
 ├── server/
 │   ├── pi-reader.ts             # 读写 ~/.pi/agent/、解析会话、聚合用量、驱动 pi CLI
-│   ├── api-routes.ts            # 55 条 API 的唯一实现
+│   ├── api-routes.ts            # 59 条 API 的唯一实现
 │   ├── workspace-tools.ts       # 工具面板后端：目录树、git diff、后台任务进程表
+│   ├── session-compact.ts       # 通过 pi 的 RPC 模式手动压缩会话
 │   ├── local-origin-guard.ts    # Host / Origin / Content-Type 防护
 ├── src/
 │   ├── App.tsx                  # 路由：/ 与 /chat → 聊天，/settings → 设置工作台
@@ -214,7 +216,7 @@ pi-desktop/
 
 ## API
 
-55 条路由（30 GET / 25 POST），全部在 `/api/pi/*` 下，仅监听 `127.0.0.1`。
+59 条路由（32 GET / 27 POST），全部在 `/api/pi/*` 下，仅监听 `127.0.0.1`。
 
 <details>
 <summary>展开完整清单</summary>
@@ -226,7 +228,7 @@ pi-desktop/
 `POST /chat` · `POST /chat/stop` · `GET /chat/active` · `GET /chat/default-directory` · `POST /chat/select-directory`
 
 **会话**
-`GET /sessions` · `GET /session-history` · `GET /session-info` · `GET /session-preview` · `GET /session-usage` · `POST /session-message` · `POST /session-rename` · `POST /session/trash` · `POST /session/restore` · `GET /trash`
+`GET /sessions` · `GET /session-history` · `GET /session-info` · `GET /session-preview` · `GET /session-usage` · `POST /session-message` · `POST /session-rename` · `POST /session-compact` · `POST /session/trash` · `POST /session/restore` · `GET /trash`
 
 **用量**
 `GET /usage` · `GET /codex-usage-status` · `GET /official-usage-config` · `POST /official-usage-query` · `POST /official-usage-refresh`

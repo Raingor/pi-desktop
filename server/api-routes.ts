@@ -7,6 +7,7 @@ import { homedir } from "node:os";
 import * as pi from "./pi-reader";
 import * as builtins from "../src/data/builtin-providers";
 import * as tools from "./workspace-tools";
+import { compactSession, isCompacting } from "./session-compact";
 import { rejectNonLocalRequest } from "./local-origin-guard";
 import { fail, json, readJsonBody } from "./http-json";
 
@@ -332,6 +333,46 @@ export function createPiApiMiddleware(): PiApiMiddleware {
           && pi.renameSession(body.sessionId, body.name);
         res.statusCode = success ? 200 : 400;
         json(res, { success });
+      });
+    },
+    // Summarize older turns to free context. pi does the work over RPC; this
+    // only resolves the session and forwards the result. Minutes-long and
+    // billed, so the UI confirms before calling it.
+    "POST /api/pi/session-compact"(req, res) {
+      readJson<{ sessionId?: string; instructions?: string }>(req, res, (body) => {
+        const sessionId = typeof body.sessionId === "string" ? body.sessionId : "";
+        const target = sessionId ? pi.resolveSessionTarget(sessionId) : null;
+        if (!target) {
+          res.statusCode = 404;
+          return json(res, { success: false, error: "session not found" });
+        }
+        if (isCompacting(target.filePath)) {
+          res.statusCode = 409;
+          return json(res, { success: false, error: "compaction already running for this session" });
+        }
+        const binary = pi.resolvePiBinary()?.bin;
+        if (!binary) {
+          res.statusCode = 503;
+          return json(res, { success: false, error: "pi executable not found" });
+        }
+        compactSession(target.filePath, {
+          binary,
+          cwd: target.cwd,
+          instructions: typeof body.instructions === "string" ? body.instructions : undefined,
+        })
+          .then((result) => {
+            // The session file changed, so cached usage totals for it are stale.
+            pi.clearSessionUsageCache();
+            res.statusCode = result.success ? 200 : 400;
+            json(res, result);
+          })
+          .catch((error: unknown) => {
+            res.statusCode = 500;
+            json(res, {
+              success: false,
+              error: error instanceof Error ? error.message : "compaction failed",
+            });
+          });
       });
     },
     "POST /api/pi/session-message"(req, res) {

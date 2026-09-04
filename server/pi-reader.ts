@@ -2084,6 +2084,29 @@ const emptyScan = (): UsageScanState => ({
   lastContextTokens: 0,
 });
 
+/**
+ * Resolve a session id to its file and recorded project directory.
+ *
+ * Compaction runs `pi --mode rpc --session <file>`, so it needs the real path,
+ * and it should run in the session's own project directory so extensions and
+ * project settings resolve the way they did during the conversation.
+ */
+export function resolveSessionTarget(
+  sessionId: string,
+): { filePath: string; cwd?: string } | null {
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(sessionId)) return null;
+  const session = listSessions()
+    .flatMap((group) => group.sessions)
+    .find((item) => item.id === sessionId);
+  if (!session) return null;
+  const resolved = resolve(session.filePath);
+  // Same containment rule as every other session route: inside SESSIONS_DIR.
+  if (!resolved.startsWith(SESSIONS_DIR + sep) || !resolved.endsWith(".jsonl")) return null;
+  if (!existsSync(resolved)) return null;
+  const cwd = session.projectPath && existsSync(session.projectPath) ? session.projectPath : undefined;
+  return { filePath: resolved, cwd };
+}
+
 export function readSessionUsage(sessionId: string): SessionUsageSummary | null {
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(sessionId)) return null;
   const session = listSessions().flatMap((group) => group.sessions).find((item) => item.id === sessionId);
@@ -2598,7 +2621,7 @@ export interface UpdateCheckResult {
 }
 
 /** Discover the pi executable: PI_BINARY env → PATH → known global-install locations. */
-function resolvePiBinary(): { bin: string; version: string } | null {
+export function resolvePiBinary(): { bin: string; version: string } | null {
   const home = homedir();
   const projectNodeModules = `${resolve(process.cwd(), "node_modules")}${sep}`;
   const exe = process.platform === "win32" ? "pi.cmd" : "pi";
