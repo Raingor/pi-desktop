@@ -23,6 +23,7 @@
     "test": "vitest run && node --test \"test/**/*.js\"",
     "test:api": "node test/e2e/api-sweep.ts",
     "test:ui": "node test/e2e/ui-walk.ts",
+    "test:stream": "node test/e2e/stream-walk.ts",
     "verify": "npm run typecheck && npm run lint && npm test",
     "check": "node --check src/usage.js && node --check extensions/pi-usage-summary.js",
     "electron:dev": "node scripts/electron-dev.mjs",

@@ -1,5 +1,6 @@
 import {
   FormEvent,
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -30,6 +31,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
+import { createStreamBuffer, type StreamBuffer } from "@/lib/stream-buffer";
 import { usePolling } from "@/hooks/usePolling";
 import { useTranslation } from "@/lib/i18n";
 import { resolveWorkspaceCwd, useWorkspace } from "@/lib/workspace";
@@ -88,6 +90,19 @@ function formatTokens(value: number): string {
   return String(value);
 }
 
+/**
+ * How far from the bottom of the transcript still counts as "reading the
+ * latest".
+ *
+ * One threshold serves both the jump-to-bottom button and the decision to
+ * follow a streaming answer, so the button appearing and the view stopping
+ * following are the same event rather than two that can disagree.
+ */
+const AT_BOTTOM_SLACK_PX = 80;
+
+const distanceFromBottom = (container: HTMLDivElement) =>
+  container.scrollHeight - container.scrollTop - container.clientHeight;
+
 const THINKING_OPTIONS = [
   ["", "Default"],
   ["off", "Off"],
@@ -103,7 +118,17 @@ const STANDARD_THINKING_OPTIONS = THINKING_OPTIONS.filter(([level]) =>
   ["low", "medium", "high", "max"].includes(level),
 );
 
-function MessageText({ text }: { text: string }) {
+/**
+ * One turn's markdown.
+ *
+ * Memoised because a streaming answer re-renders ChatPage on every repaint,
+ * and without this every earlier turn is re-parsed through remark each time.
+ * Measured at ~1ms per 550 characters, a 200-turn conversation spent ~43ms per
+ * repaint re-parsing text that had not changed, and a 1000-turn one ~252ms —
+ * so the window froze in exactly the sessions worth keeping. The prop is a
+ * plain string, so the default shallow comparison is the right one.
+ */
+const MessageText = memo(function MessageText({ text }: { text: string }) {
   return (
     <div className="codex-message-content">
       <ReactMarkdown
@@ -120,7 +145,7 @@ function MessageText({ text }: { text: string }) {
       </ReactMarkdown>
     </div>
   );
-}
+});
 
 export function ChatPage() {
   const { allModels, allProviders, settings } = useConfigStore();
@@ -306,18 +331,23 @@ export function ChatPage() {
       }, []),
     [messages],
   );
+  // Whether the view was pinned to the latest message *before* the update being
+  // rendered. Read during the scroll event, i.e. from the user's last
+  // deliberate scroll, because by the time the layout effect runs the new text
+  // has already been laid out and every position looks scrolled-up.
+  const followingLatest = useRef(true);
   const updateScrollToBottomVisibility = () => {
     const container = messagesRef.current;
     if (!container) return;
-    setShowScrollToBottom(
-      container.scrollHeight - container.scrollTop - container.clientHeight >
-        80,
-    );
+    const away = distanceFromBottom(container) > AT_BOTTOM_SLACK_PX;
+    followingLatest.current = !away;
+    setShowScrollToBottom(away);
   };
   const scrollToBottom = () => {
     const container = messagesRef.current;
     if (!container) return;
     container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    followingLatest.current = true;
     setShowScrollToBottom(false);
   };
 
@@ -334,10 +364,24 @@ export function ChatPage() {
   }, [prompt]);
 
   useLayoutEffect(() => {
+    const container = messagesRef.current;
     if (scrollToLatestAfterHistory.current && !loadingHistory) {
-      const container = messagesRef.current;
       if (container) container.scrollTop = container.scrollHeight;
       scrollToLatestAfterHistory.current = false;
+      followingLatest.current = true;
+      setShowScrollToBottom(false);
+      return;
+    }
+    // Follow a streaming answer while the user is reading the latest message.
+    // Without this the new text grew downward out of view and the reader had to
+    // chase it with the scrollbar, which is what made long answers feel worse
+    // than they were. Scrolling someone who has deliberately moved up is the
+    // worse failure, so following stops the moment they leave the bottom, and
+    // `jump to bottom` is how they opt back in.
+    if (container && followingLatest.current) {
+      // Assigning scrollTop, not scrollTo({behavior:"smooth"}): a smooth scroll
+      // restarted on every repaint never arrives.
+      container.scrollTop = container.scrollHeight;
       setShowScrollToBottom(false);
       return;
     }
@@ -471,10 +515,9 @@ export function ChatPage() {
   const sessionMetaIdRef = useRef(sessionId);
   sessionMetaIdRef.current = sessionId;
 
-  const loadSessionMeta = useCallback(() => {
+  const loadSessionUsage = useCallback(() => {
     if (!sessionId) {
       setSessionUsage(null);
-      setSessionInfo(null);
       return;
     }
     const stale = () => sessionMetaIdRef.current !== sessionId;
@@ -484,6 +527,14 @@ export function ChatPage() {
         if (!stale()) setSessionUsage(data && data.sessionId ? data : null);
       })
       .catch(() => { if (!stale()) setSessionUsage(null); });
+  }, [sessionId]);
+
+  const loadSessionInfo = useCallback(() => {
+    if (!sessionId) {
+      setSessionInfo(null);
+      return;
+    }
+    const stale = () => sessionMetaIdRef.current !== sessionId;
     fetch(`/api/pi/session-info?session=${encodeURIComponent(sessionId)}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data: SessionInfo | null) => {
@@ -492,16 +543,38 @@ export function ChatPage() {
       .catch(() => { if (!stale()) setSessionInfo(null); });
   }, [sessionId]);
 
-  // A turn can run for minutes with the window tucked away in the menu bar, so
-  // the repeat pauses while hidden. usePolling reads its task through a ref and
-  // therefore does not restart when the session changes — the effect covers
-  // that, plus the final read once `running` goes false. The two overlap for
-  // one tick when a turn starts; two reads of one session file is cheaper than
-  // the bookkeeping to avoid them.
-  usePolling(loadSessionMeta, 4000, Boolean(sessionId) && running);
+  // Usage grows with every turn, so it repeats while one is running. A turn can
+  // run for minutes with the window tucked away in the menu bar, so the repeat
+  // pauses while hidden. usePolling reads its task through a ref and therefore
+  // does not restart when the session changes — the effect covers that, plus
+  // the final read once `running` goes false. The two overlap for one tick when
+  // a turn starts; two reads of one session file is cheaper than the
+  // bookkeeping to avoid them.
+  usePolling(loadSessionUsage, 4000, Boolean(sessionId) && running);
   useEffect(() => {
-    loadSessionMeta();
-  }, [loadSessionMeta, running]);
+    loadSessionUsage();
+  }, [loadSessionUsage, running]);
+
+  // Session meta does not grow: the working directory, the file path and the
+  // intercom id are all fixed when the session file is created. Polling it
+  // alongside usage therefore spent a request and a session-list scan every 4
+  // seconds to re-learn constants, on the same single-threaded server that was
+  // relaying the answer being typed on screen. The effect below fetches it per
+  // session id instead.
+  //
+  // The repeat survives for one case: a session created by the run that is
+  // still streaming. Its id reaches the URL as soon as pi reports it, which can
+  // be before the file is visible through the endpoint's own 5-second list
+  // cache, and the answer then comes back without a filePath. Retrying until
+  // one arrives is what keeps the tool panel off the wrong directory for a
+  // freshly created chat. It stops on the first complete answer, so opening an
+  // existing session costs two requests — the effect's and the one usePolling
+  // fires on enable — and then nothing.
+  const resolvedInfoId = sessionInfo?.filePath ? sessionInfo.sessionId : undefined;
+  usePolling(loadSessionInfo, 4000, Boolean(sessionId) && resolvedInfoId !== sessionId);
+  useEffect(() => {
+    loadSessionInfo();
+  }, [loadSessionInfo]);
 
   // Point the tool panel at the directory this chat actually runs in. Opening a
   // session from the sidebar only sets ?session=, leaving projectPath empty, so
@@ -521,12 +594,42 @@ export function ChatPage() {
     );
   }, [sessionId, openedSessionCwd, projectPath, defaultCwd, setWorkspaceCwd]);
 
+  // ── Streaming answer buffer ──────────────────────────────────────────────
+  //
+  // pi emits one `delta` event per token, and committing each one to state
+  // repainted the whole pane. Because every repaint re-parses the growing turn
+  // through remark (~1ms per 550 chars), a long answer got quadratically
+  // slower: a 12k-char turn cost ~2.7s of parsing across 300 deltas, with
+  // individual deltas blocking the window for 38ms. The buffer coalesces them
+  // onto an interval that scales with the length of the answer; the timing
+  // rules live in stream-buffer.ts, where they are unit-tested against a fake
+  // clock. Appending to the last message is this page's own concern, so that
+  // stays here.
+  const answerBufferRef = useRef<StreamBuffer | null>(null);
+  if (!answerBufferRef.current) {
+    answerBufferRef.current = createStreamBuffer((chunk) =>
+      setMessages((items) =>
+        items.map((item, index) =>
+          index === items.length - 1 ? { ...item, text: item.text + chunk } : item,
+        ),
+      ),
+    );
+  }
+  const answerBuffer = answerBufferRef.current;
+
+  // A pending flush must not outlive the page: navigating away mid-stream
+  // would otherwise fire setMessages on an unmounted component.
+  useEffect(() => () => answerBuffer.drop(), [answerBuffer]);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const text = prompt.trim();
     if (!text || running || (customProject && !projectPath.trim())) return;
     const requestedSessionId = sessionId ?? `web-${crypto.randomUUID()}`;
     setActiveRunSessionId(requestedSessionId);
+    // This run's answer starts empty, so the flush interval starts at its floor
+    // again rather than inheriting the previous turn's length.
+    answerBuffer.reset();
     setMessages((items) => [
       ...items,
       { id: `local-${crypto.randomUUID()}`, role: "user", text },
@@ -554,14 +657,6 @@ export function ChatPage() {
       const decoder = new TextDecoder();
       let buffer = "";
       let failure = "";
-      const append = (chunk: string) =>
-        setMessages((items) =>
-          items.map((item, index) =>
-            index === items.length - 1
-              ? { ...item, text: item.text + chunk }
-              : item,
-          ),
-        );
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -573,7 +668,7 @@ export function ChatPage() {
           const data = raw.match(/^data: (.+)$/m)?.[1];
           if (!eventType || !data) continue;
           const payload = JSON.parse(data);
-          if (eventType === "delta") append(payload);
+          if (eventType === "delta") answerBuffer.push(payload);
           if (eventType === "status") setRunStatus(payload);
           if (eventType === "step")
             setRunSteps((steps) => [...steps, payload as RunStep]);
@@ -585,6 +680,9 @@ export function ChatPage() {
           if (eventType === "error") failure = payload;
         }
       }
+      // Commit whatever the last interval did not cover, before any of the
+      // endings below rewrite this message.
+      answerBuffer.flush();
       if (failure && failure !== "generation stopped") throw new Error(failure);
       if (failure === "generation stopped")
         setMessages((items) =>
@@ -595,6 +693,9 @@ export function ChatPage() {
           ),
         );
     } catch (error) {
+      // The message is replaced wholesale, so a pending tail would only flash
+      // in and vanish. Drop it with the timer.
+      answerBuffer.drop();
       setMessages((items) =>
         items.map((item, index) =>
           index === items.length - 1
@@ -606,6 +707,7 @@ export function ChatPage() {
         ),
       );
     } finally {
+      answerBuffer.drop();
       setRunning(false);
       setRunStatus(null);
       setActiveRunSessionId(null);
@@ -887,7 +989,19 @@ export function ChatPage() {
                 <details
                   key={stepIndex}
                   open={runStepOpenOverrides[stepIndex] ?? (settings?.expandRunSteps ?? true)}
-                  onToggle={(event) => setRunStepOpenOverrides((previous) => ({ ...previous, [stepIndex]: event.currentTarget.open }))}
+                  // `open` is read here rather than inside the updater because
+                  // React nulls `currentTarget` the moment the handler returns,
+                  // while the updater runs later, when the queue is processed.
+                  // That deferral is invisible while the fiber is idle — React
+                  // then evaluates the updater eagerly — so this looked fine in
+                  // manual use and threw during a streamed answer, where the
+                  // constant delta commits keep an update pending: `Cannot read
+                  // properties of null (reading 'open')`, which unmounted the
+                  // whole chat page mid-answer.
+                  onToggle={(event) => {
+                    const isOpen = event.currentTarget.open;
+                    setRunStepOpenOverrides((previous) => ({ ...previous, [stepIndex]: isOpen }));
+                  }}
                   className={cn(
                     "codex-run-step",
                     step.kind === "thinking" && "is-thinking",

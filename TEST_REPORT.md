@@ -1,20 +1,21 @@
 # 回归测试报告 · v0.8.3 优化批次
 
-- 测试日期：2026-09-03（第二轮：测试脚本落仓库并加护栏后重跑）
-- 被测产物：`release/mac-arm64/pi-desktop.app`（`npm run electron:build` 全新打包，Electron 43.5.1 / darwin arm64）
+- 测试日期：2026-09-04（第三轮：性能调优批次 + 真机流式回归）
+- 被测产物：`release/mac-arm64/pi-desktop.app`（全新打包，Electron 43.5.1 / darwin arm64）
 - 数据环境：真实 `~/.pi/agent/`（15 个会话、12 个项目、6 个供应商、60 条记忆），未使用 mock
-- 结论：**通过**。自动化 322 项全绿，未发现回归，也未发现新缺陷。
+- 结论：**通过**。自动化 382 项全绿。本轮**抓到并修复了一个真实的线上级缺陷**：流式回答进行中整个对话页会崩溃卸载（详见 §7）。
 
 | 层次 | 用例数 | 通过 | 失败 | 入口 |
 |---|---|---|---|---|
-| 单元测试（vitest） | 142 | 142 | 0 | `npm test` |
+| 单元测试（vitest） | 192 | 192 | 0 | `npm test` |
 | 单元测试（node:test） | 3 | 3 | 0 | `npm test` |
 | API 端到端（打包后真实 HTTP） | 61 | 61 | 0 | `npm run test:api` |
 | UI 端到端（CDP 驱动打包应用） | 116 | 116 | 0 | `npm run test:ui` |
+| 流式端到端（真实一轮对话） | 10 | 10 | 0 | `npm run test:stream` |
 | 静态检查（tsc / eslint error） | — | 0 错误 | 0 | `npm run typecheck` / `lint` |
-| **合计** | **322** | **322** | **0** | `npm run verify` + 两条 e2e |
+| **合计** | **382** | **382** | **0** | `npm run verify` + 三条 e2e |
 
-第一轮的两套 e2e 脚本是 `/tmp` 里的一次性 shell 与 `.mjs`，跑完即删；本轮已全部改写成 TypeScript 落进 `test/e2e/`，纳入 `tsc -b` 与 `eslint`，并为每一类曾经误报的断言补了可在 CI 单独运行的单元测试（见 §5）。这也是用例数从 216 涨到 322 的原因：新增 34 条单测 + e2e 断言加密。
+第一轮的两套 e2e 脚本是 `/tmp` 里的一次性 shell 与 `.mjs`，跑完即删；第二轮已全部改写成 TypeScript 落进 `test/e2e/`，纳入 `tsc -b` 与 `eslint`，并为每一类曾经误报的断言补了可在 CI 单独运行的单元测试（见 §5）。本轮（第三轮）在此基础上补了 50 条单测与第三套 e2e，用例数 216 → 322 → 382。
 
 ESLint 另有 101 条 warning，全部是 React Compiler 的 `set-state-in-effect` / `immutability` 类建议与 `no-explicit-any`，按既定分层策略只提示不阻断，`npm run lint` 仍以 0 error 通过。
 
@@ -212,7 +213,58 @@ recharts 所在的 450K Dashboard chunk 与 85K 供应商编辑器已完全移�
 
 ---
 
-## 6. 遗留与建议
+## 6. 性能调优批次（第三轮新增）
+
+从"日常使用"和"对话输出流畅度"两个角度做的调优。方法是先在**开发者本机真实数据**上测出数字，只改数字指认的地方，每项改动都抽成可单测的模块。
+
+| 瓶颈 | 改动前 | 改动后 | 护栏 |
+|---|---|---|---|
+| 每个 delta 重解析整段历史 | 1073 轮会话 252ms/delta，200 轮 43ms | `memo(MessageText)` | — |
+| 每个 delta 重解析正在增长的这一轮 | 12k 字回答累计 2661ms 解析，单帧最坏 38.5ms | 按长度自适应合批（33–200ms） | [`stream-flush.test.ts`](src/lib/stream-flush.test.ts:1) 6 条 + [`stream-buffer.test.ts`](src/lib/stream-buffer.test.ts:1) 10 条 |
+| 回答流出可视区 | 没有跟随逻辑 | 读者在底部才跟随，离开即停 | 真机 e2e |
+| `session-usage` 每 4 秒全量重读 | 4.3MB 会话 13.6ms/次 | 只读新增的尾部，0.04ms | [`append-reader.test.ts`](server/append-reader.test.ts:1) 8 条 |
+| `listSessions` 每次 TTL 失效全量重解析 | 11.4MB 共 40.3ms | 按 mtime+size 复用，0.86ms | [`file-cache.test.ts`](server/file-cache.test.ts:1) 9 条 |
+| `session-info` 随 usage 一起轮询 | 整轮对话每 4 秒一次 | 2 次请求后不再发 | — |
+
+三点值得单独记录：
+
+- **合批用 `setTimeout` 而不是 `requestAnimationFrame`**。这个应用常驻菜单栏，窗口隐藏时 rAF 根本不触发，会把写了一半的回答留在缓冲里；定时器只是被节流。
+- **`clearSessionListCache()` 曾经说谎**。它的注释说"丢弃所有与会话文件有关的缓存"，但实际只清了两个，漏掉了本轮新加的 header 缓存。修法不是补一行，而是把缓存抽成 [`createFileCache()`](server/file-cache.ts:1)——mtime+size 双字段失效的不变式因此变得可测（单独用 `utimesSync` 构造了"同长度改写"和"同 mtime 改大小"两个盲区用例）。
+- **两个缓存的过期原因不同**，所以刻意不合并：会话列表按 5 秒计时过期，为的是及时发现**新**会话；header 条目只在自己那个文件变化时过期。合并的话，一个新会话就意味着重读全部。
+
+被否掉、记录以免重复讨论的方案：把流式中的这一轮拆成多个记忆化的 markdown 块（会破坏松散列表编号、表格、围栏代码、引用式链接）；给消息行加 `content-visibility: auto`（与手工管理的滚动冲突）；记忆化整个消息行（它的 props 含 `editingText`，每敲一个键都变）。
+
+---
+
+## 7. 本轮抓到的真实缺陷：流式输出时整页崩溃
+
+**现象**：发一条会产生长回答的消息，回答到一半整个对话页消失，控制台留下 `TypeError: Cannot read properties of null (reading 'open')`。
+
+**根因**在 [`ChatPage.tsx`](src/components/chat/ChatPage.tsx:992) 的一行里：
+
+```tsx
+onToggle={(event) => setRunStepOpenOverrides((previous) => ({ ...previous, [stepIndex]: event.currentTarget.open }))}
+```
+
+React 只在合成事件派发期间维护 `currentTarget`，派发结束就置回 `null`——一个事件对象要依次访问多个处理器，这个字段只在调用期间有意义。而 `setState` 的更新器不属于那次调用：它在队列被处理时才运行。**空闲时 React 会立刻求值更新器做状态比较，所以这个错误看起来是同步的**，手工点开点关一切正常；一旦有更新在排队——流式回答每次 delta 提交都在排队——更新器就真的被推迟到了 `currentTarget` 已经为 `null` 之后。
+
+每个 run step 渲染的是 `<details open>`，Chromium 会在挂载时触发一次 `toggle`，于是"流式期间新增 run step"这个组合必然踩中。
+
+**为什么 322 条断言全绿却没发现**：两套 harness 都不发消息。`ui-walk` 只打开已有对话并校验历史，`api-sweep` 完全不碰 renderer。整条 delta 通路——合批缓冲、记忆化 markdown、跟随滚动——一条断言都没覆盖，而它的失效方式又都很安静：丢了尾巴看起来只是回答短了点，合批坏了只是感觉卡。
+
+**两层修复**：
+
+1. 改成在处理器里读、闭包捕获值再进更新器。
+2. 落地静态护栏 [`test/guards/deferred-state.ts`](test/guards/deferred-state.ts:1) + 17 条单测：扫描全仓 `.ts/.tsx`，任何 `setX(…)` 的参数里同时出现 `=>` 与 `currentTarget` 即失败。它自带一个保留字符串/注释/模板字面量的遮蔽器（`maskLiterals`，长度不变以保证行号可用），所以注释和字符串里提到这些词不会误报；同时**必须放过修复后的正确写法**，否则护栏会挡住自己的解药——这条也写成了断言。安全写法 `setUiZoom(Number(e.currentTarget.value))` 同样不报，因为值是在处理器内算出来的。
+3. 补第三套 e2e [`test/e2e/stream-walk.ts`](test/e2e/stream-walk.ts:1)：真跑一轮对话，用 `MutationObserver` 数 DOM 写入次数（数 DOM 写入才是合批真正改变的量，轮询只会测到采样器自己）。10 条断言，含"缓冲里没有残留字符"（对比最终文本与观测到的最后一个采样，专门抓丢尾巴）与"chars/repaint ≥ 5"（逐 token 提交时中文只有 1–3）。
+
+实测一轮 1197 字的回答：**41 次重绘、29.2 字/次、重绘间隔中位数 267ms、缓冲无残留、控制台干净**。
+
+这套不进 `npm run verify`——它会花掉一次真实模型调用，需要网络与凭据，耗时取决于模型。改动流式通路后由人显式跑 `npm run test:stream`。
+
+---
+
+## 8. 遗留与建议
 
 不阻塞发布，记录备查：
 
@@ -228,7 +280,7 @@ recharts 所在的 450K Dashboard chunk 与 85K 供应商编辑器已完全移�
 ## 附：复现方式
 
 ```bash
-npm run verify          # tsc + eslint + vitest 142 + node:test 3
+npm run verify          # tsc + eslint + vitest 192 + node:test 3
 npm run electron:build  # 打包
 
 env -u ELECTRON_RUN_AS_NODE \
@@ -237,11 +289,13 @@ env -u ELECTRON_RUN_AS_NODE \
 
 npm run test:api        # 61 项，压 127.0.0.1:51799
 npm run test:ui         # 116 项，CDP 连 9222
+npm run test:stream     # 10 项，真跑一轮对话（消耗真实配额）
 ```
 
-两点必须注意：
+三点必须注意：
 
 - `ELECTRON_RUN_AS_NODE` 必须清掉。该变量存在时 Electron 会退化成纯 Node 运行，不开窗口，CDP 里也就没有任何 target。
-- `--remote-debugging-port` 只有 `test:ui` 需要，`test:api` 不依赖它。端口可用 `PI_E2E_PORT` / `PI_E2E_CDP_PORT` 覆盖。
+- `--remote-debugging-port` 是 `test:ui` 与 `test:stream` 需要的，`test:api` 不依赖它。端口可用 `PI_E2E_PORT` / `PI_E2E_CDP_PORT` 覆盖。
+- `test:stream` 会真的调一次模型，提示词可用 `PI_E2E_PROMPT` 覆盖，但必须足够长——一句话的回答测不出合批。
 
-两套 e2e 是普通 `.ts` 文件，不匹配 vitest 的 `*.test.ts` 也不匹配 `node --test "test/**/*.js"`，所以 `npm test` 不会在没有打包应用的环境里去跑它们——CI 保持绿色，e2e 由人显式触发。
+三套 e2e 都是普通 `.ts` 文件，不匹配 vitest 的 `*.test.ts` 也不匹配 `node --test "test/**/*.js"`，所以 `npm test` 不会在没有打包应用的环境里去跑它们——CI 保持绿色，e2e 由人显式触发。
