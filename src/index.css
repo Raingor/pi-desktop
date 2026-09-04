@@ -2235,19 +2235,27 @@ table { border-collapse: collapse; }
   letter-spacing: 0;
 }
 
-.codex-slash-item {
+/* Scoped up to .codex-slash-menu so these beat the composer's blanket
+   `.codex-composer button` rule (42×42 grid, cyan fill): every option row is a
+   <button>, and without the extra class that rule squeezed each one into a
+   41×41 square with the command name at 12px wide. The model trigger solves
+   the same collision with !important; a higher-specificity prefix is cleaner. */
+.codex-slash-menu .codex-slash-item {
   display: flex;
   width: 100%;
+  height: auto;
+  place-items: unset;
+  color: var(--page-text);
+  background: transparent;
   align-items: baseline;
   gap: 8px;
   padding: 6px 8px;
   border: 0;
   border-radius: 7px;
-  background: transparent;
   text-align: left;
 }
-.codex-slash-item:hover,
-.codex-slash-item.is-active { background: var(--sidebar-active-bg); }
+.codex-slash-menu .codex-slash-item:hover,
+.codex-slash-menu .codex-slash-item.is-active { background: var(--sidebar-active-bg); }
 .codex-slash-item code {
   flex: 0 0 auto;
   max-width: 46%;
