@@ -567,6 +567,44 @@ export function ChatPage() {
           setHistoryError("加载会话历史失败");
       })
       .finally(() => setLoadingHistory(false));
+    // Returning to a session whose pi run is still going (navigated to settings
+    // and back, or reopened from the sidebar mid-answer): the original stream
+    // died with the old component instance, and history above is a snapshot of
+    // whatever had been written to disk at that moment — which is why a
+    // re-opened running conversation showed a half answer and never another
+    // word. The pi process keeps writing the session file, so follow it by
+    // polling history until the run ends, restoring the live-answer state.
+    fetch("/api/pi/chat/active")
+      .then((res) => (res.ok ? res.json() : { sessionIds: [] }))
+      .then(async (data: { sessionIds?: string[] }) => {
+        if (!data.sessionIds?.includes(sessionId)) return;
+        setRunning(true);
+        setRunStatus({ kind: "responding" });
+        followingLatest.current = true;
+        let still = true;
+        while (still) {
+          await new Promise((r) => setTimeout(r, 2000));
+          try {
+            const pair = await Promise.all([
+              fetch(`/api/pi/session-history?id=${encodeURIComponent(sessionId)}`).then((r: Response) => (r.ok ? (r.json() as Promise<SessionHistory>) : Promise.resolve(null))),
+              fetch("/api/pi/chat/active").then((r: Response) => (r.ok ? (r.json() as Promise<{ sessionIds?: string[] }>) : Promise.resolve({ sessionIds: [] as string[] }))),
+            ] as const);
+            const hist: SessionHistory | null = pair[0];
+            const active: { sessionIds?: string[] } = pair[1];
+            // The user navigated away again mid-follow — stop here.
+            if (sessionMetaIdRef.current !== sessionId) return;
+            if (hist?.messages) setMessages(hist.messages);
+            still = Boolean((active as { sessionIds?: string[] }).sessionIds?.includes(sessionId));
+          } catch {
+            still = false;
+          }
+        }
+        setRunning(false);
+        setRunStatus(null);
+      })
+      .catch(() => {
+        /* active-check is best-effort */
+      });
     return () => controller.abort();
   }, [sessionId]);
 
@@ -719,6 +757,16 @@ export function ChatPage() {
     if (outgoing.length === 0 || running || (customProject && !projectPath.trim())) return;
     const requestedSessionId = sessionId ?? `web-${crypto.randomUUID()}`;
     setActiveRunSessionId(requestedSessionId);
+    // Put the session in the URL immediately, not when the run's done event
+    // arrives. A long answer can outlive a navigation to settings and back;
+    // remounting without a session id loses the run entirely — history cannot
+    // be fetched for it and the live-answer recovery has nothing to key on.
+    // The replace (not push) keeps the new-chat entry out of history; the done
+    // handler sets the same param again, which is a no-op for the same id.
+    if (!sessionId) {
+      preserveMessagesAfterCreate.current = true;
+      setSearchParams({ session: requestedSessionId }, { replace: true });
+    }
     // This run's answer starts empty, so the flush interval starts at its floor
     // again rather than inheriting the previous turn's length.
     answerBuffer.reset();
@@ -734,6 +782,11 @@ export function ChatPage() {
     setPrompt("");
     setStagedCommands([]);
     setRunning(true);
+    // Submitting is itself the clearest possible statement that the user is
+    // watching for the answer: pin to the bottom for the incoming stream, even
+    // if the pane was scrolled up over the history a moment ago.
+    followingLatest.current = true;
+    setShowScrollToBottom(false);
     setRunStatus({ kind: "starting" });
     setRunSteps([]);
     setRunStepOpenOverrides({});
