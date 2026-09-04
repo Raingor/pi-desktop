@@ -408,7 +408,9 @@ export function ChatPage() {
     const textarea = promptRef.current;
     if (!textarea) return;
 
-    const maxHeight = 160;
+    // The ceiling lives in CSS (.codex-composer textarea) so the two cannot
+    // drift apart; this only measures what the content needs below it.
+    const maxHeight = parseFloat(getComputedStyle(textarea).maxHeight) || 280;
     textarea.style.height = "auto";
     const height = Math.min(textarea.scrollHeight, maxHeight);
     textarea.style.height = `${height}px`;
