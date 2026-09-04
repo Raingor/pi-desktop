@@ -10,6 +10,7 @@
 // the callers cache what they get back instead.
 
 import { spawn, type ChildProcess } from "child_process";
+import { withPiNodePath } from "./pi-reader";
 
 /** Fallback grace before the command is written, if pi says nothing first. */
 const DEFAULT_READY_MS = 4000;
@@ -57,6 +58,9 @@ export function runRpcCommand<T = Record<string, unknown>>(
       child = spawn(options.binary, ["--mode", "rpc", ...(options.args ?? [])], {
         cwd: options.cwd,
         stdio: ["pipe", "pipe", "pipe"],
+        // GUI launches carry a minimal PATH; pi's env-node shebang needs the
+        // pi-node bin directory on it or the child dies with 127 instantly.
+        env: { ...process.env, PATH: withPiNodePath() },
       });
     } catch (error) {
       resolvePromise({

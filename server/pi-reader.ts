@@ -2441,7 +2441,11 @@ function resolvePiBin(): string | null {
   ].filter(Boolean) as string[];
   for (const bin of candidates) {
     try {
-      const out = spawnSync(bin, ["--version"], { encoding: "utf8", timeout: 15000 });
+      const out = spawnSync(bin, ["--version"], {
+        encoding: "utf8",
+        timeout: 15000,
+        env: { ...process.env, PATH: withPiNodePath() },
+      });
       if (out.status === 0 && out.stdout.trim()) return bin;
     } catch {
       // try next
@@ -2620,6 +2624,29 @@ export interface UpdateCheckResult {
   checkedAt: number;
 }
 
+/**
+ * A PATH that includes the node runtime pi ships with.
+ *
+ * pi is a symlink to a cli.js with `#!/usr/bin/env node`. When this server runs
+ * in a packaged GUI app, the process inherits the system PATH — `/usr/bin:/bin`
+ * and little else — and `env node` resolves nothing, so every spawn of pi dies
+ * with status 127 before pi's own code runs. The pi-node install layout puts
+ * node next to pi in the same bin directory, so prepending that directory
+ * fixes the shebang for dev, packaged, and `which pi` installs alike.
+ */
+export function withPiNodePath(): string {
+  const extra: string[] = [];
+  const piNodeRoot = join(homedir(), ".local", "share", "pi-node");
+  try {
+    for (const entry of readdirSync(piNodeRoot)) {
+      extra.push(join(piNodeRoot, entry, "bin"));
+    }
+  } catch {
+    // pi-node not installed here — nothing to add
+  }
+  return [...extra, process.env.PATH ?? "/usr/bin:/bin"].join(delimiter);
+}
+
 /** Discover the pi executable: PI_BINARY env → PATH → known global-install locations. */
 export function resolvePiBinary(): { bin: string; version: string } | null {
   const home = homedir();
@@ -2662,7 +2689,15 @@ export function resolvePiBinary(): { bin: string; version: string } | null {
     // actual pi installation; prefer the next global/path candidate instead.
     if (!process.env.PI_BINARY && resolve(bin).startsWith(projectNodeModules)) continue;
     try {
-      const out = spawnSync(bin, ["--version"], { encoding: "utf8", timeout: 15000 });
+      const out = spawnSync(bin, ["--version"], {
+        encoding: "utf8",
+        timeout: 15000,
+        // pi's shebang is `#!/usr/bin/env node`. In a GUI launch the PATH is
+        // the system minimum and `env node` finds nothing (status 127), so the
+        // pi-node install directory has to be on PATH for the probe to run at
+        // all — and for every later spawn of pi to work.
+        env: { ...process.env, PATH: withPiNodePath() },
+      });
       if (out.status === 0) {
         const v = out.stdout.trim();
         if (v) return { bin, version: v };
@@ -2773,6 +2808,9 @@ export async function runWebChat(
     args.push(prompt);
     const child = spawn(pi.bin, args, {
       cwd: selectedCwd, stdio: ["ignore", "pipe", "pipe"],
+      // Same env-node shebang concern as resolvePiBinary: without the pi-node
+      // bin on PATH, a GUI-launched app cannot run pi at all.
+      env: { ...process.env, PATH: withPiNodePath() },
     });
     const active = { kill: child.kill.bind(child), stopped: false };
     activeWebChats.set(sessionId, active);
