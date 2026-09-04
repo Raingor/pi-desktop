@@ -2503,3 +2503,58 @@ table { border-collapse: collapse; }
   background: var(--signal-cyan);
   transition: width 400ms ease;
 }
+/* ─── Staged command chips ───────────────────────────────
+   Picked commands wait above the textarea until Enter. Wrapping, because a
+   run can chain several skills. */
+
+.codex-staged-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.codex-staged-label {
+  flex: 0 0 auto;
+  color: var(--subtle-text);
+  font-size: 10px;
+  font-weight: 600;
+}
+.codex-staged-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 280px;
+  padding: 3px 4px 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--signal-cyan) 35%, var(--card-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--signal-cyan) 7%, transparent);
+}
+.codex-staged-chip code {
+  overflow: hidden;
+  color: var(--signal-cyan);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.codex-staged-chip button {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  color: var(--muted-text);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 12px;
+  line-height: 1;
+}
+.codex-staged-chip button:hover {
+  color: var(--page-text);
+  background: var(--hover-bg);
+}
+/* A staged row in the "/" menu reads as already picked. */
+.codex-slash-menu .codex-slash-item.is-staged code { color: var(--signal-cyan-bright, var(--signal-cyan)); }
+.codex-slash-menu .codex-slash-item.is-staged em { color: var(--signal-cyan); }

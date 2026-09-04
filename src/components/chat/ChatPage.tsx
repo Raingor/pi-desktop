@@ -172,6 +172,12 @@ export function ChatPage() {
   // Set when a pick fills the textarea, so the menu does not immediately
   // reopen on the text it just inserted.
   const [slashDismissed, setSlashDismissed] = useState(false);
+  // Commands staged as chips above the textarea. pi expands only the command
+  // at the head of a message (everything after it becomes its arguments), so
+  // multiple picks cannot be sent as one text: each is dispatched as its own
+  // prompt in order, with the user's text as the final one. Chips are exactly
+  // the staged list.
+  const [stagedCommands, setStagedCommands] = useState<SlashCommand[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -194,6 +200,10 @@ export function ChatPage() {
   }, []);
 
   const slashToken = slashDismissed ? null : slashQuery(prompt);
+  const stagedNames = useMemo(
+    () => new Set(stagedCommands.map((command) => command.name)),
+    [stagedCommands],
+  );
   const slashMatches = useMemo(
     () => (slashToken === null ? [] : filterCommands(slashCommands, slashToken)),
     [slashCommands, slashToken],
@@ -206,10 +216,14 @@ export function ChatPage() {
   }, [slashToken]);
 
   const pickSlash = (command: SlashCommand) => {
-    // Leave a trailing space: most of these take arguments, and it also closes
-    // the menu because the token is then complete.
-    setPrompt(`/${command.name} `);
-    setSlashDismissed(true);
+    // Adds to the staged chips rather than the textarea, and keeps the menu
+    // open so several can be picked in one visit. Re-picking a staged command
+    // removes it — the menu row doubles as its own toggle.
+    setStagedCommands((items) =>
+      items.some((item) => item.name === command.name)
+        ? items.filter((item) => item.name !== command.name)
+        : [...items, command],
+    );
     promptRef.current?.focus();
   };
   const [running, setRunning] = useState(false);
@@ -695,7 +709,14 @@ export function ChatPage() {
     // key; pi only recognizes halfwidth commands, so a leading one is
     // normalized here rather than sent to be answered as ordinary text.
     const text = prompt.trim().replace(/^／/, "/");
-    if (!text || running || (customProject && !projectPath.trim())) return;
+    // Staged chips go first, one prompt each: pi expands only the command at
+    // the head of a message, so a batch has to be a sequence of sends. The
+    // user's own text (if any) is the last prompt in the sequence.
+    const outgoing = [
+      ...stagedCommands.map((command) => `/${command.name}`),
+      ...(text ? [text] : []),
+    ];
+    if (outgoing.length === 0 || running || (customProject && !projectPath.trim())) return;
     const requestedSessionId = sessionId ?? `web-${crypto.randomUUID()}`;
     setActiveRunSessionId(requestedSessionId);
     // This run's answer starts empty, so the flush interval starts at its floor
@@ -703,52 +724,63 @@ export function ChatPage() {
     answerBuffer.reset();
     setMessages((items) => [
       ...items,
-      { id: `local-${crypto.randomUUID()}`, role: "user", text },
+      ...outgoing.map((piece) => ({
+        id: `local-${crypto.randomUUID()}`,
+        role: "user" as const,
+        text: piece,
+      })),
       { role: "assistant", text: "" },
     ]);
     setPrompt("");
+    setStagedCommands([]);
     setRunning(true);
     setRunStatus({ kind: "starting" });
     setRunSteps([]);
     setRunStepOpenOverrides({});
     try {
-      const res = await fetch("/api/pi/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: text,
-          sessionId: requestedSessionId,
-          projectPath: projectPath || undefined,
-          model: selectedModel || undefined,
-          thinking: selectedThinking || undefined,
-        }),
-      });
-      if (!res.ok || !res.body) throw new Error("Request failed");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+      // Sends in the sequence share one failure flag: any piece failing ends
+      // the whole submission, since later commands may depend on earlier ones.
       let failure = "";
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-        for (const raw of events) {
-          const eventType = raw.match(/^event: (.+)$/m)?.[1];
-          const data = raw.match(/^data: (.+)$/m)?.[1];
-          if (!eventType || !data) continue;
-          const payload = JSON.parse(data);
-          if (eventType === "delta") answerBuffer.push(payload);
-          if (eventType === "status") setRunStatus(payload);
-          if (eventType === "step")
-            setRunSteps((steps) => [...steps, payload as RunStep]);
-          if (eventType === "done") {
-            preserveMessagesAfterCreate.current = true;
-            setSearchParams({ session: payload.sessionId }, { replace: true });
-            window.dispatchEvent(new Event("pi-session-created"));
+      // Send the sequence serially: each command may register work the next
+      // one builds on, and parallel prompts to one pi session would race.
+      for (const piece of outgoing) {
+        const res = await fetch("/api/pi/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: piece,
+            sessionId: requestedSessionId,
+            projectPath: projectPath || undefined,
+            model: selectedModel || undefined,
+            thinking: selectedThinking || undefined,
+          }),
+        });
+        if (!res.ok || !res.body) throw new Error("Request failed");
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() ?? "";
+          for (const raw of events) {
+            const eventType = raw.match(/^event: (.+)$/m)?.[1];
+            const data = raw.match(/^data: (.+)$/m)?.[1];
+            if (!eventType || !data) continue;
+            const payload = JSON.parse(data);
+            if (eventType === "delta") answerBuffer.push(payload);
+            if (eventType === "status") setRunStatus(payload);
+            if (eventType === "step")
+              setRunSteps((steps) => [...steps, payload as RunStep]);
+            if (eventType === "done") {
+              preserveMessagesAfterCreate.current = true;
+              setSearchParams({ session: payload.sessionId }, { replace: true });
+              window.dispatchEvent(new Event("pi-session-created"));
+            }
+            if (eventType === "error") failure = payload;
           }
-          if (eventType === "error") failure = payload;
         }
       }
       // Commit whatever the last interval did not cover, before any of the
@@ -1318,9 +1350,31 @@ export function ChatPage() {
             error={slashError}
             query={slashToken ?? ""}
             activeIndex={slashIndex}
+            stagedNames={stagedNames}
             onHover={setSlashIndex}
             onPick={pickSlash}
           />
+        )}
+        {stagedCommands.length > 0 && (
+          <div className="codex-staged-row" aria-label="已选命令">
+            <span className="codex-staged-label">已选 {stagedCommands.length}</span>
+            {stagedCommands.map((command) => (
+              <span key={command.name} className="codex-staged-chip">
+                <code>/{command.name}</code>
+                <button
+                  type="button"
+                  aria-label={`移除 ${command.name}`}
+                  onClick={() =>
+                    setStagedCommands((items) =>
+                      items.filter((item) => item.name !== command.name),
+                    )
+                  }
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
         )}
         <textarea
           ref={promptRef}
@@ -1531,7 +1585,9 @@ export function ChatPage() {
               className="codex-send"
               aria-label="Send message"
               disabled={
-                running || !prompt.trim() || (customProject && !projectPath.trim())
+                running ||
+                  (stagedCommands.length === 0 && !prompt.trim()) ||
+                  (customProject && !projectPath.trim())
               }
             >
               {running ? (

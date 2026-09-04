@@ -68,6 +68,7 @@ export function SlashMenu({
   error,
   query,
   activeIndex,
+  stagedNames,
   onHover,
   onPick,
 }: {
@@ -76,6 +77,8 @@ export function SlashMenu({
   error?: string;
   query: string;
   activeIndex: number;
+  /** Names already staged as chips — those rows render as selected. */
+  stagedNames: Set<string>;
   onHover: (index: number) => void;
   onPick: (command: SlashCommand) => void;
 }) {
@@ -134,7 +137,7 @@ export function SlashMenu({
               key={`${cmd.source}-${cmd.name}`}
               type="button"
               data-index={index}
-              className={`codex-slash-item${index === activeIndex ? " is-active" : ""}`}
+              className={`codex-slash-item${index === activeIndex ? " is-active" : ""}${stagedNames.has(cmd.name) ? " is-staged" : ""}`}
               onMouseEnter={() => onHover(index)}
               // mousedown, not click: the textarea's blur must not close the
               // menu before the pick lands.
@@ -146,7 +149,8 @@ export function SlashMenu({
             >
               <code>/{cmd.name}</code>
               {cmd.description && <span>{cmd.description}</span>}
-              {cmd.location && <em>{cmd.location}</em>}
+              {stagedNames.has(cmd.name) && <em>已选</em>}
+              {cmd.location && !stagedNames.has(cmd.name) && <em>{cmd.location}</em>}
             </button>
           ))}
         </div>
