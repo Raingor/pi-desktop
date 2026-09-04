@@ -19,6 +19,12 @@ export default tseslint.config(
       "node_modules/**",
       // Emitted by Vite's PWA plugin, not written by hand.
       "public/sw.js",
+      // Local agent scratch space, already gitignored. The puppeteer profile
+      // under .pi/ carries vendored Chrome extension bundles, and linting those
+      // reported 584 errors in third-party minified JS on any machine where the
+      // browser tooling had run.
+      ".pi/**",
+      ".pi-subagents/**",
     ],
   },
 
