@@ -1408,6 +1408,26 @@ interface ProjectGroup {
   lastActive: string;
 }
 
+
+/**
+ * Find the session file for an id.
+ *
+ * Ids are UUIDs but nothing enforces uniqueness across files: a chat continued
+ * from the wrong directory used to fork a session into a second file under
+ * that directory's group. While duplicates exist, "the" session is the one
+ * most recently written to — that is where the conversation actually lives,
+ * and every caller resolving an id has to agree on the same file or reads and
+ * writes land in different copies.
+ */
+function findSessionById(sessionId: string, fresh = false): SessionFileInfo | undefined {
+  const matches = listSessions(fresh)
+    .flatMap((group) => group.sessions)
+    .filter((item) => item.id === sessionId);
+  if (matches.length <= 1) return matches[0];
+  return matches.reduce((latest, item) =>
+    (item.lastActive || "") > (latest.lastActive || "") ? item : latest);
+}
+
 function decodeProjectName(dirName: string): { projectPath: string; projectName: string } {
   // dirName: "--Users-a123--workspace-wwwroot-X-xenicalofficial-official-v1--"
   // Replace "--" with "/", trim leading/trailing "/" and "-"
@@ -1827,12 +1847,10 @@ export function readSessionPreview(filePath: string, limit = 20): { messages: Se
 /** Load all displayable user and assistant turns for a known local session id. */
 export function readSessionHistory(sessionId: string): { messages: SessionPreviewMessage[]; total: number; model?: SessionModelState } | null {
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(sessionId)) return null;
-  for (const group of listSessions()) {
-    const session = group.sessions.find((item) => item.id === sessionId);
-    if (session) {
-      const history = readSessionMessages(session.filePath);
-      return history ? { ...history, model: readSessionModelState(session.filePath) } : null;
-    }
+  const session = findSessionById(sessionId);
+  if (session) {
+    const history = readSessionMessages(session.filePath);
+    return history ? { ...history, model: readSessionModelState(session.filePath) } : null;
   }
   return null;
 }
@@ -2009,9 +2027,7 @@ export interface SessionInfo {
 
 export function readSessionInfo(sessionId: string): SessionInfo | null {
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(sessionId)) return null;
-  const session = listSessions()
-    .flatMap((group) => group.sessions)
-    .find((item) => item.id === sessionId);
+  const session = findSessionById(sessionId);
   // pi-intercom resolves the addressable id as: PI_INTERCOM_STABLE_ID env
   // (runtime-only, unknowable from files) → intercom/config.json stableId →
   // the pi session id itself.
@@ -2095,9 +2111,7 @@ export function resolveSessionTarget(
   sessionId: string,
 ): { filePath: string; cwd?: string } | null {
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(sessionId)) return null;
-  const session = listSessions()
-    .flatMap((group) => group.sessions)
-    .find((item) => item.id === sessionId);
+  const session = findSessionById(sessionId);
   if (!session) return null;
   const resolved = resolve(session.filePath);
   // Same containment rule as every other session route: inside SESSIONS_DIR.
@@ -2109,7 +2123,7 @@ export function resolveSessionTarget(
 
 export function readSessionUsage(sessionId: string): SessionUsageSummary | null {
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(sessionId)) return null;
-  const session = listSessions().flatMap((group) => group.sessions).find((item) => item.id === sessionId);
+  const session = findSessionById(sessionId);
   if (!session) return null;
   const resolved = resolve(session.filePath);
   if (!resolved.startsWith(SESSIONS_DIR + sep) || !resolved.endsWith(".jsonl") || !existsSync(resolved)) return null;
@@ -2176,7 +2190,7 @@ export function updateSessionUserMessage(sessionId: string, messageId: string, t
 
   // Fresh scan: a session created seconds ago must be findable, and the
   // cached list may predate it.
-  const session = listSessions(true).flatMap((group) => group.sessions).find((item) => item.id === sessionId);
+  const session = findSessionById(sessionId, true);
   if (!session) return false;
   const filePath = resolve(session.filePath);
   if (!filePath.startsWith(SESSIONS_DIR + sep) || !filePath.endsWith(".jsonl") || !existsSync(filePath)) return false;
@@ -2232,7 +2246,7 @@ export function renameSession(sessionId: string, name: string): boolean {
 
   // Fresh scan: renaming a session created seconds ago must work, and the
   // cached list may predate it.
-  const session = listSessions(true).flatMap((group) => group.sessions).find((item) => item.id === sessionId);
+  const session = findSessionById(sessionId, true);
   if (!session) return false;
   const filePath = resolve(session.filePath);
   if (!filePath.startsWith(SESSIONS_DIR + sep) || !filePath.endsWith(".jsonl") || !existsSync(filePath)) return false;
@@ -2791,7 +2805,16 @@ export async function runWebChat(
     : `web-${randomUUID()}`;
   if (!pi) return { sessionId, text: "", error: "pi executable not found" };
   const currentCwd = resolveDefaultChatCwd();
-  const selectedCwd = requestedCwd ? resolve(requestedCwd) : currentCwd;
+  // Continuing an existing session must run in that session's own directory.
+  // pi stores sessions under a group derived from the cwd, so spawning with
+  // the default (home) directory would fail to find the session and fork it
+  // into a second file under the home group — the user's conversation would
+  // appear to move, and its history would stop loading. The picker's explicit
+  // choice still wins; the session's recorded cwd is the fallback.
+  const resumedTarget = requestedSessionId ? resolveSessionTarget(sessionId) : null;
+  const selectedCwd = requestedCwd
+    ? resolve(requestedCwd)
+    : (resumedTarget?.cwd ?? currentCwd);
   if (!existsSync(selectedCwd) || !statSync(selectedCwd).isDirectory()) return { sessionId, text: "", error: "invalid project directory" };
   return new Promise((resolvePromise) => {
     let stdout = "";

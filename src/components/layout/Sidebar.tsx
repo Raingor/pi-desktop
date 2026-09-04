@@ -116,6 +116,22 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     () => new URLSearchParams(location.search).get("session"),
     [location.search],
   );
+  // A group with a pi run in flight floats to the top: that is the work the
+  // user is watching right now, and with many projects the group it lives in
+  // can otherwise sit screens down the list.
+  const sortedGroups = useMemo(
+    () =>
+      [...groups].sort(
+        (a, b) =>
+          Number(
+            b.sessions.some((session) => runningSessions.has(session.id)),
+          ) -
+          Number(
+            a.sessions.some((session) => runningSessions.has(session.id)),
+          ),
+      ),
+    [groups, runningSessions],
+  );
   const selectedSessions = useMemo(
     () =>
       groups
@@ -394,7 +410,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         className={cn("codex-history", selectingSessions && "is-selecting")}
         aria-label="Project conversations"
       >
-        {groups.map((group) => {
+        {sortedGroups.map((group) => {
           const collapsed = collapsedGroups.has(group.projectPath);
           const removing = removingProjectPath === group.projectPath;
           const allProjectSessionsSelected =
