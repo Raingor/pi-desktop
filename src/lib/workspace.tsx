@@ -50,6 +50,14 @@ export function resolveWorkspaceCwd({
   return defaultCwd?.trim() ?? "";
 }
 
+/** One prompt sent in the conversation, for the prompt-log tool panel. */
+export interface PromptLogEntry {
+  id?: string;
+  /** "HH:MM" when the turn came from history, otherwise a sequence number. */
+  time: string;
+  text: string;
+}
+
 interface WorkspaceValue {
   /** Absolute path the tool panels operate on, or "" while unknown. */
   cwd: string;
@@ -57,12 +65,23 @@ interface WorkspaceValue {
   cwdName: string;
   /** Called by the chat page whenever its project selection changes. */
   setCwd: (path: string) => void;
+  /** Prompts sent in the conversation on screen, newest first. */
+  promptLog: PromptLogEntry[];
+  /** Whether a pi run is in flight for that conversation. */
+  chatRunning: boolean;
+  /** Called by the chat page as its own state changes. */
+  setPromptLog: (entries: PromptLogEntry[]) => void;
+  setChatRunning: (running: boolean) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceValue>({
   cwd: "",
   cwdName: "",
   setCwd: () => {},
+  promptLog: [],
+  chatRunning: false,
+  setPromptLog: () => {},
+  setChatRunning: () => {},
 });
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
@@ -97,6 +116,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (next) setCwdState(next);
   }, []);
 
+  const [promptLog, setPromptLog] = useState<PromptLogEntry[]>([]);
+  const [chatRunning, setChatRunning] = useState(false);
+
   const value = useMemo<WorkspaceValue>(
     () => ({
       cwd,
@@ -107,8 +129,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
             ? cwd.split("/").filter(Boolean).pop() ?? cwd
             : "",
       setCwd,
+      promptLog,
+      chatRunning,
+      setPromptLog,
+      setChatRunning,
     }),
-    [cwd, defaultDir, setCwd],
+    [cwd, defaultDir, setCwd, promptLog, chatRunning],
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

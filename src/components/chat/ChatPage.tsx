@@ -253,7 +253,7 @@ export function ChatPage() {
   // Keep the tool panel pointed at whatever directory a prompt would run in.
   // The effect that pushes the value lives further down, next to the session
   // info fetch it also depends on.
-  const { setCwd: setWorkspaceCwd } = useWorkspace();
+  const { setCwd: setWorkspaceCwd, setPromptLog, setChatRunning } = useWorkspace();
   useEffect(() => {
     fetch("/api/pi/chat/default-directory")
       .then((res) => (res.ok ? res.json() : null))
@@ -479,7 +479,7 @@ export function ChatPage() {
       return;
     }
     updateScrollToBottomVisibility();
-  }, [loadingHistory, messages]);
+  }, [loadingHistory, messages, runSteps]);
 
   // Restore the session's own model / thinking level once the model list is
   // available. Runs once per opened session so a manual pick afterwards sticks.
@@ -724,6 +724,16 @@ export function ChatPage() {
       }),
     );
   }, [sessionId, openedSessionCwd, projectPath, defaultCwd, setWorkspaceCwd]);
+
+  // Publish the prompt log and run state to the tool panel. The panel renders
+  // from this shared state rather than fetching, so it always matches exactly
+  // what the chat pane shows — same source, same order, no drift.
+  useEffect(() => {
+    setPromptLog(promptLog);
+  }, [promptLog, setPromptLog]);
+  useEffect(() => {
+    setChatRunning(running);
+  }, [running, setChatRunning]);
 
   // pi binds a session to the directory it was started in, so the composer's
   // directory control is a picker only while the session does not exist yet.
@@ -1195,7 +1205,7 @@ export function ChatPage() {
               {runSteps.map((step, stepIndex) => (
                 <details
                   key={stepIndex}
-                  open={runStepOpenOverrides[stepIndex] ?? (settings?.expandRunSteps ?? true)}
+                  open={runStepOpenOverrides[stepIndex] ?? (settings?.expandRunSteps ?? false)}
                   // `open` is read here rather than inside the updater because
                   // React nulls `currentTarget` the moment the handler returns,
                   // while the updater runs later, when the queue is processed.
@@ -1275,29 +1285,6 @@ export function ChatPage() {
         </div>
         {(sessionUsage || sessionInfo) && (
           <div className="codex-side-panels">
-            {/* Prompt log: every prompt sent in this conversation, newest
-                first, with the in-flight one marked. Derived from the message
-                list, so it survives navigation and matches the file. */}
-            {promptLog.length > 0 && (
-              <aside className="codex-session-meta codex-prompt-log" aria-label="发送记录">
-                <p className="codex-prompt-log-title">发送记录</p>
-                <ol>
-                  {promptLog.map((entry, index) => (
-                    <li key={entry.id ?? index}>
-                      <span className="codex-prompt-log-time">
-                        {entry.time}
-                        {index === 0 && running && (
-                          <em className="codex-prompt-log-live">运行中</em>
-                        )}
-                      </span>
-                      <span className="codex-prompt-log-text" title={entry.text}>
-                        {entry.text}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </aside>
-            )}
             {sessionUsage && (
               <aside
                 className={cn("codex-usage-panel", !usageOpen && "is-collapsed")}

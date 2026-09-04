@@ -419,7 +419,7 @@ export function SettingsPage() {
               <label className="flex items-center gap-2 text-sm text-gray-400">
                 <input
                   type="checkbox"
-                  checked={settings?.expandRunSteps ?? true}
+                  checked={settings?.expandRunSteps ?? false}
                   onChange={(e) =>
                     updateSettings({ expandRunSteps: e.target.checked })
                   }

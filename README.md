@@ -86,7 +86,7 @@ pi-desktop 衍生于姊妹项目 **[pi-web-switch](https://github.com/Raingor/pi
 
 ### 右侧工具面板
 
-默认隐藏。点窗口右上角按钮或按 **⌘J** 展开，宽度 280–720px 可拖拽，开合状态、所在标签、宽度都会记住。七个工具：
+默认隐藏。点窗口右上角按钮或按 **⌘J** 展开，宽度 280–720px 可拖拽，开合状态、所在标签、宽度都会记住。八个工具：
 
 面板作用的目录跟随聊天页选中的项目 —— 没选时就是默认的用户目录 `~`。
 
@@ -98,6 +98,7 @@ pi-desktop 衍生于姊妹项目 **[pi-web-switch](https://github.com/Raingor/pi
 | **后台任务** | 终端面板起的每条命令 + 服务端正在跑的 pi 对话，看状态/耗时/退出码，可逐个终止，点任务跳回终端看输出 |
 | **浏览器** | 内嵌 `<webview>` 看文档、localhost 预览、API 控制台；前进/后退/刷新，可转交系统浏览器 |
 | **终端** | 在项目目录执行命令并流式回显，支持向进程 stdin 送行、Ctrl+C 终止、↑↓ 翻历史 |
+| **发送记录** | 本会话发出的提示词，最新在上，最多 8 条，运行中的那条带「运行中」标记；数据与聊天区同源 |
 | **生图 / 生视频** | Agnes 网关的图像与视频生成：填一次 API Key（存本机 `~/.pi/agent/agnes-config.json`，权限 600，服务端代发），图片支持参考图/尺寸/比例，视频支持文生/首尾帧/参考素材三模式，进度条 + 内嵌播放器 |
 
 > **终端是命令执行器，不是终端模拟器。** 没有 PTY，子进程看到的是管道，所以 `vim`、`top` 这类需要 tty 的交互式程序用不了。这是为了不引入 native 模块（打包产物刻意不含 `node_modules`）而做的取舍 —— 需要完整交互时点右上角「在系统终端打开」。
@@ -188,7 +189,7 @@ pi-desktop/
 │   ├── components/
 │   │   ├── chat/                # ChatPage
 │   │   ├── layout/              # AppShell、Sidebar、RightPanel
-│   │   ├── tools/               # 右侧七个面板（文件/审查/子代理/任务/浏览器/终端/生图生视频）
+│   │   ├── tools/               # 右侧八个面板（文件/审查/子代理/任务/浏览器/终端/生图生视频）
 │   │   ├── settings/            # SettingsWorkspace、SettingsPage、Skills、Commands、PiCli、PackageBrowser
 │   │   ├── dashboard/           # 使用统计
 │   │   ├── providers/           # 提供商与模型

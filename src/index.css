@@ -2617,3 +2617,57 @@ table { border-collapse: collapse; }
   -webkit-line-clamp: 2;
   word-break: break-word;
 }
+/* ─── Prompt log (tool panel) ─────────────────────────── */
+
+.tool-prompt-log {
+  display: flex;
+  overflow-y: auto;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+.tool-prompt-log-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card-bg-solid) 55%, transparent);
+}
+.tool-prompt-log-time {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--subtle-text);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+.tool-prompt-log-live {
+  padding: 0 5px;
+  color: var(--signal-cyan);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--signal-cyan) 10%, transparent);
+  font-size: 8.5px;
+  font-style: normal;
+  letter-spacing: .04em;
+}
+.tool-prompt-log-text {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted-text);
+  font-size: 10.5px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  word-break: break-word;
+}
+.tool-prompt-log-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 2px 0;
+  color: var(--subtle-text);
+  font-size: 9.5px;
+}
+.tool-prompt-log-hint svg { flex: 0 0 auto; }

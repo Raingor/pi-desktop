@@ -11,6 +11,7 @@ import {
   FolderTree,
   GitPullRequestArrow,
   Globe,
+  History,
   ListChecks,
   Sparkles,
   TerminalSquare,
@@ -24,8 +25,9 @@ import { TasksPanel } from "@/components/tools/TasksPanel";
 import { BrowserPanel } from "@/components/tools/BrowserPanel";
 import { TerminalPanel } from "@/components/tools/TerminalPanel";
 import { GeneratePanel } from "@/components/tools/GeneratePanel";
+import { PromptLogPanel } from "@/components/tools/PromptLogPanel";
 
-export type ToolTab = "files" | "review" | "subagents" | "tasks" | "browser" | "terminal" | "generate";
+export type ToolTab = "files" | "review" | "subagents" | "tasks" | "browser" | "terminal" | "generate" | "prompts";
 
 export const TOOL_TABS: { key: ToolTab; label: string; icon: typeof FolderTree }[] = [
   { key: "files", label: "文件目录", icon: FolderTree },
@@ -35,6 +37,7 @@ export const TOOL_TABS: { key: ToolTab; label: string; icon: typeof FolderTree }
   { key: "browser", label: "浏览器", icon: Globe },
   { key: "terminal", label: "终端", icon: TerminalSquare },
   { key: "generate", label: "生图 / 生视频", icon: Sparkles },
+  { key: "prompts", label: "发送记录", icon: History },
 ];
 
 export function RightPanel({
@@ -92,6 +95,7 @@ export function RightPanel({
           />
         )}
         {tab === "generate" && <GeneratePanel />}
+        {tab === "prompts" && <PromptLogPanel />}
       </div>
     </aside>
   );
